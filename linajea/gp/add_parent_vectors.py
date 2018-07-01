@@ -126,7 +126,7 @@ class AddParentVectors(BatchFilter):
         l, d, h, w = shape
 
         # 5D: t, c, z, y, x (c=[0, 1, 2])
-        parent_vectors = np.array(
+        coords = np.array(
                 [
                     # 4D: c, z, y, x
                     np.meshgrid(
@@ -138,13 +138,15 @@ class AddParentVectors(BatchFilter):
                 dtype=np.float32)
 
         # 5D: c, t, z, y, x
-        parent_vectors = parent_vectors.transpose((1, 0, 2, 3, 4))
-        parent_vectors[0,:] *= voxel_size[1]
-        parent_vectors[1,:] *= voxel_size[2]
-        parent_vectors[2,:] *= voxel_size[3]
-        parent_vectors[0,:] += offset[1]
-        parent_vectors[1,:] += offset[2]
-        parent_vectors[2,:] += offset[3]
+        coords = coords.transpose((1, 0, 2, 3, 4))
+        coords[0,:] *= voxel_size[1]
+        coords[1,:] *= voxel_size[2]
+        coords[2,:] *= voxel_size[3]
+        coords[0,:] += offset[1]
+        coords[1,:] += offset[2]
+        coords[2,:] += offset[3]
+
+        parent_vectors = np.zeros_like(coords)
         mask = np.zeros(shape, dtype=np.bool)
 
         logger.debug(
@@ -152,6 +154,15 @@ class AddParentVectors(BatchFilter):
             len(points.data))
 
         for point_id, point in points.data.items():
+
+            # get the voxel coordinate, 'Coordinate' ensures integer
+            v = Coordinate(point.location/voxel_size)
+
+            if not data_roi.contains(v):
+                logger.debug(
+                    "Skipping point at %s outside of requested data ROI",
+                    v)
+                continue
 
             if point.parent_id is None:
                 logger.warn("Skipping point without parent")
@@ -162,15 +173,6 @@ class AddParentVectors(BatchFilter):
                     "parent %d of %d not in %s",
                     point.parent_id,
                     point_id, self.points)
-                continue
-
-            # get the voxel coordinate, 'Coordinate' ensures integer
-            v = Coordinate(point.location/voxel_size)
-
-            if not data_roi.contains(v):
-                logger.debug(
-                    "Skipping point at %s outside of requested data ROI",
-                    v)
                 continue
 
             # get the voxel coordinate relative to output array start
@@ -191,15 +193,11 @@ class AddParentVectors(BatchFilter):
                 in_place=True)
 
             parent = points.data[point.parent_id]
-            parent_vectors[0][point_mask] -= parent.location[1]
-            parent_vectors[1][point_mask] -= parent.location[2]
-            parent_vectors[2][point_mask] -= parent.location[3]
+
+            parent_vectors[0][point_mask] = parent.location[1] - coords[0][point_mask]
+            parent_vectors[1][point_mask] = parent.location[2] - coords[1][point_mask]
+            parent_vectors[2][point_mask] = parent.location[3] - coords[2][point_mask]
 
             mask = np.logical_or(mask, point_mask)
-
-        parent_vectors[0][mask==0] = 0
-        parent_vectors[1][mask==0] = 0
-        parent_vectors[2][mask==0] = 0
-        parent_vectors *= -1
 
         return parent_vectors, mask.astype(np.float32)
