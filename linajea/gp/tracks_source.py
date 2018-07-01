@@ -1,4 +1,5 @@
 from gunpowder import CsvPointsSource, Point
+import numpy as np
 
 class TrackPoint(Point):
 
@@ -7,6 +8,7 @@ class TrackPoint(Point):
         super(TrackPoint, self).__init__(location)
 
         self.thaw()
+        self.original_location = np.array(location, dtype=np.float32)
         self.parent_id = parent_id
         self.track_id = track_id
         self.freeze()
