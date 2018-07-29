@@ -1,3 +1,4 @@
 *.sw[pmno]
 *.pyc
 *.c
+*.so
