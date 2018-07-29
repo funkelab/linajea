@@ -26,16 +26,16 @@ def find_cells(
         downsample = tuple(downsample)
         print("Downsampling predictions...")
         start = time.time()
-        predictions = block_reduce(predictions, downsample, np.max)
-        voxel_size = tuple(r*d for r, d in zip(voxel_size, downsample))
+        predictions = block_reduce(predictions, (1,) + downsample, np.max)
+        voxel_size = tuple(r*d for r, d in zip(voxel_size, (1,) + downsample))
         print("%.3fs"%(time.time()-start))
         print("new voxel size of predictions: %s"%(voxel_size,))
 
     centers, labels, predictions = find_maxima(
         predictions,
         voxel_size,
-        radius,
-        sigma,
+        (0.1,) + radius, # 0.1 == no NMS over t
+        (0,) + sigma,
         min_score_threshold)
 
     return centers, labels, predictions, voxel_size
