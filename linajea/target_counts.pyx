@@ -3,7 +3,7 @@ import numpy as np
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def target_counts(offsets):
+def target_counts(offsets, mask=None):
     '''Given a volume of offsets, counts for each voxel how many offsets point
     to it. Offsets are relative, i.e., an entry ``offsets[:,z,y,x] == [0, 0,
     0]`` points to ``[z,y,x]``, ``[1, 0, 0]`` points to ``[z+1,y,x]``.
@@ -31,14 +31,16 @@ def target_counts(offsets):
     cdef int [:,:,:] counts = counts_np
 
     cdef int [:,:,:,:] targets = offsets
+    cdef int [:,:,:] targets_mask = mask
 
     # count number of indices
     for z in range(d):
         for y in range(h):
             for x in range(w):
-                tz = min(max(0, z + targets[0, z, y, x]), d - 1)
-                ty = min(max(0, y + targets[1, z, y, x]), h - 1)
-                tx = min(max(0, x + targets[2, z, y, x]), w - 1)
-                counts[tz, ty, tx] += 1
+                if mask is None or mask[z, y, x] == 1:
+                    tz = min(max(0, z + targets[0, z, y, x]), d - 1)
+                    ty = min(max(0, y + targets[1, z, y, x]), h - 1)
+                    tx = min(max(0, x + targets[2, z, y, x]), w - 1)
+                    counts[tz, ty, tx] += 1
 
     return counts_np
