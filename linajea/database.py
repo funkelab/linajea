@@ -98,3 +98,53 @@ class CandidateDatabase(object):
         }
 
         return nodes
+
+    def write_edges(self, edges, cells=None, roi=None):
+        '''Write edges to the DB. If ``cells`` and ``roi`` is given, restrict
+        the write to edges with source nodes that have their center in ``roi``.
+
+        Args:
+
+            edges (``dict``):
+
+                List of dicts with 'source', 'target' (forward in time), and
+                'score'.
+
+            cells (``dict``, optional):
+
+                Dict from ``id`` to ``center``, a tuple of coordinates.
+
+            roi (``peach.Roi``, optional):
+
+                If given, restrict writing to edges with ``source`` inside
+                ``roi``.
+        '''
+
+        if roi is not None:
+
+            edges = [
+                e
+                for e in edges
+                if roi.contains(cells[e['source']])
+            ]
+
+        if len(edges) == 0:
+
+            logger.debug("No edges to write.")
+            return
+
+        logger.info("Insert %d edges"%len(edges))
+
+        self.edges.insert_many(edges)
+
+    def read_edges(self, roi):
+
+        nodes = self.read_nodes(roi)
+        node_ids = list(nodes.keys())
+
+        edges = self.edges.find(
+            {
+                'source': { '$in': node_ids }
+            })
+
+        return list(edges)
