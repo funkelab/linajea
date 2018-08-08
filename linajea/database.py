@@ -70,10 +70,13 @@ class CandidateDatabase(object):
         ]
 
         logger.info("Insert %d nodes"%len(nodes))
+        logger.debug(nodes)
 
         self.nodes.insert_many(nodes)
 
     def read_nodes(self, roi):
+        '''Return a dictionary with ``id: center`` for each node in ``roi``.
+        '''
 
         logger.debug("Querying nodes in %s", roi)
 
@@ -89,12 +92,9 @@ class CandidateDatabase(object):
             })
 
         # convert '{t,z,y,x}' into 'position'
-        nodes = [
-            {
-                'id': n['id'],
-                'center': (n['t'], n['z'], n['y'], n['x'])
-            }
+        nodes = {
+            n['id']: (n['t'], n['z'], n['y'], n['x'])
             for n in nodes
-        ]
+        }
 
         return nodes
