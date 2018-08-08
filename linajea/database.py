@@ -60,7 +60,7 @@ class CandidateDatabase(object):
         # convert 'position' into '{t,z,y,x}'
         nodes = [
             {
-                'id': n['id'],
+                'id': int(n['id']),
                 't': n['position'][0],
                 'z': n['position'][1],
                 'y': n['position'][2],
