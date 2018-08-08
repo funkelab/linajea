@@ -37,8 +37,8 @@ class CandidateDatabase(object):
 
             self.edges.create_index(
                 [
-                    ('u', ASCENDING),
-                    ('v', ASCENDING)
+                    ('source', ASCENDING),
+                    ('target', ASCENDING)
                 ],
                 name='incident')
 
