@@ -11,16 +11,56 @@ import time
 
 logger = logging.getLogger(__name__)
 
+class CellDetectionParameters(object):
+
+    def __init__(
+            self,
+            nms_radius,
+            sigma=None,
+            downsample=None,
+            min_score_threshold=0):
+
+        self.nms_radius = nms_radius
+        self.sigma = sigma
+        self.downsample = downsample
+        self.min_score_threshold = 0
+
+class EdgeDetectionParameters(object):
+    '''
+    Args:
+
+        move_threshold (``float``):
+
+            By how much cells are allowed to move spatially between frames.
+
+        pool_radius (``tuple`` of ``int``):
+
+            The 3D radius of a cell to consider to pool parent vectors from. The
+            parent vectors within radius will be used to compute the target
+            counts between two cells, i.e, how many parent vectors from one cell
+            point to the center of the other cell.
+
+        sigma (``float``):
+
+            By how much to smooth the target counts. This is equivalent to
+            saying that each parent vector produces a Gaussian in the target
+            frame. The score of an edge from u to v is the sum of all the
+            Gaussians at the center of u.
+    '''
+
+    def __init__(self, move_threshold, pool_radius, sigma):
+
+        self.move_threshold = move_threshold
+        self.pool_radius = pool_radius
+        self.sigma = sigma
+
 def find_cells(
         target_counts,
         voxel_size,
-        radius,
-        sigma=None,
-        min_score_threshold=0,
-        downsample=None):
+        parameters):
 
-    if downsample:
-        downsample = tuple(downsample)
+    if parameters.downsample:
+        downsample = tuple(parameters.downsample)
         print("Downsampling target_counts...")
         start = time.time()
         # TODO: sum would make more sense! test it
@@ -32,18 +72,16 @@ def find_cells(
     centers, labels, target_counts = find_maxima(
         target_counts,
         voxel_size,
-        (0.1,) + radius, # 0.1 == no NMS over t
-        (0,) + sigma,
-        min_score_threshold)
+        (0.1,) + parameters.radius, # 0.1 == no NMS over t
+        (0,) + parameters.sigma,
+        parameters.min_score_threshold)
 
     return centers, labels, target_counts, voxel_size
 
 def find_edges(
         parent_vectors,
         cells,
-        move_threshold,
-        radius,
-        sigma):
+        parameters):
     '''Find and score edges between cells.
 
     Args:
@@ -56,20 +94,9 @@ def find_edges(
 
             Dict from ``id: center`` of each cell.
 
-        move_threshold (``float``):
+        parameters (`class:EdgeDetectionParameters`):
 
-            By how much cells are allowed spatially between frames.
-
-        radius (``tuple`` of ``int``):
-
-            The 3D radius of a cell to consider to pool parent vectors from. The
-            parent vectors within radius will be used to compute the target
-            counts between two cells, i.e, how many parent vectors from one cell
-            point to the center of the other cell.
-
-        sigma (``float``):
-
-            By how much to smooth the target counts.
+            Parameters of the edge detection, see there for details.
     '''
 
     assert parent_vectors.roi.dims() == 4, (
@@ -95,7 +122,7 @@ def find_edges(
     # create a 3D mask centered at (0, 0, 0) to pool parent vectors from
     radius_vx = peach.Coordinate(
         int(math.ceil(r/v))
-        for r, v in zip(radius, voxel_size_3d))
+        for r, v in zip(parameters.pool_radius, voxel_size_3d))
     shape = radius_vx*2 + (1, 1, 1)
     mask_roi = peach.Roi(
         (0, 0, 0),
@@ -165,7 +192,10 @@ def find_edges(
                     nex_parent_vectors.data[:,0,:].astype(np.int32),
                     mask.data)
                 assert len(counts.shape) == 3
-                counts = gaussian_filter(counts, sigma, mode='constant')
+                counts = gaussian_filter(
+                    counts,
+                    parameters.sigma,
+                    mode='constant')
                 counts = peach.Array(
                     counts,
                     nex_roi_3d,
@@ -173,9 +203,10 @@ def find_edges(
                 score = counts[counts.roi.get_center()]
 
                 edges.append({
-                    'source': nex_cell,
-                    'target': pre_cell,
-                    'score': float(score)
+                    'source': int(nex_cell),
+                    'target': int(pre_cell),
+                    'score': float(score),
+                    'distance': float(distance)
                 })
 
     return edges
