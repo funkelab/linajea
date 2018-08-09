@@ -1,6 +1,7 @@
 from .nms import find_maxima, sphere
 from .target_counts import target_counts
 from scipy.ndimage.filters import gaussian_filter
+from scipy.spatial import KDTree
 from skimage.measure import block_reduce
 import logging
 import math
@@ -111,21 +112,35 @@ def find_edges(
         pre = t
         nex = t + 1
 
+        # prepare KD tree for fast partner lookup
+        nex_ids = np.array(cells_by_t[nex])
+        kd_data = [ cells[cell_id][1:] for cell_id in nex_ids ]
+
+        if len(nex_ids) == 0:
+            continue
+
+        nex_kd_tree = KDTree(kd_data)
+
         logger.debug(
             "Finding edges between cells in frames %d and %d (%d and %d cells)",
             pre, nex, len(cells_by_t[pre]), len(cells_by_t[nex]))
 
         for pre_cell in cells_by_t[pre]:
-            for nex_cell in cells_by_t[nex]:
+
+            print(pre_cell)
+
+            nex_neighbor_indices = nex_kd_tree.query_ball_point(
+                cells[pre_cell][1:],
+                parameters.move_threshold)
+            nex_neighbors = nex_ids[nex_neighbor_indices]
+
+            for nex_cell in nex_neighbors:
 
                 pre_center = np.array(cells[pre_cell][1:])
                 nex_center = np.array(cells[nex_cell][1:])
 
-                moved = (pre_center - nex_center)*voxel_size_3d
+                moved = (pre_center - nex_center)
                 distance = np.linalg.norm(moved)
-
-                if distance > move_threshold:
-                    continue
 
                 # Get score from nex to pre (backwards in time).
                 #
