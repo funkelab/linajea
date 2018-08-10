@@ -44,6 +44,9 @@ class CandidateDatabase(object):
 
     def write_nodes(self, nodes, roi=None):
 
+        if self.mode == 'r':
+            raise RuntimeError("trying to write to read-only DB")
+
         if roi is not None:
 
             nodes = [
@@ -119,6 +122,9 @@ class CandidateDatabase(object):
                 If given, restrict writing to edges with ``source`` inside
                 ``roi``.
         '''
+
+        if self.mode == 'r':
+            raise RuntimeError("trying to write to read-only DB")
 
         if roi is not None:
 
