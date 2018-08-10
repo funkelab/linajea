@@ -56,27 +56,33 @@ class EdgeDetectionParameters(object):
 
 def find_cells(
         target_counts,
-        voxel_size,
         parameters):
 
     if parameters.downsample:
+
         downsample = tuple(parameters.downsample)
+
         print("Downsampling target_counts...")
         start = time.time()
         # TODO: sum would make more sense! test it
-        target_counts = block_reduce(target_counts, (1,) + downsample, np.max)
-        voxel_size = tuple(r*d for r, d in zip(voxel_size, (1,) + downsample))
+        downsampled = block_reduce(target_counts.data, (1,) + downsample, np.max)
+        voxel_size = target_counts.voxel_size*peach.Coordinate((1,) + downsample)
+        target_counts = peach.Array(
+            downsampled,
+            peach.Roi(
+                target_counts.roi.get_begin(),
+                voxel_size*downsampled.shape),
+            voxel_size)
         print("%.3fs"%(time.time()-start))
-        print("new voxel size of target_counts: %s"%(voxel_size,))
+        print("new voxel size of target_counts: %s"%(target_counts.voxel_size,))
 
-    centers, labels, target_counts = find_maxima(
+    centers, labels, target_counts_smoothed = find_maxima(
         target_counts,
-        voxel_size,
-        (0.1,) + parameters.radius, # 0.1 == no NMS over t
+        (0.1,) + parameters.nms_radius, # 0.1 == no NMS over t
         (0,) + parameters.sigma,
         parameters.min_score_threshold)
 
-    return centers, labels, target_counts, voxel_size
+    return centers, labels, target_counts_smoothed
 
 def find_edges(
         parent_vectors,
