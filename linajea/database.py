@@ -64,10 +64,10 @@ class CandidateDatabase(object):
         nodes = [
             {
                 'id': int(n['id']),
-                't': n['position'][0],
-                'z': n['position'][1],
-                'y': n['position'][2],
-                'x': n['position'][3]
+                't': int(n['position'][0]),
+                'z': int(n['position'][1]),
+                'y': int(n['position'][2]),
+                'x': int(n['position'][3])
             }
             for n in nodes
         ]
