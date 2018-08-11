@@ -75,11 +75,45 @@ def find_cells(
         print("%.3fs"%(time.time()-start))
         print("new voxel size of target_counts: %s"%(target_counts.voxel_size,))
 
-    centers, labels, target_counts_smoothed = find_maxima(
-        target_counts,
-        (0.1,) + parameters.nms_radius, # 0.1 == no NMS over t
-        (0,) + parameters.sigma,
-        parameters.min_score_threshold)
+    # prepare output datastructures
+    centers = {}
+    labels = peach.Array(
+        np.zeros(target_counts.shape, dtype=np.uint64),
+        target_counts.roi,
+        target_counts.voxel_size)
+    target_counts_smoothed = peach.Array(
+        np.zeros(target_counts.shape, dtype=np.float32),
+        target_counts.roi,
+        target_counts.voxel_size)
+
+    # find maxima for each frame individually (we don't want maxima in one frame
+    # shadowing maxima in another one)
+
+    max_label = 0
+    for t in range(
+            target_counts.roi.get_begin()[0],
+            target_counts.roi.get_end()[0]):
+
+        frame_roi = target_counts.roi.intersect(
+            peach.Roi((t, None, None, None), (1, None, None, None)))
+
+        frame_centers, frame_labels, frame_target_counts = find_maxima(
+            target_counts[frame_roi],
+            (0,) + parameters.nms_radius, # no NMS over t
+            (0,) + parameters.sigma, # no smoothing over t
+            parameters.min_score_threshold)
+
+        # ensure unique IDs
+        labels.data[labels.data!=0] += max_label
+        frame_centers = {
+            cell_id + max_label: value
+            for cell_id, value in frame_centers.items()
+        }
+        max_label = np.max(labels.data)
+
+        centers.update(frame_centers)
+        labels[frame_roi] = frame_labels
+        target_counts_smoothed[frame_roi] = frame_target_counts
 
     return centers, labels, target_counts_smoothed
 
