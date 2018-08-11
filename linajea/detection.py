@@ -12,6 +12,28 @@ import time
 logger = logging.getLogger(__name__)
 
 class CellDetectionParameters(object):
+    '''
+    Args:
+
+        nms_radius (``tuple`` of ``int``):
+
+            The 3D radius (in world units) to use for non-maxima suppression.
+
+        sigma (``float``, optional):
+
+            By how much to smooth the target counts (in world units) before
+            searching for maxima.
+
+        downsample (``tuple`` of ``int``, optional):
+
+            By how much to downsample the target counts before searching for
+            maxima.
+
+        min_score_threshold (``float``, optional):
+
+            Only consider maxima with a value grater than this threshold as
+            cells.
+    '''
 
     def __init__(
             self,
