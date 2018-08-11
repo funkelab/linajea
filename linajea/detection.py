@@ -64,8 +64,7 @@ def find_cells(
 
         print("Downsampling target_counts...")
         start = time.time()
-        # TODO: sum would make more sense! test it
-        downsampled = block_reduce(target_counts.data, (1,) + downsample, np.max)
+        downsampled = block_reduce(target_counts.data, (1,) + downsample, np.sum)
         voxel_size = target_counts.voxel_size*peach.Coordinate((1,) + downsample)
         target_counts = peach.Array(
             downsampled,
