@@ -109,7 +109,7 @@ def sphere(radius):
 
     grid = np.ogrid[tuple(slice(-r, r + 1) for r in radius)]
     dist = sum([
-        a.astype(np.float)**2/r**2
+        a.astype(np.float)**2/r**2 if r > 0 else np.zeros_like(a)
         for a, r in zip(grid, radius)
     ])
     return (dist <= 1)
