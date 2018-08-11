@@ -92,7 +92,7 @@ def find_maxima(
     centers = {
         label: {
             'center': np.array([
-                c*v + o
+                int(np.round(c*v + o))
                 for c, v, o in zip(center, array.voxel_size, array.roi.get_offset())
             ]),
             'score': max_value
