@@ -1,9 +1,12 @@
 from scipy.ndimage import measurements, label, maximum_filter
 from scipy.ndimage.filters import gaussian_filter
+import logging
 import math
 import numpy as np
 import daisy
 import time
+
+logger = logging.getLogger(__name__)
 
 def find_maxima(
         array,
@@ -45,49 +48,49 @@ def find_maxima(
 
     # smooth values
     if sigma is not None:
-        print("Smoothing values...")
+        logger.debug("Smoothing values...")
         sigma = tuple(
             float(s)/r
             for s, r in zip(sigma, array.voxel_size))
-        print("voxel-sigma: %s"%(sigma,))
+        logger.debug("voxel-sigma: %s", sigma)
         start = time.time()
         values = gaussian_filter(
             values,
             sigma,
             mode='constant')
-        print("%.3fs"%(time.time()-start))
+        logger.debug("%.3fs", time.time() - start)
 
-    print("Finding maxima...")
+    logger.debug("Finding maxima...")
     start = time.time()
     radius = tuple(
         int(math.ceil(float(ra)/re))
         for ra, re in zip(radius, array.voxel_size))
-    print("voxel-radius: %s"%(radius,))
+    logger.debug("voxel-radius: %s", radius)
     max_filtered = maximum_filter(values, footprint=sphere(radius))
 
     maxima = max_filtered == values
-    print("%.3fs"%(time.time()-start))
+    logger.debug("%.3fs", time.time() - start)
 
-    print("Applying NMS...")
+    logger.debug("Applying NMS...")
     start = time.time()
     values_filtered = np.zeros_like(values)
     values_filtered[maxima] = values[maxima]
-    print("%.3fs"%(time.time()-start))
+    logger.debug("%.3fs", time.time() - start)
 
-    print("Finding blobs...")
+    logger.debug("Finding blobs...")
     start = time.time()
     blobs = values_filtered > min_score_threshold
     labels, num_blobs = label(blobs, output=np.uint64)
-    print("%.3fs"%(time.time()-start))
+    logger.debug("%.3fs", time.time() - start)
 
-    print("Found %d points after NMS"%num_blobs)
+    logger.debug("Found %d points after NMS", num_blobs)
 
-    print("Finding centers, sizes, and maximal values...")
+    logger.debug("Finding centers, sizes, and maximal values...")
     start = time.time()
     label_ids = np.arange(1, num_blobs + 1)
     centers = measurements.center_of_mass(blobs, labels, index=label_ids)
     maxima = measurements.maximum(values, labels, index=label_ids)
-    print("%.3fs"%(time.time()-start))
+    logger.debug("%.3fs", time.time() - start)
 
     centers = {
         label: {

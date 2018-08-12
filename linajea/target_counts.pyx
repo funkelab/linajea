@@ -38,7 +38,7 @@ def target_counts(parent_vectors, voxel_size, mask=None):
         "parent vectors should be 3D vectors")
     assert len(voxel_size) == 3, "voxel size is not 3D"
 
-    logger.info(
+    logger.debug(
         "counting targets in parent vectors of shape %s with voxel size %s",
         parent_vectors.shape, voxel_size)
 

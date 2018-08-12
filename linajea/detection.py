@@ -84,7 +84,7 @@ def find_cells(
 
         downsample = tuple(parameters.downsample)
 
-        print("Downsampling target_counts...")
+        logger.debug("Downsampling target_counts...")
         start = time.time()
         downsampled = block_reduce(target_counts.data, (1,) + downsample, np.sum)
         voxel_size = target_counts.voxel_size*daisy.Coordinate((1,) + downsample)
@@ -94,8 +94,8 @@ def find_cells(
                 target_counts.roi.get_begin(),
                 voxel_size*downsampled.shape),
             voxel_size)
-        print("%.3fs"%(time.time()-start))
-        print("new voxel size of target_counts: %s"%(target_counts.voxel_size,))
+        logger.debug("%.3fs", time.time() - start)
+        logger.debug("new voxel size of target_counts: %s"%(target_counts.voxel_size,))
 
     # prepare output datastructures
     centers = {}
