@@ -247,7 +247,8 @@ def find_edges(
                 # get smoothed target counts at pre
                 assert nex_parent_vectors.shape[1] == 1
                 counts = target_counts(
-                    nex_parent_vectors.data[:,0,:].astype(np.int32),
+                    nex_parent_vectors.data[:,0,:],
+                    nex_parent_vectors.voxel_size[1:],
                     mask.data)
                 assert len(counts.shape) == 3
                 counts = gaussian_filter(
