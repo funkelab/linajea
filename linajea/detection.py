@@ -169,9 +169,9 @@ def find_edges(
     # sort cells by frame
     cells_by_t = {
         t: [
-            label
-            for label, center in cells.items()
-            if center[0] == t
+            cell
+            for cell in cells
+            if cell['position'][0] == t
         ]
         for t in range(t_begin, t_end)
     }
@@ -201,12 +201,11 @@ def find_edges(
         nex = t + 1
 
         # prepare KD tree for fast partner lookup
-        nex_ids = np.array(cells_by_t[nex])
-        kd_data = [ cells[cell_id][1:] for cell_id in nex_ids ]
-
-        if len(nex_ids) == 0:
+        nex_cells = cells_by_t[nex]
+        if len(nex_cells) == 0:
             continue
 
+        kd_data = [ cell['position'][1:] for cell in nex_cells ]
         nex_kd_tree = KDTree(kd_data)
 
         logger.debug(
@@ -215,17 +214,15 @@ def find_edges(
 
         for pre_cell in cells_by_t[pre]:
 
-            print(pre_cell)
-
             nex_neighbor_indices = nex_kd_tree.query_ball_point(
-                cells[pre_cell][1:],
+                pre_cell['position'][1:],
                 parameters.move_threshold)
-            nex_neighbors = nex_ids[nex_neighbor_indices]
+            nex_neighbors = [ nex_cells[i] for i in nex_neighbor_indices ]
 
             for nex_cell in nex_neighbors:
 
-                pre_center = np.array(cells[pre_cell][1:])
-                nex_center = np.array(cells[nex_cell][1:])
+                pre_center = np.array(pre_cell['position'][1:])
+                nex_center = np.array(nex_cell['position'][1:])
 
                 moved = (pre_center - nex_center)
                 distance = np.linalg.norm(moved)
@@ -264,8 +261,8 @@ def find_edges(
                 score = counts[counts.roi.get_center()]
 
                 edges.append({
-                    'source': int(nex_cell),
-                    'target': int(pre_cell),
+                    'source': int(nex_cell['id']),
+                    'target': int(pre_cell['id']),
                     'score': float(score),
                     'distance': float(distance)
                 })

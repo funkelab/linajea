@@ -67,18 +67,20 @@ class CandidateDatabase(object):
                 't': int(n['position'][0]),
                 'z': int(n['position'][1]),
                 'y': int(n['position'][2]),
-                'x': int(n['position'][3])
+                'x': int(n['position'][3]),
+                'score': float(n['score'])
             }
             for n in nodes
         ]
 
-        logger.info("Insert %d nodes"%len(nodes))
+        logger.debug("Insert %d nodes"%len(nodes))
         logger.debug(nodes)
 
         self.nodes.insert_many(nodes)
 
     def read_nodes(self, roi):
-        '''Return a dictionary with ``id: center`` for each node in ``roi``.
+        '''Return a list of dictionaries with ``id``, ``position``, and
+        ``score`` for each node in ``roi``.
         '''
 
         logger.debug("Querying nodes in %s", roi)
@@ -95,16 +97,21 @@ class CandidateDatabase(object):
             })
 
         # convert '{t,z,y,x}' into 'position'
-        nodes = {
-            n['id']: (n['t'], n['z'], n['y'], n['x'])
+        nodes = [
+            {
+                'id': n['id'],
+                'position': (n['t'], n['z'], n['y'], n['x']),
+                'score': n['score']
+            }
             for n in nodes
-        }
+        ]
 
         return nodes
 
     def write_edges(self, edges, cells=None, roi=None):
         '''Write edges to the DB. If ``cells`` and ``roi`` is given, restrict
-        the write to edges with source nodes that have their center in ``roi``.
+        the write to edges with source nodes that have their position in
+        ``roi``.
 
         Args:
 
@@ -113,9 +120,9 @@ class CandidateDatabase(object):
                 List of dicts with 'source', 'target' (forward in time), and
                 'score'.
 
-            cells (``dict``, optional):
+            cells (``list`` of ``dict``, optional):
 
-                Dict from ``id`` to ``center``, a tuple of coordinates.
+                List with dicts with ``id`` and ``position``.
 
             roi (``daisy.Roi``, optional):
 
@@ -126,12 +133,17 @@ class CandidateDatabase(object):
         if self.mode == 'r':
             raise RuntimeError("trying to write to read-only DB")
 
-        if roi is not None:
+        if roi is not None and cells is not None:
+
+            cell_centers = {
+                cell['id']: cell['position']
+                for cell in cells
+            }
 
             edges = [
                 e
                 for e in edges
-                if roi.contains(cells[e['source']])
+                if roi.contains(cell_centers[e['source']])
             ]
 
         if len(edges) == 0:
@@ -139,14 +151,14 @@ class CandidateDatabase(object):
             logger.debug("No edges to write.")
             return
 
-        logger.info("Insert %d edges"%len(edges))
+        logger.debug("Insert %d edges"%len(edges))
 
         self.edges.insert_many(edges)
 
     def read_edges(self, roi):
 
         nodes = self.read_nodes(roi)
-        node_ids = list(nodes.keys())
+        node_ids = list([ n['id'] for n in nodes])
 
         edges = self.edges.find(
             {
