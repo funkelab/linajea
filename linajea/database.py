@@ -117,7 +117,7 @@ class CandidateDatabase(object):
 
                 Dict from ``id`` to ``center``, a tuple of coordinates.
 
-            roi (``peach.Roi``, optional):
+            roi (``daisy.Roi``, optional):
 
                 If given, restrict writing to edges with ``source`` inside
                 ``roi``.

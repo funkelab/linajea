@@ -6,7 +6,7 @@ from skimage.measure import block_reduce
 import logging
 import math
 import numpy as np
-import peach
+import daisy
 import time
 
 logger = logging.getLogger(__name__)
@@ -65,10 +65,10 @@ def find_cells(
         print("Downsampling target_counts...")
         start = time.time()
         downsampled = block_reduce(target_counts.data, (1,) + downsample, np.sum)
-        voxel_size = target_counts.voxel_size*peach.Coordinate((1,) + downsample)
-        target_counts = peach.Array(
+        voxel_size = target_counts.voxel_size*daisy.Coordinate((1,) + downsample)
+        target_counts = daisy.Array(
             downsampled,
-            peach.Roi(
+            daisy.Roi(
                 target_counts.roi.get_begin(),
                 voxel_size*downsampled.shape),
             voxel_size)
@@ -77,11 +77,11 @@ def find_cells(
 
     # prepare output datastructures
     centers = {}
-    labels = peach.Array(
+    labels = daisy.Array(
         np.zeros(target_counts.shape, dtype=np.uint64),
         target_counts.roi,
         target_counts.voxel_size)
-    target_counts_smoothed = peach.Array(
+    target_counts_smoothed = daisy.Array(
         np.zeros(target_counts.shape, dtype=np.float32),
         target_counts.roi,
         target_counts.voxel_size)
@@ -95,7 +95,7 @@ def find_cells(
             target_counts.roi.get_end()[0]):
 
         frame_roi = target_counts.roi.intersect(
-            peach.Roi((t, None, None, None), (1, None, None, None)))
+            daisy.Roi((t, None, None, None), (1, None, None, None)))
 
         frame_centers, frame_labels, frame_target_counts = find_maxima(
             target_counts[frame_roi],
@@ -125,7 +125,7 @@ def find_edges(
 
     Args:
 
-        parent_vectors (``peach.Array``):
+        parent_vectors (``daisy.Array``):
 
             An array of predicted parent vectors.
 
@@ -159,15 +159,15 @@ def find_edges(
     voxel_size_3d = parent_vectors.voxel_size[1:]
 
     # create a 3D mask centered at (0, 0, 0) to pool parent vectors from
-    radius_vx = peach.Coordinate(
+    radius_vx = daisy.Coordinate(
         int(math.ceil(r/v))
         for r, v in zip(parameters.pool_radius, voxel_size_3d))
     shape = radius_vx*2 + (1, 1, 1)
-    mask_roi = peach.Roi(
+    mask_roi = daisy.Roi(
         (0, 0, 0),
         shape*voxel_size_3d)
     mask_roi -= mask_roi.get_center()
-    mask = peach.Array(
+    mask = daisy.Array(
         sphere(radius_vx).astype(np.int32),
         mask_roi,
         voxel_size_3d)
@@ -216,9 +216,9 @@ def find_edges(
                 # very far away).
 
                 # get the mask ROI around the next cell in 3D
-                nex_roi_3d = mask_roi + peach.Coordinate(nex_center)
+                nex_roi_3d = mask_roi + daisy.Coordinate(nex_center)
                 # add the time dimension
-                nex_roi_4d = peach.Roi(
+                nex_roi_4d = daisy.Roi(
                     (nex,) + nex_roi_3d.get_begin(),
                     (1,) + nex_roi_3d.get_shape())
                 nex_parent_vectors = parent_vectors.fill(
@@ -235,7 +235,7 @@ def find_edges(
                     counts,
                     parameters.sigma,
                     mode='constant')
-                counts = peach.Array(
+                counts = daisy.Array(
                     counts,
                     nex_roi_3d,
                     voxel_size_3d)

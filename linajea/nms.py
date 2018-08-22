@@ -2,7 +2,7 @@ from scipy.ndimage import measurements, label, maximum_filter
 from scipy.ndimage.filters import gaussian_filter
 import math
 import numpy as np
-import peach
+import daisy
 import time
 
 def find_maxima(
@@ -16,7 +16,7 @@ def find_maxima(
 
     Args:
 
-        array (`class:peach.Array`):
+        array (`class:daisy.Array`):
 
             The array to find maxima in.
 
@@ -100,8 +100,8 @@ def find_maxima(
         for label, center, max_value in zip(label_ids, centers, maxima)
     }
 
-    labels = peach.Array(labels, array.roi, array.voxel_size)
-    values = peach.Array(values, array.roi, array.voxel_size)
+    labels = daisy.Array(labels, array.roi, array.voxel_size)
+    values = daisy.Array(values, array.roi, array.voxel_size)
 
     return (centers, labels, values)
 
