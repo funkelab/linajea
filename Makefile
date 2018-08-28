@@ -1,5 +1,6 @@
 default:
 	python setup.py install
+	-rm -rf dist build linajea.egg-info
 
 install-pip:
 	pip install .
