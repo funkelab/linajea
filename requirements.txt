@@ -1,5 +1,5 @@
 cython
 daisy
-graph-tool
+networkx
 pylp
 pymongo

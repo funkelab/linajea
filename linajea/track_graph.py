@@ -6,12 +6,6 @@ class TrackGraph(nx.DiGraph):
 
         super(TrackGraph, self).__init__(directed=False)
 
-        # self.vp.frame = self.new_vertex_property('int')
-        # self.vp.score = self.new_vertex_property('float')
-        # self.vp.selected = self.new_vertex_property('bool')
-        # self.ep.score = self.new_edge_property('float')
-        # self.ep.distance = self.new_edge_property('float')
-        # self.ep.selected = self.new_edge_property('bool')
         self.begin = None
         self.end = None
         self._cells_by_frame = {}
