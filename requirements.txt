@@ -1,3 +1,5 @@
 cython
-gunpowder
+daisy
+graph-tool
+pylp
 pymongo
