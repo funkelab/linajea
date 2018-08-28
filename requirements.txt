@@ -1,5 +1,6 @@
 cython
 daisy
 networkx
+pyklb
 pylp
 pymongo
