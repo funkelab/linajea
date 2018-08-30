@@ -5,11 +5,12 @@ logger = logging.getLogger(__name__)
 
 class CandidateDatabase(object):
 
-    def __init__(self, db_name, mode='r'):
+    def __init__(self, db_name, db_host='localhost', mode='r'):
 
         self.db_name = db_name
+        self.db_host = db_host
         self.mode = mode
-        self.client = MongoClient()
+        self.client = MongoClient(host=db_host)
 
         if mode == 'w':
             self.client.drop_database(db_name)
