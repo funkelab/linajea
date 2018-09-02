@@ -188,7 +188,7 @@ def find_edges(
     mask_roi = daisy.Roi(
         (0, 0, 0),
         shape*voxel_size_3d)
-    mask_roi -= mask_roi.get_center()
+    mask_roi -= (shape/2)*voxel_size_3d
     mask = daisy.Array(
         sphere(radius_vx).astype(np.int32),
         mask_roi,
@@ -200,26 +200,121 @@ def find_edges(
         pre = t
         nex = t + 1
 
-        # prepare KD tree for fast partner lookup
-        nex_cells = cells_by_t[nex]
-        if len(nex_cells) == 0:
-            continue
-
-        kd_data = [ cell['position'][1:] for cell in nex_cells ]
-        nex_kd_tree = KDTree(kd_data)
-
         logger.debug(
             "Finding edges between cells in frames %d and %d (%d and %d cells)",
             pre, nex, len(cells_by_t[pre]), len(cells_by_t[nex]))
 
-        for pre_cell in cells_by_t[pre]:
+        if len(cells_by_t[pre]) == 0 or len(cells_by_t[nex]) == 0:
 
-            nex_neighbor_indices = nex_kd_tree.query_ball_point(
-                pre_cell['position'][1:],
+            logger.debug("There are no edges between these frames, skipping")
+            continue
+
+        # Compute edge scores backwards in time. For each 'nex' cell, get the
+        # masked target counts in the previous frame (masked meaning we consider
+        # only parent vectors in a ball around 'nex'). This is done in a ROI
+        # around the 'nex' and 'pre' cells only. The edge score to all 'pre'
+        # cells can then directly be read out from the target counts for this
+        # ROI.
+        #
+        # 1. get a 'nex' cell
+        # 2. find all 'pre' cells within 'move_threshold'
+        # 3. get ROI of all 'pre' cells
+        # 4. grow ROI by 2*'sigma' (this ensures we still count parent vectors
+        #    that don't point right to the center of the 'pre' cells)
+        # 5. get parent vectors in ROI in 'nex' frame
+        # 6. create a mask for same ROI around 'nex' cell
+        # 7. compute target counts for that ROI
+        # 8. smooth target counts with 'sigma'
+        # 9. for each 'pre' cell, read out the edge score from the smoothed
+        #    target counts
+
+        # prepare KD tree for fast lookup of 'pre' cells
+        logger.debug("Preparing KD tree...")
+        all_pre_cells = cells_by_t[pre]
+        kd_data = [ cell['position'][1:] for cell in all_pre_cells ]
+        pre_kd_tree = KDTree(kd_data)
+
+        # 1. get a 'nex' cell
+        for nex_cell in cells_by_t[nex]:
+
+            nex_cell_center = daisy.Coordinate(nex_cell['position'][1:])
+            nex_mask_roi = mask.roi + nex_cell_center
+            nex_mask_roi = nex_mask_roi.snap_to_grid(voxel_size_3d, mode='closest')
+
+            logger.debug(
+                "Processing cell %d at %s, masking in ROI %s",
+                nex_cell['id'], nex_cell_center, nex_mask_roi)
+
+            # 2. find all 'pre' cells within 'move_threshold'
+
+            pre_cells_indices = pre_kd_tree.query_ball_point(
+                nex_cell_center,
                 parameters.move_threshold)
-            nex_neighbors = [ nex_cells[i] for i in nex_neighbor_indices ]
+            pre_cells = [ all_pre_cells[i] for i in pre_cells_indices ]
 
-            for nex_cell in nex_neighbors:
+            logger.debug(
+                "Linking to %d cells in previous frame",
+                len(pre_cells))
+
+            # 3. get ROI of all 'pre' cells
+
+            roi_3d = roi_from_points([
+                pre_cell['position'][1:]
+                for pre_cell in pre_cells
+            ])
+            roi_3d = roi_3d.union(nex_mask_roi)
+
+            # 4. grow ROI by 2*'sigma'
+
+            context = daisy.Coordinate((math.ceil(2*s) for s in parameters.sigma))
+            roi_3d = roi_3d.grow(context, context)
+            roi_3d = roi_3d.snap_to_grid(voxel_size_3d, mode='grow')
+
+            logger.debug("Context ROI: %s", roi_3d)
+
+            # 5. get parent vectors in ROI in 'nex' frame
+
+            pre_roi = daisy.Roi(
+                (pre,) + roi_3d.get_begin(),
+                (1,) + roi_3d.get_shape())
+            nex_roi = daisy.Roi(
+                (nex,) + roi_3d.get_begin(),
+                (1,) + roi_3d.get_shape())
+
+            nex_parent_vectors = parent_vectors.fill(
+                nex_roi,
+                fill_value=1000)
+            assert nex_parent_vectors.shape[1] == 1
+
+            # 6. create a mask for same ROI around 'nex' cell
+
+            nex_mask = daisy.Array(
+                np.zeros(nex_parent_vectors.shape[-3:], dtype=np.int32),
+                roi_3d,
+                voxel_size_3d)
+            nex_mask[nex_mask_roi] = mask
+
+            # 7. compute target counts for that ROI
+
+            counts = daisy.Array(
+                target_counts(
+                    nex_parent_vectors.data[:,0,:],
+                    voxel_size_3d,
+                    mask=nex_mask.data),
+                roi_3d,
+                voxel_size_3d)
+
+            # 8. smooth target counts with 'sigma'
+
+            counts.data = gaussian_filter(
+                counts.data.astype(np.float),
+                parameters.sigma,
+                mode='constant')
+
+            # 9. for each 'pre' cell, read out the edge score from the smoothed
+            #    target counts
+
+            for pre_cell in pre_cells:
 
                 pre_center = np.array(pre_cell['position'][1:])
                 nex_center = np.array(nex_cell['position'][1:])
@@ -227,39 +322,7 @@ def find_edges(
                 moved = (pre_center - nex_center)
                 distance = np.linalg.norm(moved)
 
-                # Get score from nex to pre (backwards in time).
-                #
-                # Cut out parent vectors around mask_roi centered at nex_center.
-                # We set the fill_value to 1000 to make sure that out-of-bounds
-                # voxels don't contribute to the target counts (they will point
-                # very far away).
-
-                # get the mask ROI around the next cell in 3D
-                nex_roi_3d = mask_roi + daisy.Coordinate(nex_center)
-                # add the time dimension
-                nex_roi_4d = daisy.Roi(
-                    (nex,) + nex_roi_3d.get_begin(),
-                    (1,) + nex_roi_3d.get_shape())
-                nex_parent_vectors = parent_vectors.fill(
-                    nex_roi_4d,
-                    fill_value=1000)
-
-                # get smoothed target counts at pre
-                assert nex_parent_vectors.shape[1] == 1
-                counts = target_counts(
-                    nex_parent_vectors.data[:,0,:],
-                    nex_parent_vectors.voxel_size[1:],
-                    mask.data)
-                assert len(counts.shape) == 3
-                counts = gaussian_filter(
-                    counts,
-                    parameters.sigma,
-                    mode='constant')
-                counts = daisy.Array(
-                    counts,
-                    nex_roi_3d,
-                    voxel_size_3d)
-                score = counts[counts.roi.get_center()]
+                score = counts[daisy.Coordinate(pre_cell['position'][1:])]
 
                 edges.append({
                     'source': int(nex_cell['id']),
@@ -269,3 +332,12 @@ def find_edges(
                 })
 
     return edges
+
+def roi_from_points(points):
+
+    begin = daisy.Coordinate((min(c) for c in zip(*points)))
+    end = daisy.Coordinate((max(c) + 1 for c in zip(*points)))
+
+    return daisy.Roi(
+        begin,
+        end - begin)
