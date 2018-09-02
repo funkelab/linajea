@@ -41,7 +41,7 @@ RUN cp build/lib/libklb.so /lib
 
 ENV DAISY_ROOT=/src/daisy
 ENV DAISY_REPOSITORY=https://github.com/funkey/daisy
-ENV DAISY_REVISION=9c89b3ef6dac48e370df852b9b9a60e31df1125c
+ENV DAISY_REVISION=bd5950cccc38b13029f7d140460069f79a63242a
 
 WORKDIR ${DAISY_ROOT}
 RUN git clone ${DAISY_REPOSITORY} . && \
