@@ -12,7 +12,9 @@ setup(
         license='MIT',
         packages=[
             'linajea',
-            'linajea.gp',
+            'linajea.gunpowder',
+            'linajea.tensorflow',
+            'linajea.tracking',
         ],
         ext_modules=[
             Extension(
