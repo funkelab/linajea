@@ -86,7 +86,7 @@ def find_cells(
 
         logger.debug("Downsampling target_counts...")
         start = time.time()
-        downsampled = block_reduce(target_counts.data, (1,) + downsample, np.sum)
+        downsampled = block_reduce(target_counts.to_ndarray(), (1,) + downsample, np.sum)
         voxel_size = target_counts.voxel_size*daisy.Coordinate((1,) + downsample)
         target_counts = daisy.Array(
             downsampled,
@@ -256,6 +256,9 @@ def find_edges(
                 "Linking to %d cells in previous frame",
                 len(pre_cells))
 
+            if len(pre_cells) == 0:
+                continue
+
             # 3. get ROI of all 'pre' cells
 
             roi_3d = roi_from_points([
@@ -281,7 +284,7 @@ def find_edges(
                 (nex,) + roi_3d.get_begin(),
                 (1,) + roi_3d.get_shape())
 
-            nex_parent_vectors = parent_vectors.fill(
+            nex_parent_vectors = parent_vectors.to_ndarray(
                 nex_roi,
                 fill_value=1000)
             assert nex_parent_vectors.shape[1] == 1
@@ -298,9 +301,9 @@ def find_edges(
 
             counts = daisy.Array(
                 target_counts(
-                    nex_parent_vectors.data[:,0,:],
+                    nex_parent_vectors[:,0,:],
                     voxel_size_3d,
-                    mask=nex_mask.data),
+                    mask=nex_mask.to_ndarray()),
                 roi_3d,
                 voxel_size_3d)
 
