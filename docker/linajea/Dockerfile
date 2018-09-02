@@ -1,4 +1,4 @@
-FROM gp_pylp
+FROM funkey/gp_pylp:v0.1
 LABEL maintainer funkej@janelia.hhmi.org
 
 # install jupyter and nyroglancer
@@ -7,7 +7,7 @@ RUN pip install --upgrade --ignore-installed notebook
 
 ENV NYROGLANCER_ROOT=/src/nyroglancer
 ENV NYROGLANCER_REPOSITORY=https://github.com/funkey/nyroglancer
-ENV NYROGLANCER_REVISION=d621eadb31d17e4580ca5cb1a39cd921f8a1c0ea
+ENV NYROGLANCER_REVISION=984781dd6acf4235dde33568a89c0043efd52652
 
 WORKDIR ${NYROGLANCER_ROOT}
 RUN git clone ${NYROGLANCER_REPOSITORY} . && \
