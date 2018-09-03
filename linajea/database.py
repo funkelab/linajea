@@ -158,26 +158,15 @@ class CandidateDatabase(object):
 
     def read_edges(self, roi):
 
-        bt, bz, by, bx = roi.get_begin()
-        et, ez, ey, ex = roi.get_end()
+        nodes = self.read_nodes(roi)
+        node_ids = list([ n['id'] for n in nodes])
 
-        edges = self.edges.aggregate([
-            {
-                "$lookup": {
-                    "from": "nodes",
-                    "localField": "source",
-                    "foreignField": "id",
-                    "as": "source_node"
-                }
-            },
-            {
-                "$match": {
-                    'source_node.t': { '$gte': bt, '$lt': et },
-                    'source_node.z': { '$gte': bz, '$lt': ez },
-                    'source_node.y': { '$gte': by, '$lt': ey },
-                    'source_node.x': { '$gte': bx, '$lt': ex }
-                }
-            },
-        ])
+        edges = []
 
-        return list(edges)
+        query_size = 128
+        for i in range(0, len(node_ids), query_size):
+            edges += list(self.edges.find({
+                'source': { '$in': node_ids[i:i+query_size] }
+            }))
+
+        return edges
