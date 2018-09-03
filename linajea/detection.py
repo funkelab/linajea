@@ -234,8 +234,20 @@ def find_edges(
         kd_data = [ cell['position'][1:] for cell in all_pre_cells ]
         pre_kd_tree = KDTree(kd_data)
 
+        read_time = 0
+        target_counts_time = 0
+        smooth_time = 0
+
+        total_time_start = time.time()
+
         # 1. get a 'nex' cell
-        for nex_cell in cells_by_t[nex]:
+        for i, nex_cell in enumerate(cells_by_t[nex]):
+
+            if i > 0 and i % 100 == 0:
+                logger.info("Avg. read time        : %.3fs", float(read_time)/i)
+                logger.info("Avg. target count time: %.3fs", float(target_counts_time)/i)
+                logger.info("Avg. smooth time      : %.3fs", float(smooth_time)/i)
+                logger.info("Avg. total time       : %.3fs", float(time.time() - total_time_start)/i)
 
             nex_cell_center = daisy.Coordinate(nex_cell['position'][1:])
             nex_mask_roi = mask.roi + nex_cell_center
@@ -284,10 +296,12 @@ def find_edges(
                 (nex,) + roi_3d.get_begin(),
                 (1,) + roi_3d.get_shape())
 
+            start = time.time()
             nex_parent_vectors = parent_vectors.to_ndarray(
                 nex_roi,
                 fill_value=1000)
             assert nex_parent_vectors.shape[1] == 1
+            read_time += time.time() - start
 
             # 6. create a mask for same ROI around 'nex' cell
 
@@ -299,6 +313,7 @@ def find_edges(
 
             # 7. compute target counts for that ROI
 
+            start = time.time()
             counts = daisy.Array(
                 target_counts(
                     nex_parent_vectors[:,0,:],
@@ -306,13 +321,16 @@ def find_edges(
                     mask=nex_mask.to_ndarray()),
                 roi_3d,
                 voxel_size_3d)
+            target_counts_time += time.time() - start
 
             # 8. smooth target counts with 'sigma'
 
+            start = time.time()
             counts.data = gaussian_filter(
                 counts.data.astype(np.float),
                 parameters.sigma,
                 mode='constant')
+            smooth_time += time.time() - start
 
             # 9. for each 'pre' cell, read out the edge score from the smoothed
             #    target counts
