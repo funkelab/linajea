@@ -168,7 +168,6 @@ class Solver(object):
             for edge in self.graph.prev_edges(node):
                 constraint_prev.set_coefficient(self.edge_selected[edge], 1)
             # plus "appear"
-            print(node)
             constraint_prev.set_coefficient(self.node_appear[node], 1)
 
             # sum(next)

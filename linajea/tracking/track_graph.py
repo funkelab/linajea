@@ -49,8 +49,6 @@ class TrackGraph(nx.DiGraph):
 
     def cells_by_frame(self, t):
 
-        print("Getting cells in frame %d"%t)
-
         if t not in self._cells_by_frame:
             return []
         return self._cells_by_frame[t]
