@@ -60,3 +60,5 @@ ADD requirements.txt /src/linajea/requirements.txt
 ADD setup.py /src/linajea/setup.py
 WORKDIR /src/linajea
 RUN python setup.py install
+
+RUN pip install plotly
