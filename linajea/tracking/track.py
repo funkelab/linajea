@@ -18,13 +18,33 @@ class TrackingParameters(object):
 
 def track(cells, edges, parameters):
 
+    if len(cells) == 0:
+        return
+
     logger.info("Creating track graph...")
     track_graph = TrackGraph()
 
+    skipped_edges = 0
+
     for cell in cells:
         track_graph.add_cell(cell)
+
     for edge in edges:
-        track_graph.add_cell_edge(edge)
+
+        u, v = edge['source'], edge['target']
+
+        if u in track_graph.nodes and v in track_graph.nodes:
+
+            track_graph.add_cell_edge(edge)
+
+        else:
+
+            logger.debug(
+                "Skipping edge %d -> %d, at least one node not in graph",
+                u, v)
+            skipped_edges += 1
+
+    logger.info("Skipped %d edges without corresponding nodes", skipped_edges)
 
     logger.info("Creating solver...")
     solver = Solver(track_graph, parameters)
@@ -36,4 +56,5 @@ def track(cells, edges, parameters):
         cell['selected'] = track_graph.nodes[cell['id']]['selected']
     for edge in edges:
         e = (edge['source'], edge['target'])
-        edge['selected'] = track_graph.edges[e]['selected']
+        if e in track_graph.edges:
+            edge['selected'] = track_graph.edges[e]['selected']
