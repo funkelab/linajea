@@ -1,4 +1,4 @@
-from pymongo import MongoClient, IndexModel, ASCENDING
+from pymongo import MongoClient, IndexModel, ASCENDING, ReplaceOne
 import logging
 
 logger = logging.getLogger(__name__)
@@ -155,6 +155,42 @@ class CandidateDatabase(object):
         logger.debug("Insert %d edges"%len(edges))
 
         self.edges.insert_many(edges)
+
+    def update_edges(self, edges, cells=None, roi=None):
+
+        if self.mode == 'r':
+            raise RuntimeError("trying to write to read-only DB")
+
+        if roi is not None and cells is not None:
+
+            cell_centers = {
+                cell['id']: cell['position']
+                for cell in cells
+            }
+
+            edges = [
+                e
+                for e in edges
+                if roi.contains(cell_centers[e['source']])
+            ]
+
+        if len(edges) == 0:
+
+            logger.debug("No edges to update.")
+            return
+
+        logger.debug("Update %d edges"%len(edges))
+
+        self.edges.bulk_write([
+            ReplaceOne(
+                {
+                    'source': edge['source'],
+                    'target': edge['target']
+                },
+                edge
+            )
+            for edge in edges
+        ])
 
     def read_edges(self, roi):
 
