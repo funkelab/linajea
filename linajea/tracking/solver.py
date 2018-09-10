@@ -116,10 +116,26 @@ class Solver(object):
 
         self.constraints = pylp.LinearConstraints()
 
+        self._add_pin_constraints()
         self._add_edge_constraints()
 
         for t in range(self.graph.begin, self.graph.end):
             self._add_inter_frame_constraints(t)
+
+    def _add_pin_constraints(self):
+
+        for e in self.graph.edges():
+
+            if 'selected' in self.graph.edges[e]:
+
+                selected = self.graph.edges[e]['selected']
+
+                ind_e = self.edge_selected[e]
+                constraint = pylp.LinearConstraint()
+                constraint.set_coefficient(ind_e, 1)
+                constraint.set_relation(pylp.Relation.Equal)
+                constraint.set_value(1 if selected else 0)
+                self.constraints.add(constraint)
 
     def _add_edge_constraints(self):
 
