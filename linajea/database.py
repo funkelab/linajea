@@ -134,7 +134,10 @@ class CandidateDatabase(object):
         if self.mode == 'r':
             raise RuntimeError("trying to write to read-only DB")
 
-        if roi is not None and cells is not None:
+        if roi is not None:
+
+            assert cells is not None, (
+                "roi given, but no cells to check for inclusion")
 
             cell_centers = {
                 cell['id']: cell['position']
@@ -161,7 +164,10 @@ class CandidateDatabase(object):
         if self.mode == 'r':
             raise RuntimeError("trying to write to read-only DB")
 
-        if roi is not None and cells is not None:
+        if roi is not None:
+
+            assert cells is not None, (
+                "roi given, but no cells to check for inclusion")
 
             cell_centers = {
                 cell['id']: cell['position']
