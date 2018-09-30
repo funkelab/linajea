@@ -17,6 +17,7 @@ class Solver(object):
         self.edge_selected = {}
         self.node_appear = {}
         self.node_disappear = {}
+        self.pinned_edges = {}
 
         self.num_vars = None
         self.objective = None
@@ -129,6 +130,7 @@ class Solver(object):
             if 'selected' in self.graph.edges[e]:
 
                 selected = self.graph.edges[e]['selected']
+                self.pinned_edges[e] = selected
 
                 ind_e = self.edge_selected[e]
                 constraint = pylp.LinearConstraint()
@@ -181,8 +183,16 @@ class Solver(object):
             # sum(prev)
 
             # all neighbors in previous frame
+            pinned_to_1 = []
             for edge in self.graph.prev_edges(node):
                 constraint_prev.set_coefficient(self.edge_selected[edge], 1)
+                if edge in self.pinned_edges and self.pinned_edges[edge]:
+                    pinned_to_1.append(edge)
+            if len(pinned_to_1) > 1:
+                raise RuntimeError(
+                    "Node %d has more than one prev edge pinned: %s"%(
+                        node,
+                        pinned_to_1))
             # plus "appear"
             constraint_prev.set_coefficient(self.node_appear[node], 1)
 
