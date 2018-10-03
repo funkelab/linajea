@@ -22,29 +22,7 @@ def track(cells, edges, parameters):
         return
 
     logger.info("Creating track graph...")
-    track_graph = TrackGraph()
-
-    skipped_edges = 0
-
-    for cell in cells:
-        track_graph.add_cell(cell)
-
-    for edge in edges:
-
-        u, v = edge['source'], edge['target']
-
-        if u in track_graph.nodes and v in track_graph.nodes:
-
-            track_graph.add_cell_edge(edge)
-
-        else:
-
-            logger.debug(
-                "Skipping edge %d -> %d, at least one node not in graph",
-                u, v)
-            skipped_edges += 1
-
-    logger.info("Skipped %d edges without corresponding nodes", skipped_edges)
+    track_graph = TrackGraph(cells, edges)
 
     logger.info("Creating solver...")
     solver = Solver(track_graph, parameters)

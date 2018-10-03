@@ -1,14 +1,67 @@
 import networkx as nx
+import logging
 
-class TrackGraph(nx.DiGraph):
+logger = logging.getLogger(__name__)
 
-    def __init__(self):
+class TrackGraph(nx.Graph):
+    '''A track graph of cells and inter-frame edges between them.
 
-        super(TrackGraph, self).__init__(directed=False)
+    Args:
+
+        cells (``dict``, optional):
+        edges (``dict``, optional):
+
+            If given, populate the graph with these cells and edges. Edges to
+            or from cells that are not in ``cells`` will not be added.
+
+        graph_data (optional):
+
+            Optional graph data to pass to the networkx.Graph constructor as
+            ``incoming_graph_data``. This can be used to populate a track graph
+            with entries from a generic networkx graph.
+    '''
+
+    def __init__(self, cells=None, edges=None, graph_data=None):
+
+        super(TrackGraph, self).__init__(incoming_graph_data=graph_data, directed=False)
 
         self.begin = None
         self.end = None
         self._cells_by_frame = {}
+
+        if graph_data is not None:
+            frames = [ self.nodes[cell]['frame'] for cell in self.nodes ]
+            self.begin = min(frames)
+            self.end = max(frames) + 1
+            for cell in self.nodes:
+                t = self.nodes[cell]['frame']
+                if t not in self._cells_by_frame:
+                    self._cells_by_frame[t] = []
+                self._cells_by_frame[t].append(cell)
+
+        if cells is not None:
+            for cell in cells:
+                self.add_cell(cell)
+
+        if edges is not None:
+
+            skipped_edges = 0
+            for edge in edges:
+
+                u, v = edge['source'], edge['target']
+
+                if u in self.nodes and v in self.nodes:
+
+                    self.add_cell_edge(edge)
+
+                else:
+
+                    logger.debug(
+                        "Skipping edge %d -> %d, at least one node not in graph",
+                        u, v)
+                    skipped_edges += 1
+
+            logger.info("Skipped %d edges without corresponding nodes", skipped_edges)
 
     def add_cell(self, cell):
 
