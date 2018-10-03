@@ -123,9 +123,51 @@ class TrackGraph(nx.Graph):
 
         return self.in_edges(node)
 
+    def get_frames(self):
+        '''Get a tuple ``(t_1, t_2)`` of the first and last frame this track
+        graph has nodes for.'''
+
+        return (min(self._cells_by_frame.keys()),
+                max(self._cells_by_frame.keys()))
+
     def cells_by_frame(self, t):
         '''Get all cells in frame ``t``.'''
 
         if t not in self._cells_by_frame:
             return []
         return self._cells_by_frame[t]
+
+    def get_tracks(self, require_selected=False):
+        '''Get a generator of track graphs, each corresponding to one track
+        (i.e., a connected component in the track graph).
+
+        Args:
+
+            require_selected (``bool``):
+
+                If ``True``, consider only edges that have a ``selected``
+                attribute that is set to ``True``. Otherwise, each edge will be
+                considered for the connected component analysis.
+
+        Returns:
+
+            A generator object of graphs, one for each track.
+        '''
+
+        if not require_selected:
+
+            graph = self
+
+        else:
+
+            selected_edges = [
+                e
+                for e in self.edges
+                if 'selected' in self.edges[e] and self.edges[e]['selected']
+            ]
+            graph = self.edge_subgraph(selected_edges)
+
+        return [
+            TrackGraph(graph_data=g)
+            for g in nx.connected_component_subgraphs(graph)
+        ]
