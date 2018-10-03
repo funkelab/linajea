@@ -64,6 +64,16 @@ class TrackGraph(nx.Graph):
             logger.info("Skipped %d edges without corresponding nodes", skipped_edges)
 
     def add_cell(self, cell):
+        '''Add a cell as a node to the graph.
+
+        Args:
+
+            cell (``dict``):
+
+                A dictionary containing at least the keys ``id``, ``position``,
+                and ``frame``. Other keys will be added as properties to the
+                node.
+        '''
 
         cell = dict(cell)
         cell_id = cell['id']
@@ -81,6 +91,17 @@ class TrackGraph(nx.Graph):
         self._cells_by_frame[t].append(cell_id)
 
     def add_cell_edge(self, edge):
+        '''Add a directed edge between cells.
+
+        Args:
+
+            edge (``dict``):
+
+                A dictionary containing at least the keys ``source`` and
+                ``target``, which correspond to cell IDs. The edge has to point
+                backwards in time. Other keys will be added as properties to
+                the edge.
+        '''
 
         edge = dict(edge)
         source, target = edge['source'], edge['target']
@@ -93,14 +114,17 @@ class TrackGraph(nx.Graph):
         self.add_edge(source, target, **edge)
 
     def prev_edges(self, node):
+        '''Get all edges that point backward from ``node``.'''
 
         return self.out_edges(node)
 
     def next_edges(self, node):
+        '''Get all edges that point forward from ``node``.'''
 
         return self.in_edges(node)
 
     def cells_by_frame(self, t):
+        '''Get all cells in frame ``t``.'''
 
         if t not in self._cells_by_frame:
             return []
