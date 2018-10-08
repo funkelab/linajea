@@ -70,9 +70,9 @@ class TrackGraph(nx.Graph):
 
             cell (``dict``):
 
-                A dictionary containing at least the keys ``id``, ``position``,
-                and ``frame``. Other keys will be added as properties to the
-                node.
+                A dictionary containing at least the keys ``id`` and
+                ``position``, and does not contain ``frame``. Other keys will be
+                added as properties to the node.
         '''
 
         cell = dict(cell)
@@ -106,8 +106,12 @@ class TrackGraph(nx.Graph):
         edge = dict(edge)
         source, target = edge['source'], edge['target']
 
-        assert self.nodes[source]['frame'] == self.nodes[target]['frame'] + 1, (
-            "Edges are assumed to point backwards in time")
+        assert self.nodes[source]['frame'] > self.nodes[target]['frame'], (
+            "Edges are assumed to point backwards in time, but edge (%d, %d) "
+            "points from frame %d to %d"%(
+                source, target,
+                self.nodes[source]['frame'],
+                self.nodes[target]['frame']))
 
         del edge['source']
         del edge['target']
