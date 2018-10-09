@@ -1,3 +1,4 @@
+import daisy
 import linajea.tracking
 import linajea.evaluation
 import logging
@@ -31,3 +32,32 @@ if __name__ == "__main__":
     print(linajea.evaluation.match_tracks(
         tracks_x, tracks_y,
         matching_threshold=2))
+
+    # real data test
+
+    db_name = 'linajea_setup01_400000_140521_default'
+    gt_db_name = 'linajea_140521_gt'
+    roi = daisy.Roi((250, 0, 0, 0), (8, 1e10, 1e10, 1e10))
+
+    db = linajea.CandidateDatabase(db_name, '10.40.4.51')
+    gt_db = linajea.CandidateDatabase('linajea_140521_gt', '10.40.4.51')
+
+    print("Reading GT cells and edges in %s"%roi)
+    gt_cells = gt_db.read_nodes(roi)
+    gt_edges = gt_db.read_edges(roi)
+    gt_graph = linajea.tracking.TrackGraph(gt_cells, gt_edges)
+    gt_tracks = list(gt_graph.get_tracks())
+    print("Found %d GT tracks"%len(gt_tracks))
+
+    print("Reading cells and edges in %s"%roi)
+    cells = db.read_nodes(roi)
+    edges = db.read_edges(roi)
+    graph = linajea.tracking.TrackGraph(cells, edges)
+    tracks = list(graph.get_tracks(require_selected=True))
+    print("Found %d tracks"%len(tracks))
+
+    scores = linajea.evaluation.evaluate(
+        gt_tracks, tracks,
+        matching_threshold=25)
+
+    print(scores)
