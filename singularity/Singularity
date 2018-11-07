@@ -84,22 +84,22 @@ python setup.py install
 
 pip install plotly
 
-#%environment
-#export NYROGLANCER_ROOT=/src/nyroglancer
-#export NYROGLANCER_REPOSITORY=https://github.com/funkey/nyroglancer
-#export NYROGLANCER_REVISION=984781dd6acf4235dde33568a89c0043efd52652
-#export PYTHONPATH=${NYROGLANCER_ROOT}:$PYTHONPATH
-#export NEUROGLANCER_ROOT=/src/neuroglancer
-#export NEUROGLANCER_REPOSITORY=https://github.com/google/neuroglancer
-#export NEUROGLANCER_REVISION=253a5cc
-#export PYKLB_ROOT=/src/pyklb
-#export PYKLB_REPOSITORY=https://github.com/bhoeckendorf/pyklb
-#export PYKLB_REVISION=870874e26129411382323467d62038456bcb0385
-#export PYTHONPATH=${PYKLB_ROOT}/build/lib.linux-x86_64-2.7:${PYTHONPATH}
-#export DAISY_ROOT=/src/daisy
-#export DAISY_REPOSITORY=https://github.com/funkey/daisy
-#export DAISY_REVISION=dc14ee3d5395d9ec2bcaca032d7ed5c5d97f8c70
-#export PYTHONPATH=${DAISY_ROOT}:$PYTHONPATH
+%environment
+export NYROGLANCER_ROOT=/src/nyroglancer
+export NYROGLANCER_REPOSITORY=https://github.com/funkey/nyroglancer
+export NYROGLANCER_REVISION=984781dd6acf4235dde33568a89c0043efd52652
+export PYTHONPATH=${NYROGLANCER_ROOT}:$PYTHONPATH
+export NEUROGLANCER_ROOT=/src/neuroglancer
+export NEUROGLANCER_REPOSITORY=https://github.com/google/neuroglancer
+export NEUROGLANCER_REVISION=253a5cc
+export PYKLB_ROOT=/src/pyklb
+export PYKLB_REPOSITORY=https://github.com/bhoeckendorf/pyklb
+export PYKLB_REVISION=870874e26129411382323467d62038456bcb0385
+export PYTHONPATH=${PYKLB_ROOT}/build/lib.linux-x86_64-2.7:${PYTHONPATH}
+export DAISY_ROOT=/src/daisy
+export DAISY_REPOSITORY=https://github.com/funkey/daisy
+export DAISY_REVISION=dc14ee3d5395d9ec2bcaca032d7ed5c5d97f8c70
+export PYTHONPATH=${DAISY_ROOT}:$PYTHONPATH
 
 %runscript
 exec /bin/bash "$@"
