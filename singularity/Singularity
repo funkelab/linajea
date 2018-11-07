@@ -14,9 +14,9 @@ This container contains linajea lineage tracking software.
 mkdir -p ${SINGULARITY_ROOTFS}/src/linajea
 
 %files
-../../linajea /src/linajea/linajea
-../../requirements.txt /src/linajea/requirements.txt
-../../setup.py /src/linajea/setup.py
+../linajea /src/linajea/linajea
+../requirements.txt /src/linajea/requirements.txt
+../setup.py /src/linajea/setup.py
 
 %labels
 maintainer funkej@janelia.hhmi.org
