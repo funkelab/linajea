@@ -15,6 +15,8 @@ setup(
             'linajea.gunpowder',
             'linajea.tensorflow',
             'linajea.tracking',
+            'linajea.evaluation',
+            'linajea.comatch'
         ],
         ext_modules=[
             Extension(

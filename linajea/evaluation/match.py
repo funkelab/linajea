@@ -1,7 +1,7 @@
-import comatch
+from __future__ import absolute_import
+import linajea.comatch
 import logging
 import numpy as np
-import pylp
 import scipy.sparse
 import scipy.spatial
 
@@ -75,7 +75,7 @@ def match_tracks(tracks_x, tracks_y, matching_threshold):
                 edges_xy.append((node_x, node_y))
                 edge_costs.append(distance)
 
-    return comatch.match_components(
+    return linajea.comatch.match_components(
         nodes_x, nodes_y,
         edges_xy,
         labels_x, labels_y,
