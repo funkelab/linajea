@@ -29,7 +29,7 @@ class Solver(object):
         self._set_objective()
         self._add_constraints()
 
-        solver = pylp.create_linear_solver(pylp.Preference.Any)
+        solver = pylp.create_linear_solver(pylp.Preference.Gurobi)
         solver.initialize(self.num_vars, pylp.VariableType.Binary)
 
         solver.set_objective(self.objective)

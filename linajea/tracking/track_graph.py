@@ -2,8 +2,9 @@ import networkx as nx
 import logging
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
-class TrackGraph(nx.Graph):
+class TrackGraph(nx.DiGraph):
     '''A track graph of cells and inter-frame edges between them.
 
     Args:
@@ -23,7 +24,7 @@ class TrackGraph(nx.Graph):
 
     def __init__(self, cells=None, edges=None, graph_data=None):
 
-        super(TrackGraph, self).__init__(incoming_graph_data=graph_data, directed=False)
+        super(TrackGraph, self).__init__(incoming_graph_data=graph_data)
 
         self.begin = None
         self.end = None
@@ -59,6 +60,7 @@ class TrackGraph(nx.Graph):
                     logger.debug(
                         "Skipping edge %d -> %d, at least one node not in graph",
                         u, v)
+                    logger.debug("{} in graph: {} \t {} in graph: {}".format(u, u in self.nodes, v, v in self.nodes))
                     skipped_edges += 1
 
             logger.info("Skipped %d edges without corresponding nodes", skipped_edges)
@@ -152,6 +154,7 @@ class TrackGraph(nx.Graph):
                 If ``True``, consider only edges that have a ``selected``
                 attribute that is set to ``True``. Otherwise, each edge will be
                 considered for the connected component analysis.
+ls
 
         Returns:
 
@@ -172,6 +175,6 @@ class TrackGraph(nx.Graph):
             graph = self.edge_subgraph(selected_edges)
 
         return [
-            TrackGraph(graph_data=g)
-            for g in nx.connected_component_subgraphs(graph)
+            TrackGraph(graph_data=graph.subgraph(g).copy())
+            for g in nx.connected_components(graph)
         ]
