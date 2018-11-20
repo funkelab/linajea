@@ -176,5 +176,5 @@ ls
 
         return [
             TrackGraph(graph_data=graph.subgraph(g).copy())
-            for g in nx.connected_components(graph)
+            for g in nx.weakly_connected_components(graph)
         ]
