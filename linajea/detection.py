@@ -68,13 +68,19 @@ class EdgeDetectionParameters(object):
             saying that each parent vector produces a Gaussian in the target
             frame. The score of an edge from u to v is the sum of all the
             Gaussians at the center of u.
+
+        cell_score_threshold (optional ``int``)
+
+            Only consider cells with scores above this threshold.
+
     '''
 
-    def __init__(self, move_threshold, pool_radius, sigma):
+    def __init__(self, move_threshold, pool_radius, sigma, cell_score_threshold=None):
 
         self.move_threshold = move_threshold
         self.pool_radius = pool_radius
         self.sigma = sigma
+        self.cell_score_threshold = cell_score_threshold
 
 def find_cells(
         target_counts,
@@ -171,7 +177,8 @@ def find_edges(
         t: [
             cell
             for cell in cells
-            if cell['position'][0] == t
+            if cell['position'][0] == t and (not parameters.cell_score_threshold or
+                                             cell['score'] >= parameters.cell_score_threshold)
         ]
         for t in range(t_begin, t_end)
     }
