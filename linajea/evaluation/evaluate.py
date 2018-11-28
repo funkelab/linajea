@@ -13,6 +13,7 @@ class Scores:
         self.num_fp_tracks = 0
         self.num_fn_tracks = 0
         self.num_tracks = 0
+        self.num_matches = 0
 
         # edge scores
         self.num_fp_edges = 0
@@ -29,7 +30,8 @@ track splits: %d
       merges: %d
          fps: %d
          fns: %d
-         num: %d
+         num gt tracks: %d
+         num matches: %d
 
 edge     fps: %d
          fns: %d
@@ -43,6 +45,7 @@ division fps: %d
             self.num_fp_tracks,
             self.num_fn_tracks,
             self.num_tracks,
+            self.num_matches,
             self.num_fp_edges,
             self.num_fn_edges,
             self.num_edges,
@@ -64,6 +67,7 @@ def evaluate(gt_tracks, rec_tracks, matching_threshold):
     scores.num_fp_tracks = fp
     scores.num_fn_tracks = fn
     scores.num_tracks = len(gt_tracks)
+    scores.num_matches = len(track_matches)
 
     logger.info("Evaluating edges on matched tracks...")
     fpe, fne, nd, fpd, fnd = evaluate_edges(
