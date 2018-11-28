@@ -134,7 +134,7 @@ def conv4d(
         for j in range(l_i):
 
             # add results to this output frame
-            out_frame = j - (i - l_k/2) - (l_i - l_o)/2
+            out_frame = j - (i - l_k//2) - (l_i - l_o)//2
             if out_frame < 0 or out_frame >= l_o:
                 continue
 
