@@ -12,14 +12,22 @@ class CandidateDatabase(object):
         self.mode = mode
         self.client = MongoClient(host=db_host)
 
+        existing = False
         if mode == 'w':
-            self.client.drop_database(db_name)
+            # In theory, in 'w' mode, it should replace the database with a new one,
+            # but I lost a lot of data this way by accident, so for now I am just warning if it exists and then
+            # adding to it
+            db_names = self.client.list_database_names()
+            if self.db_name in db_names:
+                existing = True
+                logger.warning("Database with name {} already exists. New data will be added to existing data."
+                               .format(self.db_name))
 
         self.database = self.client[db_name]
         self.nodes = self.database['nodes']
         self.edges = self.database['edges']
 
-        if mode == 'w':
+        if mode == 'w' and not existing:
 
             self.nodes.create_index(
                 [
