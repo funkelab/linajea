@@ -2,7 +2,6 @@ import networkx as nx
 import logging
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 class TrackGraph(nx.DiGraph):
     '''A track graph of cells and inter-frame edges between them.
@@ -154,7 +153,6 @@ class TrackGraph(nx.DiGraph):
                 If ``True``, consider only edges that have a ``selected``
                 attribute that is set to ``True``. Otherwise, each edge will be
                 considered for the connected component analysis.
-ls
 
         Returns:
 

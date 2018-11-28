@@ -16,7 +16,7 @@ class TrackingParameters(object):
         self.threshold_node_score = 1
         self.threshold_edge_score = 1
 
-def track(cells, edges, parameters):
+def track(cells, edges, parameters, selected_key):
 
     if len(cells) == 0:
         return
@@ -25,14 +25,14 @@ def track(cells, edges, parameters):
     track_graph = TrackGraph(cells, edges)
 
     logger.info("Creating solver...")
-    solver = Solver(track_graph, parameters)
+    solver = Solver(track_graph, parameters, selected_key)
 
     logger.info("Solving...")
     solver.solve()
 
     for cell in cells:
-        cell['selected'] = track_graph.nodes[cell['id']]['selected']
+        cell[selected_key] = track_graph.nodes[cell['id']][selected_key]
     for edge in edges:
         e = (edge['source'], edge['target'])
         if e in track_graph.edges:
-            edge['selected'] = track_graph.edges[e]['selected']
+            edge[selected_key] = track_graph.edges[e][selected_key]

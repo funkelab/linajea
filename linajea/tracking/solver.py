@@ -8,10 +8,11 @@ logger = logging.getLogger(__name__)
 
 class Solver(object):
 
-    def __init__(self, graph, parameters):
+    def __init__(self, graph, parameters, selected_key):
 
         self.graph = graph
         self.parameters = parameters
+        self.selected_key = selected_key
 
         self.node_selected = {}
         self.edge_selected = {}
@@ -40,10 +41,10 @@ class Solver(object):
         logger.info("costs of solution: %f", solution.get_value())
 
         for v in self.graph.nodes:
-            self.graph.nodes[v]['selected'] = solution[self.node_selected[v]] > 0.5
+            self.graph.nodes[v][self.selected_key] = solution[self.node_selected[v]] > 0.5
 
         for e in self.graph.edges:
-            self.graph.edges[e]['selected'] = solution[self.edge_selected[e]] > 0.5
+            self.graph.edges[e][self.selected_key] = solution[self.edge_selected[e]] > 0.5
 
     def _create_indicators(self):
 
@@ -127,9 +128,9 @@ class Solver(object):
 
         for e in self.graph.edges():
 
-            if 'selected' in self.graph.edges[e]:
+            if self.selected_key in self.graph.edges[e]:
 
-                selected = self.graph.edges[e]['selected']
+                selected = self.graph.edges[e][self.selected_key]
                 self.pinned_edges[e] = selected
 
                 ind_e = self.edge_selected[e]
