@@ -95,7 +95,11 @@ class Solver(object):
         # simple linear costs based on the score of a node (negative if above
         # threshold_node_score, positive otherwise)
 
-        return self.parameters.threshold_node_score - self.graph.nodes[node]['score']
+        score_costs = (
+            self.parameters.threshold_node_score -
+            self.graph.nodes[node]['score'])
+
+        return score_costs*self.parameters.weight_node_score
 
     def _edge_costs(self, edge):
 

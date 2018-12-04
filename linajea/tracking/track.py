@@ -9,11 +9,27 @@ class TrackingParameters(object):
 
     def __init__(self):
 
+        # track costs:
         self.cost_appear = 0
         self.cost_disappear = 0
         self.cost_split = 0
-        self.weight_distance_cost = 0
+
+        # node costs:
+
+        # nodes with scores below this threshold will have a positive cost,
+        # above this threshold a negative cost
         self.threshold_node_score = 1
+
+        # scaling factor after the conversion to costs above
+        self.weight_node_score = 0
+
+        # edge costs:
+
+        # how to weigh the Euclidean distance between cells for the costs of an
+        # edge
+        self.weight_distance_cost = 0
+
+        # similar to node costs, determines when a cost is positive/negative
         self.threshold_edge_score = 1
 
 def track(cells, edges, parameters, selected_key):
