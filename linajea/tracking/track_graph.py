@@ -142,7 +142,7 @@ class TrackGraph(nx.DiGraph):
             return []
         return self._cells_by_frame[t]
 
-    def get_tracks(self, require_selected=False):
+    def get_tracks(self, require_selected=False, selected_key='selected'):
         '''Get a generator of track graphs, each corresponding to one track
         (i.e., a connected component in the track graph).
 
@@ -150,9 +150,14 @@ class TrackGraph(nx.DiGraph):
 
             require_selected (``bool``):
 
-                If ``True``, consider only edges that have a ``selected``
+                If ``True``, consider only edges that have a selected_key
                 attribute that is set to ``True``. Otherwise, each edge will be
                 considered for the connected component analysis.
+
+            selected_key (``str``):
+            
+                Only used if require_selected=True. Determines the attribute name
+                to check if an edge is selected. Default value is 'selected'.
 
         Returns:
 
@@ -168,7 +173,7 @@ class TrackGraph(nx.DiGraph):
             selected_edges = [
                 e
                 for e in self.edges
-                if 'selected' in self.edges[e] and self.edges[e]['selected']
+                if selected_key in self.edges[e] and self.edges[e][selected_key]
             ]
             graph = self.edge_subgraph(selected_edges)
 
