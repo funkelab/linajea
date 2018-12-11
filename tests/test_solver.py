@@ -34,10 +34,11 @@ if __name__ == "__main__":
     parameters.cost_disappear = 1.0
     parameters.cost_split = 0
     parameters.weight_distance_cost = 0.1
-    parameters.threshold_node_score = 1.0
+    parameters.weight_node_score = 1.0
+    parameters.threshold_node_score = 0.0
     parameters.threshold_edge_score = 0.0
 
-    linajea.tracking.track(cells, edges, parameters)
+    linajea.tracking.track(cells, edges, parameters, selected_key='selected')
 
     print("Selected cells:")
     for cell in cells:
