@@ -56,11 +56,15 @@ division fps: %d
 def evaluate(gt_tracks, rec_tracks, matching_threshold):
 
     logger.info("Matching GT tracks to REC track...")
-    track_matches, cell_matches, s, m, fp, fn = match_tracks(
+    matched_tracks = match_tracks(
         gt_tracks,
         rec_tracks,
         matching_threshold)
+    return evaluate_matches(matched_tracks, gt_tracks, rec_tracks)
 
+def evaluate_matches(match_tracks_output, gt_tracks, rec_tracks):
+    track_matches, cell_matches, s, m, fp, fn = match_tracks_output  
+    
     scores = Scores()
     scores.num_splits = s
     scores.num_merges = m
