@@ -265,8 +265,8 @@ class Solver(object):
             constraint_1.set_coefficient(self.node_split[node], -1)
             constraint_2.set_coefficient(self.node_split[node], -3)
 
-            constraint_1.set_relation(pylp.LessEqual)
-            constraint_2.set_relation(pylp.GreaterEqual)
+            constraint_1.set_relation(pylp.Relation.LessEqual)
+            constraint_2.set_relation(pylp.Relation.GreaterEqual)
 
             constraint_1.set_value(2)
             constraint_2.set_value(0)
