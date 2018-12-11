@@ -117,6 +117,27 @@ class CandidateDatabase(object):
 
         return nodes
 
+    def read_nodes_and_edges(self, roi, require_selected=False, key='selected'):
+        nodes = self.read_nodes(roi)
+        node_ids = list([ n['id'] for n in nodes])
+
+        edges = []
+
+        query_size = 128 
+        for i in range(0, len(node_ids), query_size):
+            query = { 'source': { '$in': node_ids[i:i+query_size] }}
+            if require_selected:
+                query[key] = True
+            edges += list(self.edges.find(query))
+        
+        filtered_cell_ids = set([edge['source'] for edge in edges] + 
+                                [edge['target'] for edge in edges])
+        filtered_cells = [cell for cell in nodes
+                          if cell['id'] in filtered_cell_ids]
+
+        return filtered_cells, edges
+
+
     def write_edges(self, edges, cells=None, roi=None):
         '''Write edges to the DB. If ``cells`` and ``roi`` is given, restrict
         the write to edges with source nodes that have their position in
