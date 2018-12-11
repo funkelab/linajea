@@ -18,6 +18,7 @@ class Solver(object):
         self.edge_selected = {}
         self.node_appear = {}
         self.node_disappear = {}
+        self.node_split = {}
         self.pinned_edges = {}
 
         self.num_vars = None
@@ -50,15 +51,17 @@ class Solver(object):
 
         self.num_vars = 0
 
-        # three indicators per node:
+        # four indicators per node:
         #   1. selected
         #   2. appear
         #   3. disappear
+        #   4. split
         for node in self.graph.nodes:
             self.node_selected[node] = self.num_vars
             self.node_appear[node] = self.num_vars + 1
             self.node_disappear[node] = self.num_vars + 2
-            self.num_vars += 3
+            self.node_split[node] = self.num_vars + 3
+            self.num_vars += 4
 
         for edge in self.graph.edges():
             self.edge_selected[edge] = self.num_vars
@@ -70,7 +73,7 @@ class Solver(object):
 
         objective = pylp.LinearObjective(self.num_vars)
 
-        # node selection, appear, and disappear costs
+        # node selection, appear, disappear, and split costs
         for node in self.graph.nodes:
             objective.set_coefficient(
                 self.node_selected[node],
@@ -81,6 +84,9 @@ class Solver(object):
             objective.set_coefficient(
                 self.node_disappear[node],
                 self.parameters.cost_disappear)
+            objective.set_coefficient(
+                self.node_split[node],
+                self.parameters.cost_split)
 
         # edge selection costs
         for edge in self.graph.edges():
@@ -233,3 +239,41 @@ class Solver(object):
             logger.debug(
                 "set inter-frame constraints:\t%s\n\t%s\n\t%s",
                 constraint_prev, constraint_next_1, constraint_next_2)
+
+        # Ensure that the split indicator is set for every cell that splits
+        # into two daughter cells.
+        for node in self.graph.cells_by_frame(t):
+
+            # I.e., each node with three edges selected (one backwards, two
+            # forwards) is a split node.
+
+            #  sum(edges) - split   <= 2 # sum(edges) >  2 => split == 1
+            #  sum(edges) - 3*split >= 0 # sum(edges) <= 2 => split == 0
+
+            constraint_1 = pylp.LinearConstraint()
+            constraint_2 = pylp.LinearConstraint()
+
+            # sum(edges)
+            for edge in self.graph.prev_edges(node):
+                constraint_1.set_coefficient(self.edge_selected[edge], 1)
+                constraint_2.set_coefficient(self.edge_selected[edge], 1)
+            for edge in self.graph.next_edges(node):
+                constraint_1.set_coefficient(self.edge_selected[edge], 1)
+                constraint_2.set_coefficient(self.edge_selected[edge], 1)
+
+            # -[3*]split
+            constraint_1.set_coefficient(self.node_split[node], -1)
+            constraint_2.set_coefficient(self.node_split[node], -3)
+
+            constraint_1.set_relation(pylp.LessEqual)
+            constraint_2.set_relation(pylp.GreaterEqual)
+
+            constraint_1.set_value(2)
+            constraint_2.set_value(0)
+
+            self.constraints.add(constraint_1)
+            self.constraints.add(constraint_2)
+
+            logger.debug(
+                "set split-indicator constraints:\n\t%s\n\t%s",
+                constraint_1, constraint_2)
