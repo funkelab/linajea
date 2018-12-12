@@ -1,6 +1,11 @@
 import gunpowder as gp
 import numpy as np
 from linajea.gunpowder import ZeroSource
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
+
 
 if __name__=="__main__":
     #test zero source
@@ -9,7 +14,7 @@ if __name__=="__main__":
     pipeline = (
             ZeroSource(
                 parent_vectors,
-                gp.ArraySpec(voxel_size=gp.Coordinate((1,5,1,1)),
+                array_spec=gp.ArraySpec(voxel_size=gp.Coordinate((1,5,1,1)),
                     dtype=np.float32)
                 ) # + 
             # gp.Crop(parent_vectors, roi)
@@ -21,5 +26,4 @@ if __name__=="__main__":
         data = b[parent_vectors].data
         print(data.shape)
         print(np.any(data))
-        print(data)
 

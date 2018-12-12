@@ -11,8 +11,10 @@ class ZeroSource(gp.BatchProvider):
     def __init__(
             self,
             array,
+            num_channels=3,
             array_spec=None):
         self.array = array
+        self.num_channels = num_channels
         self.array_spec = array_spec if array_spec else gp.ArraySpec()
     
     def setup(self):
@@ -31,7 +33,11 @@ class ZeroSource(gp.BatchProvider):
         spec = self.array_spec.copy()
         spec.roi = request_spec.roi
 
-        batch.arrays[self.array] = gp.Array(np.zeros(dataset_roi.get_shape(), dtype=self.array_spec.dtype),
+        batch.arrays[self.array] = gp.Array(
+                np.zeros(
+                    (self.num_channels,) + dataset_roi.get_shape(),
+                    dtype=self.array_spec.dtype
+                    ),
                 spec)
 
         return batch
