@@ -160,6 +160,8 @@ def find_edges(
         cells (``dict``):
 
             Dict from ``id: center`` of each cell.
+            If we have parent vectors for frames [x:y],
+            we can use cells from frames [x-1:y]
 
         parameters (`class:EdgeDetectionParameters`):
 
@@ -169,7 +171,7 @@ def find_edges(
     assert parent_vectors.roi.dims() == 4, (
         "Expect 4D input.")
 
-    t_begin = parent_vectors.roi.get_begin()[0]
+    t_begin = parent_vectors.roi.get_begin()[0] - 1
     t_end = parent_vectors.roi.get_end()[0]
 
     # sort cells by frame
@@ -296,9 +298,6 @@ def find_edges(
 
             # 5. get parent vectors in ROI in 'nex' frame
 
-            pre_roi = daisy.Roi(
-                (pre,) + roi_3d.get_begin(),
-                (1,) + roi_3d.get_shape())
             nex_roi = daisy.Roi(
                 (nex,) + roi_3d.get_begin(),
                 (1,) + roi_3d.get_shape())
