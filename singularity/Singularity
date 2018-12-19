@@ -75,6 +75,19 @@ git clone ${DAISY_REPOSITORY} . && \
 git checkout ${DAISY_REVISION}
 PYTHONPATH=${DAISY_ROOT}:$PYTHONPATH
 
+COMATCH_ROOT=/src/comatch
+COMATCH_REPOSITORY=https://github.com/funkey/comatch
+# master
+#COMATCH_REVISION=193ca3072ae27666c54939f4bb0a4911404f33d7
+# quadmatch
+COMATCH_REVISION=fa7c9e3ea9f9b5ddc2fb74654378d696b7a14b35
+
+mkdir -p ${COMATCH_ROOT}
+cd ${COMATCH_ROOT}
+git clone ${COMATCH_REPOSITORY} . && \
+git checkout ${COMATCH_REVISION}
+python setup.py install
+
 pip install zarr networkx pymongo
 pip install dask distributed --upgrade
 
