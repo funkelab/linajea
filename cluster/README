@@ -1,0 +1,5 @@
+README:
+
+To create the singularity container, you must copy the gurobi tar file used to install the gurobi software into this directory.
+The tar file can be downloaded from: http://www.gurobi.com/downloads/download-center.
+The version tested is gurobi8.1.0-linux64.tar.gz - if you use a different version, you should update the Singularity file accordingly.
