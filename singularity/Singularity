@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: funkey/gp_pylp:v0.1
+From: funkey/gunpowder:v0.3.2
 
 %help
 This container contains linajea lineage tracking software.
@@ -17,12 +17,30 @@ mkdir -p ${SINGULARITY_ROOTFS}/src/linajea
 ../linajea /src/linajea/linajea
 ../requirements.txt /src/linajea/requirements.txt
 ../setup.py /src/linajea/setup.py
-../cluster /src/linajea/cluster
+../cluster /opt
 
 %labels
 maintainer funkej@janelia.hhmi.org
 
 %post
+
+# install pylp and gurobi
+cd /opt
+tar xvfz gurobi8.1.0_linux64.tar.gz
+GUROBI_ROOT_DIR=/opt/gurobi810/linux64
+cd ${GUROBI_ROOT_DIR}
+python setup.py install
+
+PYLP_ROOT=/src/pylp
+PYLP_REPOSITORY=https://github.com/funkey/pylp
+PYLP_REVISION=51112ba453c361e6980d7c8b24faace2bd7c8064
+
+mkdir -p ${PYLP_ROOT}
+cd ${PYLP_ROOT} 
+git clone ${PYLP_REPOSITORY} . && \
+git checkout ${PYLP_REVISION} && \
+git submodule update --init
+python setup.py install
 
 # install jupyter and nyroglancer
 
@@ -78,9 +96,9 @@ PYTHONPATH=${DAISY_ROOT}:$PYTHONPATH
 COMATCH_ROOT=/src/comatch
 COMATCH_REPOSITORY=https://github.com/funkey/comatch
 # master
-#COMATCH_REVISION=193ca3072ae27666c54939f4bb0a4911404f33d7
+COMATCH_REVISION=193ca3072ae27666c54939f4bb0a4911404f33d7
 # quadmatch
-COMATCH_REVISION=fa7c9e3ea9f9b5ddc2fb74654378d696b7a14b35
+#COMATCH_REVISION=fa7c9e3ea9f9b5ddc2fb74654378d696b7a14b35
 
 mkdir -p ${COMATCH_ROOT}
 cd ${COMATCH_ROOT}
@@ -114,7 +132,8 @@ export DAISY_ROOT=/src/daisy
 export DAISY_REPOSITORY=https://github.com/funkey/daisy
 export DAISY_REVISION=dc14ee3d5395d9ec2bcaca032d7ed5c5d97f8c70
 export PYTHONPATH=${DAISY_ROOT}:$PYTHONPATH
-export GRB_LICENSE_FILE=/src/linajea/cluster/gurobi.lic
+export GRB_LICENSE_FILE=/opt/gurobi.lic
+export GUROBI_ROOT_DIR=/opt/gurobi810/linux64
 
 %runscript
 exec /bin/bash "$@"
