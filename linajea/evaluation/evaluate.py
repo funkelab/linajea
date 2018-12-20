@@ -14,6 +14,7 @@ class Scores:
         self.num_fn_tracks = 0
         self.num_tracks = 0
         self.num_matches = 0
+        self.sum_errors = 0
 
         # edge scores
         self.num_fp_edges = 0
@@ -72,6 +73,7 @@ def evaluate_matches(match_tracks_output, gt_tracks, rec_tracks):
     scores.num_fn_tracks = fn
     scores.num_tracks = len(gt_tracks)
     scores.num_matches = len(track_matches)
+    scores.sum_errors = s + m + fn
 
     logger.info("Evaluating edges on matched tracks...")
     fpe, fne, nd, fpd, fnd = evaluate_edges(

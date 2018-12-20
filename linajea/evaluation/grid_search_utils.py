@@ -4,8 +4,8 @@ from linajea.tracking import TrackingParameters
 
 #Utility functions for performing grid search for solver ILP
 
-def parameters_to_setup_string(parameters):
-    return create_setup_string(parameters.cost_appear,
+def parameters_to_id(parameters):
+    return create_parameter_id(parameters.cost_appear,
             parameters.cost_disappear,
             parameters.cost_split,
             parameters.weight_distance_cost,
@@ -13,7 +13,7 @@ def parameters_to_setup_string(parameters):
             parameters.weight_node_score,
             parameters.threshold_edge_score)
 
-def create_setup_string(
+def create_parameter_id(
         cost_appear, 
         cost_disappear, 
         cost_split, 
@@ -21,9 +21,8 @@ def create_setup_string(
         threshold_node_score, 
         weight_node_score, 
         threshold_edge_score):
-        
-    s = "selected"
-    s += "_a_" + str(cost_appear)
+
+    s = "a_" + str(cost_appear)
     s += "_d_" + str(cost_disappear)
     s += "_s_" + str(cost_split)
     s += "_dc_" + str(weight_distance_cost)
