@@ -17,7 +17,7 @@ mkdir -p ${SINGULARITY_ROOTFS}/src/linajea
 ../linajea /src/linajea/linajea
 ../requirements.txt /src/linajea/requirements.txt
 ../setup.py /src/linajea/setup.py
-../cluster /opt
+../cluster/* /opt/
 
 %labels
 maintainer funkej@janelia.hhmi.org
@@ -26,10 +26,11 @@ maintainer funkej@janelia.hhmi.org
 
 # install pylp and gurobi
 cd /opt
-tar xvfz gurobi8.1.0_linux64.tar.gz
+tar xfz gurobi8.1.0_linux64.tar.gz
 GUROBI_ROOT_DIR=/opt/gurobi810/linux64
 cd ${GUROBI_ROOT_DIR}
 python setup.py install
+export GUROBI_ROOT_DIR=/opt/gurobi810/linux64
 
 PYLP_ROOT=/src/pylp
 PYLP_REPOSITORY=https://github.com/funkey/pylp
@@ -95,8 +96,10 @@ PYTHONPATH=${DAISY_ROOT}:$PYTHONPATH
 
 COMATCH_ROOT=/src/comatch
 COMATCH_REPOSITORY=https://github.com/funkey/comatch
+#slightly older master
+COMATCH_REVISION=3aebd8606da7d0f48f262e546a9ae614ceca7af7
 # master
-COMATCH_REVISION=193ca3072ae27666c54939f4bb0a4911404f33d7
+#COMATCH_REVISION=193ca3072ae27666c54939f4bb0a4911404f33d7
 # quadmatch
 #COMATCH_REVISION=fa7c9e3ea9f9b5ddc2fb74654378d696b7a14b35
 
@@ -134,6 +137,6 @@ export DAISY_REVISION=dc14ee3d5395d9ec2bcaca032d7ed5c5d97f8c70
 export PYTHONPATH=${DAISY_ROOT}:$PYTHONPATH
 export GRB_LICENSE_FILE=/opt/gurobi.lic
 export GUROBI_ROOT_DIR=/opt/gurobi810/linux64
-
+export GUROBI_HOME=/opt/gurobi810/linux64
 %runscript
 exec /bin/bash "$@"
