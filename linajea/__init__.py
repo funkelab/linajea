@@ -3,3 +3,4 @@ from .database import CandidateDatabase
 from .detection import find_cells, find_edges, CellDetectionParameters, EdgeDetectionParameters
 from .target_counts import target_counts
 from .print_time import print_time
+from .downsample_parent_vectors import downsample
