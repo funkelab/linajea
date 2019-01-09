@@ -5,29 +5,22 @@ logger = logging.getLogger(__name__)
 
 class CandidateDatabase(object):
 
-    def __init__(self, db_name, db_host='localhost', mode='r'):
+    def __init__(self, db_name, mongo_url, mode='r'):
 
         self.db_name = db_name
-        self.db_host = db_host
+        self.mongo_url = mongo_url
         self.mode = mode
-        self.client = MongoClient(host=db_host)
+        self.client = MongoClient(mongo_url)
 
         existing = False
         if mode == 'w':
-            # In theory, in 'w' mode, it should replace the database with a new one,
-            # but I lost a lot of data this way by accident, so for now I am just warning if it exists and then
-            # adding to it
-            db_names = self.client.list_database_names()
-            if self.db_name in db_names:
-                existing = True
-                logger.warning("Database with name {} already exists. New data will be added to existing data."
-                               .format(self.db_name))
+            self.client.drop_database(db_name)
 
         self.database = self.client[db_name]
         self.nodes = self.database['nodes']
         self.edges = self.database['edges']
 
-        if mode == 'w' and not existing:
+        if mode == 'w' or (mode == 'r+' and not existing):
 
             self.nodes.create_index(
                 [
