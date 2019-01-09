@@ -1,4 +1,4 @@
-from pymongo import MongoClient, ASCENDING, ReplaceOne
+from pymongo import MongoClient, ASCENDING, ReplaceOne, UpdateMany
 import logging
 
 logger = logging.getLogger(__name__)
@@ -178,9 +178,35 @@ class CandidateDatabase(object):
             return
 
         logger.debug("Insert %d edges"%len(edges))
+        for edge in edges:
+            if 'id' not in edge:
+                edge['id'] = [edge['source'], edge['target']]
 
         self.edges.insert_many(edges)
 
+    def store_edge_selections(self, selected_edges, unselected_edges, selected_key):
+        if self.mode == 'r':
+            raise RuntimeError("trying to write to read-only DB")
+
+        if len(selected_edges) == 0 and len(unselected_edges) == 0:
+
+            logger.debug("No edges to update.")
+            return
+
+        logger.debug("Update %d edges"%(len(selected_edges) + len(unselected_edges)))
+        
+        self.edges.bulk_write([
+            UpdateMany(
+                {'id': {'$in': selected_edges}},
+                {'$set': {selected_key: True}}
+            ),
+            UpdateMany(
+                {'id': {'$in': unselected_edges}},
+                {'$set': {selected_key: False}}
+            )
+        ])
+
+    
     def update_edges(self, edges, cells=None, roi=None):
 
         if self.mode == 'r':
