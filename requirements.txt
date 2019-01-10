@@ -3,3 +3,4 @@ daisy
 networkx
 pymongo
 comatch
+-e git+https://github.com/funkelab/funlib.math#egg=funlib.math
