@@ -1,4 +1,4 @@
-from daisy import MongoDbGraphProvider
+from daisy.persistence import MongoDbGraphProvider
 import logging
 
 logger = logging.getLogger(__name__)
@@ -6,14 +6,37 @@ logger = logging.getLogger(__name__)
 
 class CandidateDatabase(MongoDbGraphProvider):
 
-    def __init__(self, db_name, mongo_url, mode='r'):
+    def __init__(self, db_name, mongo_url, mode='r', total_roi=None):
         super().__init__(
                 db_name,
                 host=mongo_url,
                 mode=mode,
+                total_roi=total_roi,
                 directed=True,
-                position_attribute=['t', 'z', 'y', 'x']
+                position_attribute=['t', 'z', 'y', 'x'],
+                endpoint_names=['source', 'target']
                 )
+
+    def get_nodes_and_edges(
+            self,
+            roi,
+            require_selected=False,
+            key='selected'):
+        nodes = self.read_nodes(roi)
+        edges = self.read_edges(roi)
+        if require_selected:
+            filtered_edges = []
+            for edge in edges:
+                if key in edge and edge[key]:
+                    filtered_edges.append(edge)
+            u, v = self.endpoint_names
+            filtered_cell_ids = set([edge[u] for edge in filtered_edges] +
+                                    [edge[v] for edge in filtered_edges])
+            filtered_cells = [cell for cell in nodes
+                              if cell['id'] in filtered_cell_ids]
+            return filtered_cells, filtered_edges
+        else:
+            return nodes, edges
 
     def get_result(self, parameters_id):
         self.__connect()
