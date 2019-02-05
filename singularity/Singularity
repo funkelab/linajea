@@ -1,5 +1,5 @@
-Bootstrap: docker
-From: funkey/gunpowder:v0.3.2
+Bootstrap: localimage
+From: /nrs/funke/singularity/linajea/gunpylrobi:v1.2.img
 
 %help
 This container contains linajea lineage tracking software.
@@ -17,56 +17,13 @@ mkdir -p ${SINGULARITY_ROOTFS}/src/linajea
 ../linajea /src/linajea/linajea
 ../requirements.txt /src/linajea/requirements.txt
 ../setup.py /src/linajea/setup.py
-../cluster/* /opt/
 
 %labels
 maintainer funkej@janelia.hhmi.org
 
 %post
 
-# install pylp and gurobi
-cd /opt
-tar xfz gurobi8.1.0_linux64.tar.gz
-GUROBI_ROOT_DIR=/opt/gurobi810/linux64
-cd ${GUROBI_ROOT_DIR}
-python setup.py install
-export GUROBI_ROOT_DIR=/opt/gurobi810/linux64
-
-PYLP_ROOT=/src/pylp
-PYLP_REPOSITORY=https://github.com/funkey/pylp
-PYLP_REVISION=51112ba453c361e6980d7c8b24faace2bd7c8064
-
-mkdir -p ${PYLP_ROOT}
-cd ${PYLP_ROOT} 
-git clone ${PYLP_REPOSITORY} . && \
-git checkout ${PYLP_REVISION} && \
-git submodule update --init
-python setup.py install
-
-# install jupyter and nyroglancer
-
-pip install --upgrade --ignore-installed notebook
-
-NYROGLANCER_ROOT=/src/nyroglancer
-NYROGLANCER_REPOSITORY=https://github.com/funkey/nyroglancer
-NYROGLANCER_REVISION=984781dd6acf4235dde33568a89c0043efd52652
-
-mkdir -p ${NYROGLANCER_ROOT}
-cd ${NYROGLANCER_ROOT}
-git clone ${NYROGLANCER_REPOSITORY} . && \
-git checkout ${NYROGLANCER_REVISION}
-PYTHONPATH=${NYROGLANCER_ROOT}:$PYTHONPATH
-
-NEUROGLANCER_ROOT=/src/neuroglancer
-NEUROGLANCER_REPOSITORY=https://github.com/google/neuroglancer
-NEUROGLANCER_REVISION=253a5cc
-
-mkdir -p ${NEUROGLANCER_ROOT}
-cd ${NEUROGLANCER_ROOT}
-git clone ${NEUROGLANCER_REPOSITORY} . && \
-git checkout ${NEUROGLANCER_REVISION}
-cd ${NEUROGLANCER_ROOT}/python
-python setup.py install
+pip install future
 
 # install dependencies
 
@@ -86,7 +43,11 @@ cp build/lib/libklb.so /lib
 
 DAISY_ROOT=/src/daisy
 DAISY_REPOSITORY=https://github.com/funkey/daisy
-DAISY_REVISION=dc14ee3d5395d9ec2bcaca032d7ed5c5d97f8c70
+# DAISY_REVISION=dc14ee3d5395d9ec2bcaca032d7ed5c5d97f8c70
+# this revision has initial graph implementation before v2
+DAISY_REVISION=9fe7419ef18a01ccf6473e00df4532b6fc9b6f51
+# this revision has MongoDbGraph functionality after v2
+# DAISY_REVISION=b1d23c414c261b964f932bc2c09782408e4310be
 
 mkdir -p ${DAISY_ROOT}
 cd ${DAISY_ROOT}
@@ -115,6 +76,7 @@ pip install dask distributed --upgrade
 # install linajea
 
 cd /src/linajea
+pip install -r requirements.txt
 python setup.py install
 
 pip install plotly
@@ -138,5 +100,6 @@ export PYTHONPATH=${DAISY_ROOT}:$PYTHONPATH
 export GRB_LICENSE_FILE=/opt/gurobi.lic
 export GUROBI_ROOT_DIR=/opt/gurobi810/linux64
 export GUROBI_HOME=/opt/gurobi810/linux64
+
 %runscript
 exec /bin/bash "$@"
