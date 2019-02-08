@@ -1,5 +1,5 @@
-README:
+README: Gurobi License File
 
-To create the singularity container, you must copy the gurobi tar file used to install the gurobi software into this directory.
-The tar file can be downloaded from: http://www.gurobi.com/downloads/download-center.
-The version tested is gurobi8.1.0-linux64.tar.gz - if you use a different version, you should update the Singularity file accordingly.
+The gurobi license file here is for the Janelia CPU cluster.
+It will be copied by the Singularity file onto the images
+so that we can use Singualrity on the cluster.
