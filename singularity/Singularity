@@ -1,5 +1,5 @@
 Bootstrap: localimage
-From: /nrs/funke/singularity/funkey/gunpylrobi:v1.3.img
+From: /nrs/funke/singularity/funkey/pylp_base:v1.4.img
 
 %help
 This container contains linajea lineage tracking software.
@@ -30,7 +30,7 @@ PATH="/miniconda/bin:$PATH"
 
 GUNPOWDER_ROOT=/src/gunpowder
 GUNPOWDER_REPOSITORY=https://github.com/funkey/gunpowder.git
-GUNPOWDER_REVISION=e6ee429ab7b3c784aaafc041d11dacfbc3a9f8ed
+GUNPOWDER_REVISION=767e52657ac703f6f23b88a7dbd7294315d60684
 
 mkdir -p ${GUNPOWDER_ROOT}
 cd ${GUNPOWDER_ROOT}
