@@ -115,7 +115,7 @@ class AddParentVectors(BatchFilter):
         if self.points in request:
             request_roi = request[self.points].roi
             points.spec.roi = request_roi
-            for i, p in points.data.items():
+            for i, p in list(points.data.items()):
                 if not request_roi.contains(p.location):
                     del points.data[i]
 
