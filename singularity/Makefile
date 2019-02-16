@@ -1,4 +1,4 @@
-TAG="pylp_base:v1.4"
+TAG="linajea:v1.4"
 
 TMP_FILE:=$(shell mktemp).img
 
