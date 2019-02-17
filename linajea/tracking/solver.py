@@ -1,7 +1,5 @@
 # -*- coding: UTF-8 -*-
 import logging
-import math
-import numpy as np
 import pylp
 
 logger = logging.getLogger(__name__)
