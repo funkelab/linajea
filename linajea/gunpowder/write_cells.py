@@ -64,12 +64,12 @@ class WriteCells(gp.BatchFilter):
 
             cells.append({
                 'id': cell_id,
-                'score': score,
+                'score': float(score),
                 't': position[0],
                 'z': position[1],
                 'y': position[2],
                 'x': position[3],
-                'parent_vector': tuple(parent_vector)
+                'parent_vector': tuple(float(x) for x in parent_vector)
             })
 
             print(
