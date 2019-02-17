@@ -73,17 +73,33 @@ class Solver(object):
 
         objective = pylp.LinearObjective(self.num_vars)
 
+        # node appear (skip first frame)
+        for t in range(self.graph.begin + 1, self.graph.end):
+            for node in self.graph.cells_by_frame(t):
+                objective.set_coefficient(
+                    self.node_appear[node],
+                    self.parameters.cost_appear)
+        for node in self.graph.cells_by_frame(self.graph.begin):
+            objective.set_coefficient(
+                self.node_appear[node],
+                0)
+
+        # node disappear (skip last frame)
+        for t in range(self.graph.begin, self.graph.end - 1):
+            for node in self.graph.cells_by_frame(t):
+                objective.set_coefficient(
+                    self.node_disappear[node],
+                    self.parameters.cost_disappear)
+        for node in self.graph.cells_by_frame(self.graph.end - 1):
+            objective.set_coefficient(
+                self.node_disappear[node],
+                0)
+
         # node selection, appear, disappear, and split costs
         for node in self.graph.nodes:
             objective.set_coefficient(
                 self.node_selected[node],
                 self._node_costs(node))
-            objective.set_coefficient(
-                self.node_appear[node],
-                self.parameters.cost_appear)
-            objective.set_coefficient(
-                self.node_disappear[node],
-                self.parameters.cost_disappear)
             objective.set_coefficient(
                 self.node_split[node],
                 self.parameters.cost_split)
