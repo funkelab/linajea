@@ -28,7 +28,21 @@ class WriteCells(gp.BatchFilter):
         if self.client is None:
             self.client = pymongo.MongoClient(host=self.db_host)
             self.db = self.client[self.db_name]
+            create_indices = 'nodes' not in self.db
             self.cells = self.db['nodes']
+            if create_indices:
+                self.cells.create_index(
+                    [
+                        (l, pymongo.ASCENDING)
+                        for l in ['t', 'z', 'y', 'x']
+                    ],
+                    name='position')
+                self.cells.create_index(
+                    [
+                        ('id', pymongo.ASCENDING)
+                    ],
+                    name='id',
+                    unique=True)
 
         roi = batch[self.maxima].spec.roi
         voxel_size = batch[self.maxima].spec.voxel_size
