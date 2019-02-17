@@ -47,13 +47,13 @@ class TrackingParameters(object):
         self.weight_prediction_distance_cost = 0
 
 
-def track(cells, edges, parameters, selected_key):
+def track(graph, parameters, selected_key, frame_key='frame'):
 
-    if len(cells) == 0:
+    if graph.number_of_nodes() == 0:
         return
 
     logger.info("Creating track graph...")
-    track_graph = TrackGraph(cells, edges)
+    track_graph = TrackGraph(graph_data=graph, frame_key=frame_key)
 
     logger.info("Creating solver...")
     solver = Solver(track_graph, parameters, selected_key)
@@ -61,9 +61,8 @@ def track(cells, edges, parameters, selected_key):
     logger.info("Solving...")
     solver.solve()
 
-    for cell in cells:
-        cell[selected_key] = track_graph.nodes[cell['id']][selected_key]
-    for edge in edges:
-        e = (edge['source'], edge['target'])
-        if e in track_graph.edges:
-            edge[selected_key] = track_graph.edges[e][selected_key]
+    for cell, data in graph.nodes(data=True):
+        data[selected_key] = track_graph.nodes[cell][selected_key]
+    for u, v, data in graph.edges(data=True):
+        if (u, v) in track_graph.edges:
+            data[selected_key] = track_graph.edges[(u, v)][selected_key]
