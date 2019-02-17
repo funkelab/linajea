@@ -9,6 +9,12 @@ class TrackingParameters(object):
 
     def __init__(self):
 
+        # "default" for the models that predict parent vectors only
+        # "nms" for the non-max suppression models
+        self.model_type = 'default'
+
+        # ALL MODEL TYPES:
+
         # track costs:
         self.cost_appear = 0
         self.cost_disappear = 0
@@ -29,8 +35,17 @@ class TrackingParameters(object):
         # edge
         self.weight_distance_cost = 0
 
+        # ONLY DEFAULT MODEL:
+
         # similar to node costs, determines when a cost is positive/negative
         self.threshold_edge_score = 1
+
+        # ONLY NMS MODEL:
+
+        # how to weigh the Euclidean distance between the predicted position and
+        # the actual position of cells for the costs of an edge
+        self.weight_prediction_distance_cost = 0
+
 
 def track(cells, edges, parameters, selected_key):
 
