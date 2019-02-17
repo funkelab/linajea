@@ -19,22 +19,36 @@ class TrackGraph(nx.DiGraph):
             Optional graph data to pass to the networkx.Graph constructor as
             ``incoming_graph_data``. This can be used to populate a track graph
             with entries from a generic networkx graph.
+
+        frame_key (``string``, optional):
+
+            The name of the node attribute that corresponds to the frame of the
+            node. Defaults to "frame".
     '''
 
-    def __init__(self, cells=None, edges=None, graph_data=None):
+    def __init__(
+            self,
+            cells=None,
+            edges=None,
+            graph_data=None,
+            frame_key='frame'):
 
         super(TrackGraph, self).__init__(incoming_graph_data=graph_data)
 
         self.begin = None
         self.end = None
         self._cells_by_frame = {}
+        self.frame_key = frame_key
 
         if graph_data is not None:
-            frames = [ self.nodes[cell]['frame'] for cell in self.nodes ]
+            frames = [
+                self.nodes[cell][self.frame_key]
+                for cell in self.nodes
+            ]
             self.begin = min(frames)
             self.end = max(frames) + 1
             for cell in self.nodes:
-                t = self.nodes[cell]['frame']
+                t = self.nodes[cell][self.frame_key]
                 if t not in self._cells_by_frame:
                     self._cells_by_frame[t] = []
                 self._cells_by_frame[t].append(cell)
@@ -81,7 +95,7 @@ class TrackGraph(nx.DiGraph):
         t = cell['position'][0]
 
         del cell['id']
-        cell['frame'] = t
+        cell[self.frame_key] = t
         self.add_node(cell_id, **cell)
 
         self.begin = t if self.begin is None else min(self.begin, t)
@@ -107,12 +121,14 @@ class TrackGraph(nx.DiGraph):
         edge = dict(edge)
         source, target = edge['source'], edge['target']
 
-        assert self.nodes[source]['frame'] > self.nodes[target]['frame'], (
+        assert (
+            self.nodes[source][self.frame_key] >
+            self.nodes[target][self.frame_key]), (
             "Edges are assumed to point backwards in time, but edge (%d, %d) "
             "points from frame %d to %d"%(
                 source, target,
-                self.nodes[source]['frame'],
-                self.nodes[target]['frame']))
+                self.nodes[source][self.frame_key],
+                self.nodes[target][self.frame_key]))
 
         del edge['source']
         del edge['target']
