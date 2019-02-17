@@ -13,9 +13,7 @@ class WriteCells(gp.BatchFilter):
             parent_vectors,
             score_threshold,
             db_host,
-            db_name,
-            db_user=None,
-            db_password=None):
+            db_name):
 
         self.maxima = maxima
         self.cell_indicator = cell_indicator
@@ -23,17 +21,12 @@ class WriteCells(gp.BatchFilter):
         self.score_threshold = score_threshold
         self.db_host = db_host
         self.db_name = db_name
-        self.db_user = db_user
-        self.db_password = db_password
         self.client = None
 
     def process(self, batch, request):
 
         if self.client is None:
-            self.client = pymongo.MongoClient(
-                host=self.db_host,
-                username=self.db_user,
-                password=self.db_password)
+            self.client = pymongo.MongoClient(host=self.db_host)
             self.db = self.client[self.db_name]
             self.cells = self.db['nodes']
 
