@@ -78,6 +78,19 @@ class TrackGraph(nx.DiGraph):
 
             logger.info("Skipped %d edges without corresponding nodes", skipped_edges)
 
+        else:
+
+            for u, v in self.edges:
+                if (
+                        self.nodes[u][self.frame_key] <=
+                        self.nodes[v][self.frame_key]):
+                    raise RuntimeError(
+                        "edge from %d to %d does not go backwards in time, but "
+                        "from frame %d to %d" % (
+                            u, v,
+                            self.nodes[u][self.frame_key],
+                            self.nodes[v][self.frame_key]))
+
     def add_cell(self, cell):
         '''Add a cell as a node to the graph.
 
