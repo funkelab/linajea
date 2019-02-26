@@ -23,7 +23,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             require_selected=False,
             key='selected'):
         nodes = self.read_nodes(roi)
-        edges = self.read_edges(roi)
+        edges = self.read_edges(roi, nodes=nodes)
         if require_selected:
             filtered_edges = []
             for edge in edges:
