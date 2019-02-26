@@ -3,56 +3,92 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class Scores:
 
     def __init__(self):
 
         # the track matching scores
+        self.num_gt_tracks = 0
+        self.num_matched_tracks = 0
         self.num_splits = 0
         self.num_merges = 0
         self.num_fp_tracks = 0
         self.num_fn_tracks = 0
-        self.num_tracks = 0
-        self.num_matches = 0
-        self.sum_errors = 0
+
+        # node scores
+        self.num_gt_nodes = 0
+        self.num_matched_nodes = 0
+        self.num_fp_nodes = 0
+        self.num_fn_nodes = 0
 
         # edge scores
+        self.num_gt_edges = 0
+        self.num_matched_edges = 0
         self.num_fp_edges = 0
         self.num_fn_edges = 0
         self.num_edges = 0
+
+        # division scores
+        self.num_gt_divisions = 0
+        self.num_matched_divisions = 0
         self.num_fp_divisions = 0
         self.num_fn_divisions = 0
-        self.num_divisions = 0
 
     def __repr__(self):
 
         return """\
-track splits: %d
-      merges: %d
-         fps: %d
-         fns: %d
-         num gt tracks: %d
-         num matches: %d
+TRACK STATISTICS
+     num gt: %d
+num matches: %d
+     splits: %d
+     merges: %d
+        fps: %d
+        fns: %d
 
-edge     fps: %d
-         fns: %d
-         num: %d
+NODE STATISTICS
+     num gt: %d
+num matches: %d
+        fps: %d
+        fns: %d
 
-division fps: %d
-         fns: %d
-         num: %d"""%(
+EDGE STATISTICS
+     num gt: %d
+num matches: %d
+        fps: %d
+        fns: %d
+
+DIVISION STATISTICS
+     num gt: %d
+num matches: %d
+        fps: %d
+        fns: %d
+         """ % (
+            self.num_gt_tracks,
+            self.num_matched_tracks,
             self.num_splits,
             self.num_merges,
             self.num_fp_tracks,
             self.num_fn_tracks,
-            self.num_tracks,
-            self.num_matches,
+
+            # node scores
+            self.num_gt_nodes,
+            self.num_matched_nodes,
+            self.num_fp_nodes,
+            self.num_fn_nodes,
+
+            # edge scores
+            self.num_gt_edges,
+            self.num_matched_edges,
             self.num_fp_edges,
             self.num_fn_edges,
-            self.num_edges,
+
+            # division scores
+            self.num_gt_divisions,
+            self.num_matched_divisions,
             self.num_fp_divisions,
-            self.num_fn_divisions,
-            self.num_divisions)
+            self.num_fn_divisions)
+
 
 def evaluate(gt_tracks, rec_tracks, matching_threshold):
 
@@ -63,132 +99,188 @@ def evaluate(gt_tracks, rec_tracks, matching_threshold):
         matching_threshold)
     return evaluate_matches(matched_tracks, gt_tracks, rec_tracks)
 
+
 def evaluate_matches(match_tracks_output, gt_tracks, rec_tracks):
-    track_matches, cell_matches, s, m, fp, fn = match_tracks_output  
-    
+    track_matches, cell_matches, s, m, fp, fn = match_tracks_output
+
     scores = Scores()
+    # get ground truth statistics
+    for track in gt_tracks:
+        scores.num_gt_tracks += 1
+        scores.num_gt_nodes += len(track.nodes)
+        scores.num_gt_edges += len(track.edges)
+
+    # store track statistics
     scores.num_splits = s
     scores.num_merges = m
     scores.num_fp_tracks = fp
     scores.num_fn_tracks = fn
-    scores.num_tracks = len(gt_tracks)
-    scores.num_matches = len(track_matches)
-    scores.sum_errors = s + m + fn
+    scores.num_matched_tracks = len(track_matches)
 
-    logger.info("Evaluating edges on matched tracks...")
-    fpe, fne, nd, fpd, fnd = evaluate_edges(
+    # get node and edge statistics
+
+    logger.info("Evaluating nodes and edges on matched tracks...")
+    node_scores = evaluate_nodes(
         gt_tracks,
         rec_tracks,
         track_matches,
         cell_matches)
 
-    scores.num_fp_edges = fpe
-    scores.num_fn_edges = fne
-    scores.num_edges = sum([ len(track.edges) for track in gt_tracks ])
-    scores.num_fp_divisions = fpd
-    scores.num_fn_divisions = fnd
-    scores.num_divisions = nd
+    edge_scores = evaluate_edges(
+        gt_tracks,
+        rec_tracks,
+        track_matches,
+        cell_matches)
+
+    division_scores = evaluate_divisions(
+        gt_tracks,
+        rec_tracks,
+        track_matches,
+        cell_matches)
+
+    scores.num_matched_nodes = node_scores[0]
+    scores.num_fp_nodes = node_scores[1]
+    scores.num_fn_nodes = node_scores[2]
+
+    scores.num_matched_edges = edge_scores[0]
+    scores.num_fp_edges = edge_scores[1]
+    scores.num_fn_edges = edge_scores[2]
+
+    scores.num_gt_divisions = division_scores[0]
+    scores.num_matched_divisions = division_scores[1]
+    scores.num_fp_divisions = division_scores[2]
+    scores.num_fn_divisions = division_scores[3]
 
     return scores
 
+
+def evaluate_nodes(gt_tracks, rec_tracks, track_matches, cell_matches):
+    gt_matched_cells = [m[0] for m in cell_matches]
+    rec_matched_cells = [m[1] for m in cell_matches]
+    gt_matched_tracks = [m[0] for m in track_matches]
+    rec_matched_tracks = [m[1] for m in track_matches]
+
+    num_matches = 0
+    num_fps = 0
+    num_fns = 0
+
+    for track_id, track in enumerate(gt_tracks):
+        if track_id not in gt_matched_tracks:
+            continue
+        for node in track.nodes:
+            if node in gt_matched_cells:
+                num_matches += 1
+            else:
+                num_fns += 1
+    for track_id, track in enumerate(rec_tracks):
+        if track_id not in rec_matched_tracks:
+            continue
+        for node in track.nodes:
+            if node not in rec_matched_cells:
+                num_fps += 1
+    return num_matches, num_fps, num_fns
+
+
 def evaluate_edges(gt_tracks, rec_tracks, track_matches, cell_matches):
+    gt_cells_to_rec = {m[0]: m[1] for m in cell_matches}
+    rec_cells_to_gt = {m[1]: m[0] for m in cell_matches}
+    gt_tracks_to_matched_edges = {}
+    rec_tracks_to_matched_edges = {}
+    for m in track_matches:
+        gt_track = m[0]
+        rec_track = m[1]
+        if gt_track not in gt_tracks_to_matched_edges:
+            gt_tracks_to_matched_edges[gt_track] = []
+        gt_tracks_to_matched_edges[gt_track] += rec_tracks[rec_track].edges
 
-    gt_to_rec_cell = { m[0]: m[1] for m in cell_matches }
-    rec_to_gt_cell = { m[1]: m[0] for m in cell_matches }
+        if rec_track not in rec_tracks_to_matched_edges:
+            rec_tracks_to_matched_edges[rec_track] = []
+        rec_tracks_to_matched_edges[rec_track] += gt_tracks[gt_track].edges
 
-    cell_to_rec_track = {
-        c: track_id
-        for track_id, track in enumerate(rec_tracks)
-        for c in track.nodes
-    }
-    cell_to_gt_track = {
-        c: track_id
-        for track_id, track in enumerate(gt_tracks)
-        for c in track.nodes
-    }
+    num_matches = 0
+    num_fps = 0
+    num_fns = 0
 
-    fp_edges = count_edge_fns(rec_tracks, rec_to_gt_cell, cell_to_gt_track)
-    fn_edges = count_edge_fns(gt_tracks, gt_to_rec_cell, cell_to_rec_track)
+    for track_id, track in enumerate(gt_tracks):
+        if track_id not in gt_tracks_to_matched_edges:
+            continue
+        for u, v in track.edges:
+            if u in gt_cells_to_rec and v in gt_cells_to_rec:
+                match_u = gt_cells_to_rec[u]
+                match_v = gt_cells_to_rec[v]
+                if (match_u, match_v) in gt_tracks_to_matched_edges[track_id]:
+                    logger.debug("Found edge match: gt (%d, %d), rec (%d, %d)"
+                                 % (u, v, match_u, match_v))
+                    num_matches += 1
+                else:
+                    logger.debug("Did not find rec edge (%d, %d) "
+                                 "to match gt edge (%d, %d)"
+                                 % (match_u, match_v, u, v))
+                    num_fns += 1
+            else:
+                logger.debug("Did not find rec edge to match gt edge (%d, %d)"
+                             % (u, v))
+                num_fns += 1
+    for track_id, track in enumerate(rec_tracks):
+        if track_id not in rec_tracks_to_matched_edges:
+            continue
+        for u, v in track.edges:
+            if u in rec_cells_to_gt and v in rec_cells_to_gt:
+                match_u = rec_cells_to_gt[u]
+                match_v = rec_cells_to_gt[v]
+                matched_edges = rec_tracks_to_matched_edges[track_id]
+                if (match_u, match_v) not in matched_edges:
+                    num_fps += 1
+            else:
+                num_fps += 1
 
-    _, fp_divisions = count_division_fns(
-        rec_tracks,
-        rec_to_gt_cell,
-        cell_to_gt_track)
-    num_divisions, fn_divisions = count_division_fns(
-        gt_tracks,
-        gt_to_rec_cell,
-        cell_to_rec_track)
+    return num_matches, num_fps, num_fns
 
-    return fp_edges, fn_edges, num_divisions, fp_divisions, fn_divisions
 
-def count_edge_fns(tracks_x, x_to_y_cell, cell_to_track_y):
+def evaluate_divisions(gt_tracks, rec_tracks, track_matches, cell_matches):
+    gt_cells_to_rec = {m[0]: m[1] for m in cell_matches}
+    rec_cells_to_gt = {m[1]: m[0] for m in cell_matches}
+    gt_matched_tracks = [m[0] for m in track_matches]
+    rec_matched_tracks = [m[1] for m in track_matches]
 
-    fn_edges = 0
+    num_gt_divisions = 0
+    num_matches = 0
+    num_fps = 0
+    num_fns = 0
 
-    for track_x in tracks_x:
-        for edge in track_x.edges:
+    gt_parents = []
+    rec_parents = []
 
-            source_x, target_x = edge
+    for track_id, track in enumerate(gt_tracks):
+        if track_id not in gt_matched_tracks:
+            continue
+        node_degrees = {node: degree for node, degree in track.in_degree()}
+        logger.debug("Max degree for track %d: %d"
+                     % (track_id, max(node_degrees.values())))
+        assert max(node_degrees.values()) <= 2,\
+            ("Max in degree should be less than 2, "
+             "got %d in track %d"
+             % (max(node_degrees.values()), track_id))
+        parents = [node for node, degree in node_degrees.items()
+                   if degree == 2]
+        logger.debug("Parent nodes: %s" % parents)
+        gt_parents += parents
 
-            # either not matched
-            if source_x not in x_to_y_cell or target_x not in x_to_y_cell:
-                fn_edges += 1
-                continue
+    for track_id, track in enumerate(rec_tracks):
+        if track_id not in rec_matched_tracks:
+            continue
+        parents = [node for node in track.nodes if track.in_degree(node) == 2]
+        rec_parents += parents
 
-            source_y, target_y = (
-                x_to_y_cell[source_x],
-                x_to_y_cell[target_x])
+    num_gt_divisions = len(gt_parents)
+    for parent in gt_parents:
+        if gt_cells_to_rec[parent] in rec_parents:
+            num_matches += 1
+        else:
+            num_fns += 1
 
-            # or matched to two different tracks
-            if cell_to_track_y[source_y] != cell_to_track_y[target_y]:
-                fn_edges += 1
+    for parent in rec_parents:
+        if rec_cells_to_gt[parent] not in gt_parents:
+            num_fps += 1
 
-    return fn_edges
-
-def count_division_fns(tracks_x, x_to_y_cell, cell_to_track_y):
-
-    num_divisions = 0
-    fn_divisions = 0
-
-    for track_x in tracks_x:
-        for cell_x in track_x.nodes:
-
-            # only divisions
-            if track_x.degree(cell_x) != 3:
-                continue
-
-            frame = track_x.nodes[cell_x]['frame']
-
-            children_x = [
-                n
-                for n in track_x.neighbors(cell_x)
-                if track_x.nodes[n]['frame'] == frame + 1
-            ]
-
-            if len(children_x) != 2:
-                logger.error(
-                    "There is a weird cell (%d) with three neighbors that "
-                    "does not look like a division", cell_x)
-                continue
-
-            num_divisions += 1
-
-            # either not matched
-            if (
-                    cell_x not in x_to_y_cell or
-                    children_x[0] not in x_to_y_cell or
-                    children_x[1] not in x_to_y_cell):
-                fn_divisions += 1
-                continue
-
-            tracks_y = set([
-                cell_to_track_y[x_to_y_cell[cell_x]],
-                cell_to_track_y[x_to_y_cell[children_x[0]]],
-                cell_to_track_y[x_to_y_cell[children_x[1]]]
-            ])
-
-            # or matched to several different tracks
-            if len(tracks_y) != 1:
-                fn_divisions += 1
-
-    return num_divisions, fn_divisions
+    return num_gt_divisions, num_matches, num_fps, num_fns
