@@ -3,16 +3,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class TrackGraph(nx.DiGraph):
     '''A track graph of cells and inter-frame edges between them.
 
     Args:
-
-        cells (``dict``, optional):
-        edges (``dict``, optional):
-
-            If given, populate the graph with these cells and edges. Edges to
-            or from cells that are not in ``cells`` will not be added.
 
         graph_data (optional):
 
@@ -28,8 +23,6 @@ class TrackGraph(nx.DiGraph):
 
     def __init__(
             self,
-            cells=None,
-            edges=None,
             graph_data=None,
             frame_key='frame'):
 
@@ -53,99 +46,16 @@ class TrackGraph(nx.DiGraph):
                     self._cells_by_frame[t] = []
                 self._cells_by_frame[t].append(cell)
 
-        if cells is not None:
-            for cell in cells:
-                self.add_cell(cell)
-
-        if edges is not None:
-
-            skipped_edges = 0
-            for edge in edges:
-
-                u, v = edge['source'], edge['target']
-
-                if u in self.nodes and v in self.nodes:
-
-                    self.add_cell_edge(edge)
-
-                else:
-
-                    logger.debug(
-                        "Skipping edge %d -> %d, at least one node not in graph",
-                        u, v)
-                    logger.debug("{} in graph: {} \t {} in graph: {}".format(u, u in self.nodes, v, v in self.nodes))
-                    skipped_edges += 1
-
-            logger.info("Skipped %d edges without corresponding nodes", skipped_edges)
-
-        else:
-
-            for u, v in self.edges:
-                if (
-                        self.nodes[u][self.frame_key] <=
-                        self.nodes[v][self.frame_key]):
-                    raise RuntimeError(
-                        "edge from %d to %d does not go backwards in time, but "
-                        "from frame %d to %d" % (
-                            u, v,
-                            self.nodes[u][self.frame_key],
-                            self.nodes[v][self.frame_key]))
-
-    def add_cell(self, cell):
-        '''Add a cell as a node to the graph.
-
-        Args:
-
-            cell (``dict``):
-
-                A dictionary containing at least the keys ``id`` and
-                ``position``, and does not contain ``frame``. Other keys will be
-                added as properties to the node.
-        '''
-
-        cell = dict(cell)
-        cell_id = cell['id']
-        t = cell['position'][0]
-
-        del cell['id']
-        cell[self.frame_key] = t
-        self.add_node(cell_id, **cell)
-
-        self.begin = t if self.begin is None else min(self.begin, t)
-        self.end = t + 1 if self.end is None else max(self.end, t + 1)
-
-        if t not in self._cells_by_frame:
-            self._cells_by_frame[t] = []
-        self._cells_by_frame[t].append(cell_id)
-
-    def add_cell_edge(self, edge):
-        '''Add a directed edge between cells.
-
-        Args:
-
-            edge (``dict``):
-
-                A dictionary containing at least the keys ``source`` and
-                ``target``, which correspond to cell IDs. The edge has to point
-                backwards in time. Other keys will be added as properties to
-                the edge.
-        '''
-
-        edge = dict(edge)
-        source, target = edge['source'], edge['target']
-
-        assert (
-            self.nodes[source][self.frame_key] >
-            self.nodes[target][self.frame_key]), (
-            "Edges are assumed to point backwards in time, but edge (%d, %d) "
-            "points from frame %d to %d"%(
-                source, target,
-                self.nodes[source][self.frame_key],
-                self.nodes[target][self.frame_key]))
-
-        del edge['source']
-        del edge['target']
-        self.add_edge(source, target, **edge)
+        for u, v in self.edges:
+            if (
+                    self.nodes[u][self.frame_key] <=
+                    self.nodes[v][self.frame_key]):
+                raise RuntimeError(
+                    "edge from %d to %d does not go backwards in time, but "
+                    "from frame %d to %d" % (
+                        u, v,
+                        self.nodes[u][self.frame_key],
+                        self.nodes[v][self.frame_key]))
 
     def prev_edges(self, node):
         '''Get all edges that point backward from ``node``.'''
@@ -184,9 +94,10 @@ class TrackGraph(nx.DiGraph):
                 considered for the connected component analysis.
 
             selected_key (``str``):
-            
-                Only used if require_selected=True. Determines the attribute name
-                to check if an edge is selected. Default value is 'selected'.
+
+                Only used if require_selected=True. Determines the attribute
+                name to check if an edge is selected. Default value is
+                'selected'.
 
         Returns:
 
@@ -202,7 +113,8 @@ class TrackGraph(nx.DiGraph):
             selected_edges = [
                 e
                 for e in self.edges
-                if selected_key in self.edges[e] and self.edges[e][selected_key]
+                if (selected_key in self.edges[e]
+                    and self.edges[e][selected_key])
             ]
             graph = self.edge_subgraph(selected_edges)
 
