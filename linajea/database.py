@@ -6,7 +6,13 @@ logger = logging.getLogger(__name__)
 
 class CandidateDatabase(MongoDbGraphProvider):
 
-    def __init__(self, db_name, mongo_url, mode='r', total_roi=None):
+    def __init__(
+            self,
+            db_name,
+            mongo_url,
+            mode='r',
+            total_roi=None,
+            endpoint_names=['source', 'target']):
         super().__init__(
                 db_name,
                 host=mongo_url,
@@ -14,7 +20,7 @@ class CandidateDatabase(MongoDbGraphProvider):
                 total_roi=total_roi,
                 directed=True,
                 position_attribute=['t', 'z', 'y', 'x'],
-                endpoint_names=['source', 'target']
+                endpoint_names=endpoint_names
                 )
 
     def get_nodes_and_edges(
