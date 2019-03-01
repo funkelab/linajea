@@ -2,5 +2,6 @@ cython
 daisy
 networkx
 pymongo
-comatch
+pylp
+-e git+https://github.com/funkey/comatch#egg=comatch
 -e git+https://github.com/funkelab/funlib.math#egg=funlib.math

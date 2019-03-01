@@ -1,7 +1,9 @@
 from linajea import CandidateDatabase
+import linajea.tracking
 from daisy import Roi
 from unittest import TestCase
 import logging
+import multiprocessing as mp
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -52,7 +54,8 @@ class DatabaseTestCase(TestCase):
 
     def test_read_existing_database(self):
         db_name = 'linajea_setup02_test'
-        mongo_url = 'mongodb://funkeAdmin:KAlSi3O8O@mongodb4.int.janelia.org:27023/admin?replicaSet=rsFunke'
+        mongo_url = 'mongodb://funkeAdmin:KAlSi3O8O@mongodb4.'\
+                    'int.janelia.org:27023/admin?replicaSet=rsFunke'
         candidate_db = CandidateDatabase(
                 db_name,
                 mongo_url,
@@ -61,3 +64,46 @@ class DatabaseTestCase(TestCase):
         subgraph = candidate_db[roi]
         logger.info("Number of nodes: {}".format(len(subgraph.nodes)))
         logger.info("Number of edges: {}".format(len(subgraph.edges)))
+
+
+class TestParameterIds(TestCase):
+    def test_unique_id_one_worker(self):
+        db = CandidateDatabase(
+                'test_linajea_db',
+                'localhost',
+                mode='w')
+        db._MongoDbGraphProvider__connect()
+        db._MongoDbGraphProvider__open_db()
+        db.database['parameters'].drop()
+        for i in range(10):
+            tp = linajea.tracking.TrackingParameters()
+            tp.cost_appear = i
+            _id = db.get_parameters_id(tp)
+            self.assertEqual(_id, i + 1)
+
+    def test_unique_id_multi_worker(self):
+        db = linajea.CandidateDatabase(
+                'test_linajea_db_multi_worker',
+                'localhost',
+                mode='w')
+        db._MongoDbGraphProvider__connect()
+        db._MongoDbGraphProvider__open_db()
+        db.database['parameters'].drop()
+        tps = []
+        for i in range(10):
+            tp = linajea.tracking.TrackingParameters()
+            tp.cost_appear = i
+            tps.append(tp)
+
+        class ID_Process(mp.Process):
+            def __init__(self, db, parameters):
+                super(ID_Process, self).__init__()
+                self.db = db
+                self.params = parameters
+
+            def run(self):
+                return self.db.get_parameters_id(self.params)
+
+        processes = [ID_Process(db, tp) for tp in tps]
+        for _id, process in enumerate(processes):
+            process.start()
