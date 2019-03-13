@@ -61,7 +61,8 @@ def track(graph, parameters, selected_key, frame_key='frame'):
 
     logger.info("Creating track graph...")
     track_graph = TrackGraph(graph_data=graph,
-                             frame_key=frame_key)
+                             frame_key=frame_key,
+                             roi=graph.roi)
 
     logger.info("Creating solver...")
     solver = Solver(track_graph, parameters, selected_key)

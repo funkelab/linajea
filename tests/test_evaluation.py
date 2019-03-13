@@ -2,6 +2,8 @@ import linajea.tracking
 import linajea.evaluation as e
 import logging
 import unittest
+import linajea
+import daisy
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -10,8 +12,8 @@ logging.getLogger('linajea.evaluation').setLevel(logging.DEBUG)
 
 class EvaluationTestCase(unittest.TestCase):
 
-    def get_tracks(self, cells, edges):
-        g = self.create_graph(cells, edges)
+    def get_tracks(self, cells, edges, roi):
+        g = self.create_graph(cells, edges, roi)
         tracks = g.get_tracks()
 
         str_x = "\nTracks:\n"
@@ -21,54 +23,56 @@ class EvaluationTestCase(unittest.TestCase):
         logger.debug(str_x)
         return tracks
 
-    def create_graph(self, cells, edges):
-        g = linajea.tracking.TrackGraph()
-        for cell in cells:
-            g.add_cell(cell)
-        for edge in edges:
-            g.add_cell_edge(edge)
-        return g
+    def create_graph(self, cells, edges, roi):
+        db = linajea.CandidateDatabase('test_eval', 'localhost')
+        graph = db[roi]
+        graph.add_nodes_from(cells)
+        graph.add_edges_from(edges)
+        tg = linajea.tracking.TrackGraph(graph_data=graph, frame_key='t')
+        return tg
 
     def getTrack1(self):
         cells = [
-                {'id': 1, 'position': [0, 0, 0, 0], 'frame': 0},
-                {'id': 2, 'position': [1, 0, 0, 0], 'frame': 1},
-                {'id': 3, 'position': [2, 0, 0, 0], 'frame': 2},
-                {'id': 4, 'position': [3, 0, 0, 0], 'frame': 3}
+                (1, {'t': 0, 'z': 0, 'y': 0, 'x': 0}),
+                (2, {'t': 1, 'z': 0, 'y': 0, 'x': 0}),
+                (3, {'t': 2, 'z': 0, 'y': 0, 'x': 0}),
+                (4, {'t': 3, 'z': 0, 'y': 0, 'x': 0}),
             ]
         edges = [
-            {'source': 2, 'target': 1},
-            {'source': 3, 'target': 2},
-            {'source': 4, 'target': 3}
+            (2, 1),
+            (3, 2),
+            (4, 3)
             ]
-        return cells, edges
+        roi = daisy.Roi((0, 0, 0, 0), (4, 4, 4, 4))
+        return cells, edges, roi
 
     def getDivisionTrack(self):
         cells = [
-                {'id': 1, 'position': [0, 0, 0, 0], 'frame': 0},
-                {'id': 2, 'position': [1, 0, 0, 0], 'frame': 1},
-                {'id': 3, 'position': [2, 0, 0, 0], 'frame': 2},
-                {'id': 4, 'position': [3, 0, 0, 0], 'frame': 3},
-                {'id': 5, 'position': [2, 3, 0, 0], 'frame': 2},
-                {'id': 6, 'position': [3, 3, 0, 0], 'frame': 3},
-                {'id': 7, 'position': [4, 3, 0, 0], 'frame': 4}
+                (1, {'t': 0, 'z': 0, 'y': 0, 'x': 0}),
+                (2, {'t': 1, 'z': 0, 'y': 0, 'x': 0}),
+                (3, {'t': 2, 'z': 0, 'y': 0, 'x': 0}),
+                (4, {'t': 3, 'z': 0, 'y': 0, 'x': 0}),
+                (5, {'t': 2, 'z': 3, 'y': 0, 'x': 0}),
+                (6, {'t': 3, 'z': 3, 'y': 0, 'x': 0}),
+                (7, {'t': 4, 'z': 3, 'y': 0, 'x': 0}),
             ]
         edges = [
-            {'source': 2, 'target': 1},
-            {'source': 3, 'target': 2},
-            {'source': 4, 'target': 3},
-            {'source': 5, 'target': 2},
-            {'source': 6, 'target': 5},
-            {'source': 7, 'target': 6}
+            (2, 1),
+            (3, 2),
+            (4, 3),
+            (5, 2),
+            (6, 5),
+            (7, 6),
             ]
-        return cells, edges
+        roi = daisy.Roi((0, 0, 0, 0), (5, 5, 5, 5))
+        return cells, edges, roi
 
     def test_perfect_matching(self):
-        cells, edges = self.getTrack1()
-        gt_tracks = self.get_tracks(cells, edges)
+        cells, edges, roi = self.getTrack1()
+        gt_tracks = self.get_tracks(cells, edges, roi)
         for cell in cells:
-            cell['position'][2] += 1
-        rec_tracks = self.get_tracks(cells, edges)
+            cell[1]['y'] += 1
+        rec_tracks = self.get_tracks(cells, edges, roi)
         match_output = e.match_tracks(gt_tracks, rec_tracks, 2)
         track_matches, cell_matches, splits, merges, fp, fn = match_output
 
@@ -88,11 +92,11 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(fn, 0)
 
     def test_perfect_evaluation(self):
-        cells, edges = self.getTrack1()
-        gt_tracks = self.get_tracks(cells, edges)
+        cells, edges, roi = self.getTrack1()
+        gt_tracks = self.get_tracks(cells, edges, roi)
         for cell in cells:
-            cell['position'][2] += 1
-        rec_tracks = self.get_tracks(cells, edges)
+            cell[1]['y'] += 1
+        rec_tracks = self.get_tracks(cells, edges, roi)
 
         scores = e.evaluate(gt_tracks, rec_tracks, 2)
         self.assertEqual(scores.num_gt_tracks, 1)
@@ -118,13 +122,13 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.num_fn_divisions, 0)
 
     def test_imperfect_matching(self):
-        cells, edges = self.getTrack1()
-        gt_tracks = self.get_tracks(cells, edges)
+        cells, edges, roi = self.getTrack1()
+        gt_tracks = self.get_tracks(cells, edges, roi)
         for cell in cells:
-            cell['position'][2] += 1
+            cell[1]['y'] += 1
         # introduce a split error
         del edges[1]
-        rec_tracks = self.get_tracks(cells, edges)
+        rec_tracks = self.get_tracks(cells, edges, roi)
         match_output = e.match_tracks(gt_tracks, rec_tracks, 2)
         track_matches, cell_matches, splits, merges, fp, fn = match_output
 
@@ -144,13 +148,13 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(fn, 0)
 
     def test_imperfect_evaluation(self):
-        cells, edges = self.getTrack1()
-        gt_tracks = self.get_tracks(cells, edges)
+        cells, edges, roi = self.getTrack1()
+        gt_tracks = self.get_tracks(cells, edges, roi)
         for cell in cells:
-            cell['position'][2] += 1
+            cell[1]['y'] += 1
         # introduce a split error
         del edges[1]
-        rec_tracks = self.get_tracks(cells, edges)
+        rec_tracks = self.get_tracks(cells, edges, roi)
 
         scores = e.evaluate(gt_tracks, rec_tracks, 2)
         self.assertEqual(scores.num_gt_tracks, 1)
@@ -176,18 +180,18 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.num_fn_divisions, 0)
 
     def test_division_matching(self):
-        cells, edges = self.getDivisionTrack()
+        cells, edges, roi = self.getDivisionTrack()
         # introduce a false positive edge
         gt_cells = cells.copy()
         gt_edges = edges.copy()
         del gt_cells[0]
         del gt_edges[0]
-        gt_tracks = self.get_tracks(gt_cells, gt_edges)
+        gt_tracks = self.get_tracks(gt_cells, gt_edges, roi)
         for cell in cells:
-            cell['position'][2] += 1
+            cell[1]['y'] += 1
         # introduce a split error
-        edges.remove({'source': 6, 'target': 5})
-        rec_tracks = self.get_tracks(cells, edges)
+        edges.remove((6, 5))
+        rec_tracks = self.get_tracks(cells, edges, roi)
         match_output = e.match_tracks(gt_tracks, rec_tracks, 2)
         track_matches, cell_matches, splits, merges, fp, fn = match_output
 
@@ -211,18 +215,18 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(fn, 0)
 
     def test_division_evaluation(self):
-        cells, edges = self.getDivisionTrack()
+        cells, edges, roi = self.getDivisionTrack()
         # introduce a false positive edge
         gt_cells = cells.copy()
         gt_edges = edges.copy()
         del gt_cells[0]
         del gt_edges[0]
-        gt_tracks = self.get_tracks(gt_cells, gt_edges)
+        gt_tracks = self.get_tracks(gt_cells, gt_edges, roi)
         for cell in cells:
-            cell['position'][2] += 1
+            cell[1]['y'] += 1
         # introduce a split error
-        edges.remove({'source': 6, 'target': 5})
-        rec_tracks = self.get_tracks(cells, edges)
+        edges.remove((6, 5))
+        rec_tracks = self.get_tracks(cells, edges, roi)
 
         scores = e.evaluate(gt_tracks, rec_tracks, 2)
         self.assertEqual(scores.num_gt_tracks, 1)
@@ -250,14 +254,14 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.num_fn_divisions, 0)
 
     def test_false_division_matching(self):
-        cells, edges = self.getDivisionTrack()
+        cells, edges, roi = self.getDivisionTrack()
         gt_cells = cells.copy()
         gt_edges = edges.copy()
-        gt_edges.remove({'source': 5, 'target': 2})
-        gt_tracks = self.get_tracks(gt_cells, gt_edges)
+        gt_edges.remove((5, 2))
+        gt_tracks = self.get_tracks(gt_cells, gt_edges, roi)
         for cell in cells:
-            cell['position'][2] += 1
-        rec_tracks = self.get_tracks(cells, edges)
+            cell[1]['y'] += 1
+        rec_tracks = self.get_tracks(cells, edges, roi)
         match_output = e.match_tracks(gt_tracks, rec_tracks, 2)
         track_matches, cell_matches, splits, merges, fp, fn = match_output
 
@@ -280,14 +284,14 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(fn, 0)
 
     def test_false_division_evaluation(self):
-        cells, edges = self.getDivisionTrack()
+        cells, edges, roi = self.getDivisionTrack()
         gt_cells = cells.copy()
         gt_edges = edges.copy()
-        gt_edges.remove({'source': 5, 'target': 2})
-        gt_tracks = self.get_tracks(gt_cells, gt_edges)
+        gt_edges.remove((5, 2))
+        gt_tracks = self.get_tracks(gt_cells, gt_edges, roi)
         for cell in cells:
-            cell['position'][2] += 1
-        rec_tracks = self.get_tracks(cells, edges)
+            cell[1]['y'] += 1
+        rec_tracks = self.get_tracks(cells, edges, roi)
 
         scores = e.evaluate(gt_tracks, rec_tracks, 2)
         self.assertEqual(scores.num_gt_tracks, 2)

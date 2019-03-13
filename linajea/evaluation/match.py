@@ -36,7 +36,9 @@ def match_tracks(tracks_x, tracks_y, matching_threshold):
 
             frame_nodes_x += frame_track_nodes_x
             positions_x += [
-                track_x.nodes[n]['position'][1:]
+                [track_x.nodes[n]['z'],
+                 track_x.nodes[n]['y'],
+                 track_x.nodes[n]['x']]
                 for n in frame_track_nodes_x
             ]
 
@@ -48,7 +50,9 @@ def match_tracks(tracks_x, tracks_y, matching_threshold):
 
             frame_nodes_y += frame_track_nodes_y
             positions_y += [
-                track_y.nodes[n]['position'][1:]
+                [track_y.nodes[n]['z'],
+                 track_y.nodes[n]['y'],
+                 track_y.nodes[n]['x']]
                 for n in frame_track_nodes_y
             ]
 
