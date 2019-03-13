@@ -13,12 +13,14 @@ class TrackGraph(nx.DiGraph):
 
             Optional graph data to pass to the networkx.Graph constructor as
             ``incoming_graph_data``. This can be used to populate a track graph
-            with entries from a generic networkx graph.
+            with entries from a generic networkx graph. For use in solver, this
+            must be a candidate graph, or something with the .roi attribute.
 
         frame_key (``string``, optional):
 
             The name of the node attribute that corresponds to the frame of the
             node. Defaults to "frame".
+
     '''
 
     def __init__(
@@ -32,6 +34,7 @@ class TrackGraph(nx.DiGraph):
         self.end = None
         self._cells_by_frame = {}
         self.frame_key = frame_key
+        self.roi = graph_data.roi
 
         if graph_data is not None:
             frames = [

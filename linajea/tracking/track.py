@@ -5,6 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class TrackingParameters(object):
 
     def __init__(self):
@@ -19,6 +20,12 @@ class TrackingParameters(object):
         self.cost_appear = 0
         self.cost_disappear = 0
         self.cost_split = 0
+
+        # max_cell_move
+        # nodes within this distance to the block boundary will not pay
+        # the appear and disappear costs
+        # (Should be < 1/2 the context in z/x/y)
+        self.max_cell_move = 0
 
         # node costs:
 
@@ -42,18 +49,19 @@ class TrackingParameters(object):
 
         # ONLY NMS MODEL:
 
-        # how to weigh the Euclidean distance between the predicted position and
-        # the actual position of cells for the costs of an edge
+        # how to weigh the Euclidean distance between the predicted position
+        # and the actual position of cells for the costs of an edge
         self.weight_prediction_distance_cost = 0
 
 
 def track(graph, parameters, selected_key, frame_key='frame'):
-
+    # assuming graph is a daisy subgraph
     if graph.number_of_nodes() == 0:
         return
 
     logger.info("Creating track graph...")
-    track_graph = TrackGraph(graph_data=graph, frame_key=frame_key)
+    track_graph = TrackGraph(graph_data=graph,
+                             frame_key=frame_key)
 
     logger.info("Creating solver...")
     solver = Solver(track_graph, parameters, selected_key)

@@ -4,11 +4,12 @@ import pylp
 
 logger = logging.getLogger(__name__)
 
+
 class Solver(object):
 
-    def __init__(self, graph, parameters, selected_key):
+    def __init__(self, track_graph, parameters, selected_key):
 
-        self.graph = graph
+        self.graph = track_graph
         self.parameters = parameters
         self.selected_key = selected_key
 
@@ -40,10 +41,12 @@ class Solver(object):
         logger.info("costs of solution: %f", solution.get_value())
 
         for v in self.graph.nodes:
-            self.graph.nodes[v][self.selected_key] = solution[self.node_selected[v]] > 0.5
+            self.graph.nodes[v][self.selected_key] = solution[
+                    self.node_selected[v]] > 0.5
 
         for e in self.graph.edges:
-            self.graph.edges[e][self.selected_key] = solution[self.edge_selected[e]] > 0.5
+            self.graph.edges[e][self.selected_key] = solution[
+                    self.edge_selected[e]] > 0.5
 
     def _create_indicators(self):
 
@@ -93,7 +96,20 @@ class Solver(object):
                 self.node_disappear[node],
                 0)
 
-        # node selection, appear, disappear, and split costs
+        # remove node appear and disappear costs at edge of roi
+        for node, data in self.graph.nodes(data=True):
+            if self._check_node_close_to_roi_edge(
+                    node,
+                    data,
+                    self.parameters.max_cell_move):
+                objective.set_coefficient(
+                        self.node_appear[node],
+                        0)
+                objective.set_coefficient(
+                        self.node_disappear[node],
+                        0)
+
+        # node selection and split costs
         for node in self.graph.nodes:
             objective.set_coefficient(
                 self.node_selected[node],
@@ -109,6 +125,28 @@ class Solver(object):
                 self._edge_costs(edge))
 
         self.objective = objective
+
+    def _check_node_close_to_roi_edge(self, node, data, distance):
+        '''Return true if node is within distance to the z,y,x edge
+        of the roi. Assumes 4D data with t,z,y,x'''
+        begin = self.graph.roi.get_begin()[1:]
+        end = self.graph.roi.get_end()[1:]
+        for index, dim in enumerate(['z', 'y', 'x']):
+            node_dim = data[dim]
+            begin_dim = begin[index]
+            end_dim = end[index]
+            if node_dim + distance >= end_dim or\
+                    node_dim - distance < begin_dim:
+                logger.debug("Node %d with value %s in dimension %s "
+                             "is within %s of range [%d, %d]" %
+                             (node, node_dim, dim, distance,
+                              begin_dim, end_dim))
+                return True
+        logger.debug("Node %d with position [%s, %s, %s] is not within "
+                     "%s to edge of roi %s" %
+                     (node, data['z'], data['y'], data['x'], distance,
+                         self.graph.roi))
+        return False
 
     def _node_costs(self, node):
 
@@ -209,7 +247,8 @@ class Solver(object):
         for node in self.graph.cells_by_frame(t):
 
             # we model this as three constraints:
-            #  sum(prev) -   node  = 0 # exactly one prev edge, iff node selected
+            #  sum(prev) -   node  = 0 # exactly one prev edge,
+            #                               iff node selected
             #  sum(next) - 2*node <= 0 # at most two next edges
             # -sum(next) +   node <= 0 # at least one next, iff node selected
 
@@ -227,9 +266,8 @@ class Solver(object):
                     pinned_to_1.append(edge)
             if len(pinned_to_1) > 1:
                 raise RuntimeError(
-                    "Node %d has more than one prev edge pinned: %s"%(
-                        node,
-                        pinned_to_1))
+                    "Node %d has more than one prev edge pinned: %s"
+                    % (node, pinned_to_1))
             # plus "appear"
             constraint_prev.set_coefficient(self.node_appear[node], 1)
 
