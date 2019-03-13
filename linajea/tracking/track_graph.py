@@ -19,12 +19,18 @@ class TrackGraph(nx.DiGraph):
 
             The name of the node attribute that corresponds to the frame of the
             node. Defaults to "frame".
+
+        roi (``daisy.Roi``, optional)
+
+            The region of interest that the graph covers. Used for solving.
+
     '''
 
     def __init__(
             self,
             graph_data=None,
-            frame_key='frame'):
+            frame_key='frame',
+            roi=None):
 
         super(TrackGraph, self).__init__(incoming_graph_data=graph_data)
 
@@ -32,6 +38,7 @@ class TrackGraph(nx.DiGraph):
         self.end = None
         self._cells_by_frame = {}
         self.frame_key = frame_key
+        self.roi = roi
 
         if graph_data is not None:
             frames = [
@@ -119,6 +126,9 @@ class TrackGraph(nx.DiGraph):
             graph = self.edge_subgraph(selected_edges)
 
         return [
-            TrackGraph(graph_data=graph.subgraph(g).copy())
+            TrackGraph(
+                graph_data=graph.subgraph(g).copy(),
+                frame_key=self.frame_key,
+                roi=self.roi)
             for g in nx.weakly_connected_components(graph)
         ]

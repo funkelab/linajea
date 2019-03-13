@@ -16,6 +16,7 @@ install-dev:
 	pip install -e .[full]
 	-rm -rf dist build linajea.egg-info
 
-.PHONY: test
-test:
-	python -m tests -v
+.PHONY: tests
+tests:
+	PY_MAJOR_VERSION=py`python -c 'import sys; print(sys.version_info[0])'` pytest -v --cov=linajea --cov-config=.coveragerc tests
+	flake8 daisy
