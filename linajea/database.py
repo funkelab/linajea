@@ -15,7 +15,10 @@ class CandidateDatabase(MongoDbGraphProvider):
             mongo_url,
             mode='r',
             total_roi=None,
-            endpoint_names=['source', 'target']):
+            endpoint_names=['source', 'target'],
+            parameters_id=None):
+        edge_coll = {str(parameters_id): ['selected']}\
+            if parameters_id else None
         super().__init__(
                 db_name,
                 host=mongo_url,
@@ -23,29 +26,18 @@ class CandidateDatabase(MongoDbGraphProvider):
                 total_roi=total_roi,
                 directed=True,
                 position_attribute=['t', 'z', 'y', 'x'],
-                endpoint_names=endpoint_names
+                endpoint_names=endpoint_names,
+                edge_attribute_collections=edge_coll
                 )
 
-    def get_nodes_and_edges(
+    def get_selected_graph(
             self,
-            roi,
-            require_selected=False,
-            key='selected'):
-        nodes = self.read_nodes(roi)
-        edges = self.read_edges(roi, nodes=nodes)
-        if require_selected:
-            filtered_edges = []
-            for edge in edges:
-                if key in edge and edge[key]:
-                    filtered_edges.append(edge)
-            u, v = self.endpoint_names
-            filtered_cell_ids = set([edge[u] for edge in filtered_edges] +
-                                    [edge[v] for edge in filtered_edges])
-            filtered_cells = [cell for cell in nodes
-                              if cell['id'] in filtered_cell_ids]
-            return filtered_cells, filtered_edges
-        else:
-            return nodes, edges
+            roi):
+        subgraph = self.get_graph(roi, edges_filter={'selected': True})
+        unattached_nodes = [node for node in subgraph.nodes()
+                            if subgraph.degree(node) == 0]
+        subgraph.remove_nodes_from(unattached_nodes)
+        return subgraph
 
     def get_parameters_id(self, tracking_parameters, fail_if_not_exists=False):
         '''Get id for parameter set from mongo collection.
