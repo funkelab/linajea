@@ -28,7 +28,7 @@ class WriteCells(gp.BatchFilter):
         if self.client is None:
             self.client = pymongo.MongoClient(host=self.db_host)
             self.db = self.client[self.db_name]
-            create_indices = 'nodes' not in self.db
+            create_indices = 'nodes' not in self.db.list_collection_names()
             self.cells = self.db['nodes']
             if create_indices:
                 self.cells.create_index(
