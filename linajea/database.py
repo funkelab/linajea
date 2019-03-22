@@ -19,6 +19,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             parameters_id=None):
         edge_coll = {str(parameters_id): ['selected']}\
             if parameters_id else None
+        self.parameters_id = parameters_id
         super().__init__(
                 db_name,
                 host=mongo_url,
@@ -38,6 +39,14 @@ class CandidateDatabase(MongoDbGraphProvider):
                             if subgraph.degree(node) == 0]
         subgraph.remove_nodes_from(unattached_nodes)
         return subgraph
+
+    def reset_selection(self):
+        if self.parameters_id:
+            self._MongoDbGraphProvider__connect()
+            self._MongoDbGraphProvider__open_db()
+            selected_edge_coll = self.database[
+                'edges_' + str(self.parameters_id)]
+            selected_edge_coll.drop()
 
     def get_parameters_id(self, tracking_parameters, fail_if_not_exists=False):
         '''Get id for parameter set from mongo collection.
