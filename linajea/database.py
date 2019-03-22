@@ -48,7 +48,12 @@ class CandidateDatabase(MongoDbGraphProvider):
                 'edges_' + str(self.parameters_id)]
             selected_edge_coll.drop()
 
-    def get_parameters_id(self, tracking_parameters, fail_if_not_exists=False):
+    def get_parameters_id(
+            self,
+            tracking_parameters,
+            block_size,
+            context,
+            fail_if_not_exists=False):
         '''Get id for parameter set from mongo collection.
         If fail_if_not_exists, fail if the parameter set isn't already there.
         The default is to assign a new id and write it to the collection.'''
@@ -58,6 +63,8 @@ class CandidateDatabase(MongoDbGraphProvider):
         try:
             params_collection = self.database['parameters']
             params_dict = tracking_parameters.__dict__
+            params_dict['block_size'] = block_size
+            params_dict['context'] = context
             find_result = params_collection.find_one(params_dict)
             if fail_if_not_exists:
                 assert find_result, "Did not find id for parameters %s"\
