@@ -177,7 +177,8 @@ class Solver(object):
             score_costs = 0
 
             prediction_distance_costs = (
-                self.graph.edges[edge]['prediction_distance'] *
+                (self.graph.edges[edge]['prediction_distance'] -
+                 self.parameters.threshold_edge_score) *
                 self.parameters.weight_prediction_distance_cost)
 
         # plus costs for the distance between the linked nodes
