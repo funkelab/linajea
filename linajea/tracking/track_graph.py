@@ -40,20 +40,29 @@ class TrackGraph(nx.DiGraph):
         self.frame_key = frame_key
         self.roi = roi
 
-        if graph_data is not None:
+        if graph_data is not None and len(graph_data.nodes) > 0:
             frames = [
                 self.nodes[cell][self.frame_key]
                 for cell in self.nodes
+                if self.frame_key in self.nodes[cell]
             ]
+            if len(frames) == 0 and len(self.nodes) > 0:
+                raise ValueError("Frame key %s not found in cells"
+                                 % self.frame_key)
+
             self.begin = min(frames)
             self.end = max(frames) + 1
             for cell in self.nodes:
+                if self.frame_key not in self.nodes[cell]:
+                    continue
                 t = self.nodes[cell][self.frame_key]
                 if t not in self._cells_by_frame:
                     self._cells_by_frame[t] = []
                 self._cells_by_frame[t].append(cell)
 
         for u, v in self.edges:
+            if self.frame_key not in self.nodes[v]:
+                continue
             if (
                     self.nodes[u][self.frame_key] <=
                     self.nodes[v][self.frame_key]):
@@ -124,6 +133,9 @@ class TrackGraph(nx.DiGraph):
                     and self.edges[e][selected_key])
             ]
             graph = self.edge_subgraph(selected_edges)
+
+        if len(self.nodes) == 0:
+            return []
 
         return [
             TrackGraph(
