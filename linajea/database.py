@@ -134,17 +134,20 @@ class CandidateDatabase(MongoDbGraphProvider):
         return score
 
     def write_score(self, parameters_id, score):
-        self._MongoDbGraphProvider__connect()
-        self._MongoDbGraphProvider__open_db()
         parameters = self.get_parameters(parameters_id)
         assert parameters is not None,\
             "No parameters with id %d" % parameters_id
+
+        self._MongoDbGraphProvider__connect()
+        self._MongoDbGraphProvider__open_db()
         try:
 
             score_collection = self.database['scores']
             eval_dict = {'_id': parameters_id}
             eval_dict.update(parameters)
             eval_dict.update(score.__dict__)
-            score_collection.insert_one(eval_dict)
+            score_collection.replace_one({'_id': parameters_id},
+                                         eval_dict,
+                                         upsert=True)
         finally:
             self._MongoDbGraphProvider__disconnect()
