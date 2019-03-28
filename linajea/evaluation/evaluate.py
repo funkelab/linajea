@@ -18,12 +18,14 @@ class Scores:
 
         # node scores
         self.num_gt_nodes = 0
+        self.num_gt_nodes_in_matched_tracks = 0
         self.num_matched_nodes = 0
         self.num_fp_nodes = 0
         self.num_fn_nodes = 0
 
         # edge scores
         self.num_gt_edges = 0
+        self.num_gt_edges_in_matched_tracks = 0
         self.num_matched_edges = 0
         self.num_fp_edges = 0
         self.num_fn_edges = 0
@@ -31,6 +33,7 @@ class Scores:
 
         # division scores
         self.num_gt_divisions = 0
+        self.num_gt_divisions_in_matched_tracks = 0
         self.num_matched_divisions = 0
         self.num_fp_divisions = 0
         self.num_fn_divisions = 0
@@ -48,18 +51,24 @@ num matches: %d
 
 NODE STATISTICS
      num gt: %d
+in matched
+     tracks: %d
 num matches: %d
         fps: %d
         fns: %d
 
 EDGE STATISTICS
      num gt: %d
+in matched
+     tracks: %d
 num matches: %d
         fps: %d
         fns: %d
 
 DIVISION STATISTICS
      num gt: %d
+in matched
+     tracks: %d
 num matches: %d
         fps: %d
         fns: %d
@@ -73,18 +82,21 @@ num matches: %d
 
             # node scores
             self.num_gt_nodes,
+            self.num_gt_nodes_in_matched_tracks,
             self.num_matched_nodes,
             self.num_fp_nodes,
             self.num_fn_nodes,
 
             # edge scores
             self.num_gt_edges,
+            self.num_gt_edges_in_matched_tracks,
             self.num_matched_edges,
             self.num_fp_edges,
             self.num_fn_edges,
 
             # division scores
             self.num_gt_divisions,
+            self.num_gt_divisions_in_matched_tracks,
             self.num_matched_divisions,
             self.num_fp_divisions,
             self.num_fn_divisions)
@@ -102,6 +114,8 @@ def evaluate(gt_tracks, rec_tracks, matching_threshold):
 
 def evaluate_matches(match_tracks_output, gt_tracks, rec_tracks):
     track_matches, cell_matches, s, m, fp, fn = match_tracks_output
+    logger.debug("Track matches: %s" % track_matches)
+    logger.debug("Cell matches: %s" % cell_matches)
 
     scores = Scores()
     # get ground truth statistics
@@ -137,19 +151,21 @@ def evaluate_matches(match_tracks_output, gt_tracks, rec_tracks):
         rec_tracks,
         track_matches,
         cell_matches)
+    scores.num_gt_nodes_in_matched_tracks = node_scores[0]
+    scores.num_matched_nodes = node_scores[1]
+    scores.num_fp_nodes = node_scores[2]
+    scores.num_fn_nodes = node_scores[3]
 
-    scores.num_matched_nodes = node_scores[0]
-    scores.num_fp_nodes = node_scores[1]
-    scores.num_fn_nodes = node_scores[2]
-
-    scores.num_matched_edges = edge_scores[0]
-    scores.num_fp_edges = edge_scores[1]
-    scores.num_fn_edges = edge_scores[2]
+    scores.num_gt_edges_in_matched_tracks = edge_scores[0]
+    scores.num_matched_edges = edge_scores[1]
+    scores.num_fp_edges = edge_scores[2]
+    scores.num_fn_edges = edge_scores[3]
 
     scores.num_gt_divisions = division_scores[0]
-    scores.num_matched_divisions = division_scores[1]
-    scores.num_fp_divisions = division_scores[2]
-    scores.num_fn_divisions = division_scores[3]
+    scores.num_gt_divisions_in_matched_tracks = division_scores[1]
+    scores.num_matched_divisions = division_scores[2]
+    scores.num_fp_divisions = division_scores[3]
+    scores.num_fn_divisions = division_scores[4]
 
     return scores
 
@@ -160,6 +176,7 @@ def evaluate_nodes(gt_tracks, rec_tracks, track_matches, cell_matches):
     gt_matched_tracks = [m[0] for m in track_matches]
     rec_matched_tracks = [m[1] for m in track_matches]
 
+    num_gt_nodes_in_matched_tracks = 0
     num_matches = 0
     num_fps = 0
     num_fns = 0
@@ -168,6 +185,7 @@ def evaluate_nodes(gt_tracks, rec_tracks, track_matches, cell_matches):
         if track_id not in gt_matched_tracks:
             continue
         for node in track.nodes:
+            num_gt_nodes_in_matched_tracks += 1
             if node in gt_matched_cells:
                 num_matches += 1
             else:
@@ -178,7 +196,7 @@ def evaluate_nodes(gt_tracks, rec_tracks, track_matches, cell_matches):
         for node in track.nodes:
             if node not in rec_matched_cells:
                 num_fps += 1
-    return num_matches, num_fps, num_fns
+    return num_gt_nodes_in_matched_tracks, num_matches, num_fps, num_fns
 
 
 def evaluate_edges(gt_tracks, rec_tracks, track_matches, cell_matches):
@@ -197,6 +215,7 @@ def evaluate_edges(gt_tracks, rec_tracks, track_matches, cell_matches):
             rec_tracks_to_matched_edges[rec_track] = []
         rec_tracks_to_matched_edges[rec_track] += gt_tracks[gt_track].edges
 
+    num_gt_edges_in_matched_tracks = 0
     num_matches = 0
     num_fps = 0
     num_fns = 0
@@ -205,6 +224,7 @@ def evaluate_edges(gt_tracks, rec_tracks, track_matches, cell_matches):
         if track_id not in gt_tracks_to_matched_edges:
             continue
         for u, v in track.edges:
+            num_gt_edges_in_matched_tracks += 1
             if u in gt_cells_to_rec and v in gt_cells_to_rec:
                 match_u = gt_cells_to_rec[u]
                 match_v = gt_cells_to_rec[v]
@@ -234,7 +254,7 @@ def evaluate_edges(gt_tracks, rec_tracks, track_matches, cell_matches):
             else:
                 num_fps += 1
 
-    return num_matches, num_fps, num_fns
+    return num_gt_edges_in_matched_tracks, num_matches, num_fps, num_fns
 
 
 def evaluate_divisions(gt_tracks, rec_tracks, track_matches, cell_matches):
@@ -244,6 +264,7 @@ def evaluate_divisions(gt_tracks, rec_tracks, track_matches, cell_matches):
     rec_matched_tracks = [m[1] for m in track_matches]
 
     num_gt_divisions = 0
+    num_gt_divisions_in_matched_tracks = 0
     num_matches = 0
     num_fps = 0
     num_fns = 0
@@ -252,8 +273,6 @@ def evaluate_divisions(gt_tracks, rec_tracks, track_matches, cell_matches):
     rec_parents = []
 
     for track_id, track in enumerate(gt_tracks):
-        if track_id not in gt_matched_tracks:
-            continue
         node_degrees = {node: degree for node, degree in track.in_degree()}
         logger.debug("Max degree for track %d: %d"
                      % (track_id, max(node_degrees.values())))
@@ -264,7 +283,9 @@ def evaluate_divisions(gt_tracks, rec_tracks, track_matches, cell_matches):
         parents = [node for node, degree in node_degrees.items()
                    if degree == 2]
         logger.debug("Parent nodes: %s" % parents)
-        gt_parents += parents
+        num_gt_divisions += len(parents)
+        if track_id in gt_matched_tracks:
+            gt_parents += parents
 
     for track_id, track in enumerate(rec_tracks):
         if track_id not in rec_matched_tracks:
@@ -272,7 +293,7 @@ def evaluate_divisions(gt_tracks, rec_tracks, track_matches, cell_matches):
         parents = [node for node in track.nodes if track.in_degree(node) == 2]
         rec_parents += parents
 
-    num_gt_divisions = len(gt_parents)
+    num_gt_divisions_in_matched_tracks = len(gt_parents)
     for parent in gt_parents:
         if gt_cells_to_rec[parent] in rec_parents:
             num_matches += 1
@@ -283,4 +304,5 @@ def evaluate_divisions(gt_tracks, rec_tracks, track_matches, cell_matches):
         if rec_cells_to_gt[parent] not in gt_parents:
             num_fps += 1
 
-    return num_gt_divisions, num_matches, num_fps, num_fns
+    return (num_gt_divisions, num_gt_divisions_in_matched_tracks,
+            num_matches, num_fps, num_fns)
