@@ -8,7 +8,7 @@ This container contains linajea lineage tracking software.
 
 Maintainer Jan Funke
 Name linajea
-Version v1.4.4
+Version v1.4.6
 
 
 %setup
@@ -53,9 +53,8 @@ pip install -r requirements.txt
 pip install .
 
 COMATCH_ROOT=/src/comatch
-COMATCH_REPOSITORY=https://github.com/cmalinmayor/comatch
-# quadmatch
-COMATCH_REVISION=84ab55b50857568e9f032c2a85f3564ae0d95801
+COMATCH_REPOSITORY=https://github.com/funkey/comatch
+COMATCH_REVISION=193ca3072ae27666c54939f4bb0a4911404f33d7
 
 mkdir -p ${COMATCH_ROOT}
 cd ${COMATCH_ROOT}
@@ -77,6 +76,8 @@ export PYTHONPATH=${DAISY_ROOT}:$PYTHONPATH
 export GUNPOWDER_ROOT=/src/gunpowder
 export PYTHONPATH=${GUNPOWDER_ROOT}:$PYTHONPATH
 export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
 
 %runscript
 exec /bin/bash "$@"
