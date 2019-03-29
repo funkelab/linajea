@@ -295,13 +295,15 @@ def evaluate_divisions(gt_tracks, rec_tracks, track_matches, cell_matches):
 
     num_gt_divisions_in_matched_tracks = len(gt_parents)
     for parent in gt_parents:
-        if gt_cells_to_rec[parent] in rec_parents:
+        if parent in gt_cells_to_rec and\
+                gt_cells_to_rec[parent] in rec_parents:
             num_matches += 1
         else:
             num_fns += 1
 
     for parent in rec_parents:
-        if rec_cells_to_gt[parent] not in gt_parents:
+        if parent not in rec_cells_to_gt or\
+                rec_cells_to_gt[parent] not in gt_parents:
             num_fps += 1
 
     return (num_gt_divisions, num_gt_divisions_in_matched_tracks,
