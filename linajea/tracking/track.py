@@ -8,50 +8,79 @@ logger = logging.getLogger(__name__)
 
 class TrackingParameters(object):
 
-    def __init__(self):
+    def __init__(
+            self,
+            model_type='default',
+            cost_appear=None,
+            cost_disappear=None,
+            cost_split=None,
+            max_cell_move=None,
+            threshold_node_score=None,
+            weight_node_score=None,
+            threshold_edge_score=None,
+            weight_distance_cost=None,
+            weight_prediction_distance_cost=None,
+            **kwargs):
 
         # "default" for the models that predict parent vectors only
         # "nms" for the non-max suppression models
-        self.model_type = 'default'
+        assert model_type in ['default', 'nms']
+        self.model_type = model_type
 
         # ALL MODEL TYPES:
 
         # track costs:
-        self.cost_appear = 0
-        self.cost_disappear = 0
-        self.cost_split = 0
+        assert cost_appear is not None, "Failed to specify cost_appear"
+        self.cost_appear = cost_appear
+        assert cost_disappear is not None, "Failed to specify cost_disappear"
+        self.cost_disappear = cost_disappear
+        assert cost_split is not None, "Failed to specify cost_split"
+        self.cost_split = cost_split
 
         # max_cell_move
         # nodes within this distance to the block boundary will not pay
         # the appear and disappear costs
         # (Should be < 1/2 the context in z/x/y)
-        self.max_cell_move = 0
+        assert max_cell_move is not None, "Failed to specify max_cell_move"
+        self.max_cell_move = max_cell_move
 
         # node costs:
 
         # nodes with scores below this threshold will have a positive cost,
         # above this threshold a negative cost
-        self.threshold_node_score = 1
+        assert threshold_node_score is not None,\
+            "Failed to specify threshold_node_score"
+        self.threshold_node_score = threshold_node_score
 
         # scaling factor after the conversion to costs above
-        self.weight_node_score = 0
+        assert weight_node_score is not None,\
+            "Failed to specify weight_node_score"
+        self.weight_node_score = weight_node_score
 
         # edge costs:
 
-        # how to weigh the Euclidean distance between cells for the costs of an
-        # edge
-        self.weight_distance_cost = 0
+        # similar to node costs, determines when a cost is positive/negative
+        assert threshold_edge_score is not None,\
+            "Failed to specify threshold_edge_score"
+        self.threshold_edge_score = threshold_edge_score
 
         # ONLY DEFAULT MODEL:
 
-        # similar to node costs, determines when a cost is positive/negative
-        self.threshold_edge_score = 1
+        # how to weigh the Euclidean distance between cells for the costs of an
+        # edge
+        if model_type == 'default':
+            assert weight_distance_cost is not None,\
+                "Failed to specify weight_distance_cost"
+        self.weight_distance_cost = weight_distance_cost
 
         # ONLY NMS MODEL:
 
         # how to weigh the Euclidean distance between the predicted position
         # and the actual position of cells for the costs of an edge
-        self.weight_prediction_distance_cost = 0
+        if model_type == 'nms':
+            assert weight_prediction_distance_cost is not None,\
+                "Failed to specify weight_prediction_distance_cost"
+        self.weight_prediction_distance_cost = weight_prediction_distance_cost
 
 
 def track(graph, parameters, selected_key, frame_key='frame'):
