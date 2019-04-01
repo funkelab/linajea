@@ -36,6 +36,7 @@ class Solver(object):
         solver.set_objective(self.objective)
         solver.set_constraints(self.constraints)
 
+        solver.set_num_threads(1)
         solution, message = solver.solve()
         logger.info(message)
         logger.info("costs of solution: %f", solution.get_value())

@@ -1,5 +1,5 @@
 Bootstrap: localimage
-From: /nrs/funke/singularity/funkey/pylp_base:v1.4.img
+From: /nrs/funke/singularity/linajea/pylp_base:v1.5.img
 
 %help
 This container contains linajea lineage tracking software.
@@ -8,7 +8,7 @@ This container contains linajea lineage tracking software.
 
 Maintainer Jan Funke
 Name linajea
-Version v1.4.6
+Version v1.5.0
 
 
 %setup
