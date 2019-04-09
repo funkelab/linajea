@@ -82,7 +82,7 @@ class CandidateDatabase(MongoDbGraphProvider):
         return params_id
 
     def insert_with_next_id(self, document, collection):
-        count_coll = self.database['meta']
+        count_coll = self.database['parameters']
 
         while True:
             max_id = count_coll.find_one_and_update(
