@@ -17,9 +17,8 @@ class CandidateDatabase(MongoDbGraphProvider):
             total_roi=None,
             endpoint_names=['source', 'target'],
             parameters_id=None):
-        edge_coll = {str(parameters_id): ['selected']}\
-            if parameters_id else None
         self.parameters_id = parameters_id
+        self.selected_key = 'selected_' + str(parameters_id)
         super().__init__(
                 db_name,
                 host=mongo_url,
@@ -27,26 +26,29 @@ class CandidateDatabase(MongoDbGraphProvider):
                 total_roi=total_roi,
                 directed=True,
                 position_attribute=['t', 'z', 'y', 'x'],
-                endpoint_names=endpoint_names,
-                edge_attribute_collections=edge_coll
+                endpoint_names=endpoint_names
                 )
 
     def get_selected_graph(
             self,
             roi):
-        subgraph = self.get_graph(roi, edges_filter={'selected': True})
+        subgraph = self.get_graph(roi, edges_filter={self.selected_key: True})
         unattached_nodes = [node for node in subgraph.nodes()
                             if subgraph.degree(node) == 0]
         subgraph.remove_nodes_from(unattached_nodes)
         return subgraph
 
     def reset_selection(self):
+        logger.info("Resetting solution for parameters_id %s"
+                    % self.parameters_id)
         if self.parameters_id:
             self._MongoDbGraphProvider__connect()
             self._MongoDbGraphProvider__open_db()
-            selected_edge_coll = self.database[
-                'edges_' + str(self.parameters_id)]
-            selected_edge_coll.drop()
+            edge_coll = self.database['edges']
+            edge_coll.bulk_write(
+                pymongo.UpdateMany({}, {'$unset': {self.selected_key, 1}}))
+        logger.info("Done resetting solution for parameters_id %s"
+                    % self.parameters_id)
 
     def get_parameters_id(
             self,
