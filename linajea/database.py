@@ -17,8 +17,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             total_roi=None,
             endpoint_names=['source', 'target'],
             parameters_id=None):
-        self.parameters_id = parameters_id
-        self.selected_key = 'selected_' + str(parameters_id)
+
         super().__init__(
                 db_name,
                 host=mongo_url,
@@ -28,6 +27,10 @@ class CandidateDatabase(MongoDbGraphProvider):
                 position_attribute=['t', 'z', 'y', 'x'],
                 endpoint_names=endpoint_names
                 )
+        self.parameters_id = None
+        self.selected_key = None
+        if parameters_id:
+            self.set_parameters_id(parameters_id)
 
     def get_selected_graph(
             self,
@@ -39,14 +42,16 @@ class CandidateDatabase(MongoDbGraphProvider):
         return subgraph
 
     def reset_selection(self):
+        if self.parameters_id is None:
+            logger.warn("No parameters id: cannot reset selection")
+            return
+
         logger.info("Resetting solution for parameters_id %s"
                     % self.parameters_id)
-        if self.parameters_id:
-            self._MongoDbGraphProvider__connect()
-            self._MongoDbGraphProvider__open_db()
-            edge_coll = self.database['edges']
-            edge_coll.bulk_write(
-                pymongo.UpdateMany({}, {'$unset': {self.selected_key, 1}}))
+        self._MongoDbGraphProvider__connect()
+        self._MongoDbGraphProvider__open_db()
+        edge_coll = self.database['edges']
+        edge_coll.update_many({}, {'$unset': {self.selected_key: ""}})
         logger.info("Done resetting solution for parameters_id %s"
                     % self.parameters_id)
 
@@ -58,7 +63,8 @@ class CandidateDatabase(MongoDbGraphProvider):
             fail_if_not_exists=False):
         '''Get id for parameter set from mongo collection.
         If fail_if_not_exists, fail if the parameter set isn't already there.
-        The default is to assign a new id and write it to the collection.'''
+        The default is to assign a new id and write it to the collection.
+        '''
         self._MongoDbGraphProvider__connect()
         self._MongoDbGraphProvider__open_db()
         params_id = None
@@ -118,6 +124,10 @@ class CandidateDatabase(MongoDbGraphProvider):
         finally:
             self._MongoDbGraphProvider__disconnect()
         return params
+
+    def set_parameters_id(self, parameters_id):
+        self.parameters_id = int(parameters_id)
+        self.selected_key = 'selected_' + str(self.parameters_id)
 
     def get_score(self, parameters_id):
         self._MongoDbGraphProvider__connect()
