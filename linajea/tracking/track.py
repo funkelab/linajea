@@ -83,7 +83,7 @@ class TrackingParameters(object):
         self.weight_prediction_distance_cost = weight_prediction_distance_cost
 
 
-def track(graph, parameters, selected_key, frame_key='frame'):
+def track(graph, parameters, selected_key, frame_key='t'):
     # assuming graph is a daisy subgraph
     if graph.number_of_nodes() == 0:
         return
