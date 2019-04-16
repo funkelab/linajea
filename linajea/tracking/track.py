@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from .solver import Solver
 from .track_graph import TrackGraph
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,9 @@ def track(graph, parameters, selected_key, frame_key='t'):
     solver = Solver(track_graph, parameters, selected_key)
 
     logger.info("Solving...")
+    start_time = time.time()
     solver.solve()
+    logger.info("Solving ILP took %s seconds" % (time.time() - start_time))
 
     for cell, data in graph.nodes(data=True):
         data[selected_key] = track_graph.nodes[cell][selected_key]
