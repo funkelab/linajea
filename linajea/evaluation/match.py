@@ -25,8 +25,8 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
     begin = min(track_graph_x.get_frames()[0], track_graph_x.get_frames()[0])
     end = max(track_graph_x.get_frames()[1], track_graph_x.get_frames()[1]) + 1
 
-    edges_x = list(track_graph_x.edges())
-    edges_y = list(track_graph_y.edges())
+    edges_x = [(int(u), int(v)) for u, v in track_graph_x.edges()]
+    edges_y = [(int(u), int(v)) for u, v in track_graph_y.edges()]
 
     # a dictionary from nodes in x to a list of
     # (neighboring node in y, distance)
@@ -112,6 +112,8 @@ def get_edge_costs(edges_x, edges_y, node_pairs_xy):
         vys = [e[0] for e in vys_and_distances]
 
         for uy, u_distance in uys:
+            if uy not in edges_y_by_source:
+                continue
             v, edge_id_y = edges_y_by_source[uy]
             try:
                 i = vys.index(v)

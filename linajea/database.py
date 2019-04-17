@@ -87,7 +87,7 @@ class CandidateDatabase(MongoDbGraphProvider):
         finally:
             self._MongoDbGraphProvider__disconnect()
 
-        return params_id
+        return int(params_id)
 
     def insert_with_next_id(self, document, collection):
         count_coll = self.database['parameters']
