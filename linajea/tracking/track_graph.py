@@ -29,7 +29,7 @@ class TrackGraph(nx.DiGraph):
     def __init__(
             self,
             graph_data=None,
-            frame_key='frame',
+            frame_key='t',
             roi=None):
 
         super(TrackGraph, self).__init__(incoming_graph_data=graph_data)
