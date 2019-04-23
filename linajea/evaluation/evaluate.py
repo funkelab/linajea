@@ -1,5 +1,6 @@
 from .match import match_edges
 import logging
+import networkx as nx
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +15,10 @@ EDGE STATISTICS
 num matches: %d
         fps: %d
         fns: %d
+  precision: %f
+     recall: %f
+    f-score: %f
+   f2-score: %f
 
 TRACK STATISTICS
       num gt
@@ -22,13 +27,18 @@ TRACK STATISTICS
  match/total: %d / %d
     edge fps
  in matched : %d
-track breaks: %d
+ avg segment: %f
+ identity sw: %d
          """ % (
             # edge scores
             self.num_gt_edges,
             self.num_matched_edges,
             self.num_fp_edges,
             self.num_fn_edges,
+            self.precision,
+            self.recall,
+            self.f_score,
+            self.f2_score,
 
             # track stats
             self.num_gt_matched_tracks,
@@ -36,13 +46,14 @@ track breaks: %d
             self.num_rec_matched_tracks,
             self.num_rec_tracks,
             self.num_edge_fps_in_matched_tracks,
-            self.num_track_breaks,
+            self.avg_segment_length,
+            self.num_identity_switches,
             )
 
 
 def evaluate(gt_track_graph, rec_track_graph, matching_threshold):
 
-    logger.info("Matching GT tracks to REC track...")
+    logger.info("Matching GT edges to REC edges...")
     gt_edges, rec_edges, edge_matches = match_edges(
         gt_track_graph,
         rec_track_graph,
@@ -57,64 +68,143 @@ def evaluate(gt_track_graph, rec_track_graph, matching_threshold):
                            for gt_ind, rec_ind in edge_matches]
 
     get_track_related_statistics(gt_track_graph, rec_track_graph, scores)
+    add_f_score(scores)
     return scores
 
 
 def get_track_related_statistics(
-        gt_track_graph,
-        rec_track_graph,
+        x_track_graph,
+        y_track_graph,
         scores
         ):
-    gt_tracks = gt_track_graph.get_tracks()
-    rec_tracks = rec_track_graph.get_tracks()
-
-    scores.num_gt_tracks = len(gt_tracks)
-    scores.num_rec_tracks = len(rec_tracks)
-
-    num_gt_matched_tracks = 0
-    num_rec_matched_tracks = 0
-
-    num_edge_fps_in_matched_tracks = 0
-    num_track_breaks = 0
-
+    logger.info("Getting track related statistics")
     edge_matches = scores.edge_matches
-    x_to_y_edges = {x: y for x, y in edge_matches}
-    y_to_x_edges = {y: x for x, y in edge_matches}
 
+    # get tracks
+    x_tracks = x_track_graph.get_tracks()
+    y_tracks = y_track_graph.get_tracks()
+
+    # get basic track stats
+    scores.num_gt_tracks = len(x_tracks)
+    scores.num_rec_tracks = len(y_tracks)
+
+    # set starting values
+    scores.num_gt_matched_tracks = 0
+    scores.num_rec_matched_tracks = 0
+    scores.num_edge_fps_in_matched_tracks = 0
+    scores.num_identity_switches = 0
+    reconstruction_lengths = []
+
+    # add y track label to x edges
+    logger.info("Adding matched track label to gt edges")
     edges_to_track_id_y = {}
-    for index, track in enumerate(rec_tracks):
+    for index, track in enumerate(y_tracks):
         for edge in track.edges():
             edges_to_track_id_y[edge] = index
+    x_edges_to_y_track_ids = {}
+    for x_edge, y_edge in edge_matches:
+        x_edges_to_y_track_ids[x_edge] = edges_to_track_id_y[y_edge]
 
-    for gt_track in gt_tracks:
-        match_index = -1
+    for track in x_tracks:
         matched = False
-        for edge in gt_track.edges():
-            if edge in x_to_y_edges.keys():
-                matched = True
-                match_edge = x_to_y_edges[edge]
-                new_match_index = edges_to_track_id_y[match_edge]
-                if match_index == -1:
-                    match_index = new_match_index
-                elif match_index != new_match_index:
-                    num_track_breaks += 1
-                    match_index = new_match_index
-        if matched:
-            num_gt_matched_tracks += 1
-
-    for rec_track in rec_tracks:
-        matched = False
-        unmatched_edges = 0
-        for edge in rec_track.edges():
-            if edge in y_to_x_edges.keys():
+        for edge in track.edges():
+            if edge in x_edges_to_y_track_ids:
+                label = x_edges_to_y_track_ids[edge]
                 matched = True
             else:
-                unmatched_edges += 1
+                label = -1
+            track.edges[edge]['y_track_id'] = label
         if matched:
-            num_rec_matched_tracks += 1
-            num_edge_fps_in_matched_tracks += unmatched_edges
+            scores.num_gt_matched_tracks += 1
 
-    scores.num_gt_matched_tracks = num_gt_matched_tracks
-    scores.num_rec_matched_tracks = num_rec_matched_tracks
-    scores.num_edge_fps_in_matched_tracks = num_edge_fps_in_matched_tracks
-    scores.num_track_breaks = num_track_breaks
+    matched_y_edges = set(y for x, y in edge_matches)
+
+    logger.info("Getting identity switches and segment lengths")
+    for x_track in x_tracks:
+        num_identity_switches = get_identity_switches(x_track)
+        segment_lengths = get_segment_lengths(x_track)
+        scores.num_identity_switches += num_identity_switches
+        reconstruction_lengths.extend(segment_lengths)
+    scores.avg_segment_length = float(
+            sum(reconstruction_lengths)) / len(reconstruction_lengths)
+
+    logger.info("Getting information about rec matched tracks")
+    for y_track_index in set(x_edges_to_y_track_ids.values()):
+        y_track = y_tracks[y_track_index]
+        unmatched_edges = 0
+        for edge in y_track.edges():
+            if edge not in matched_y_edges:
+                unmatched_edges += 1
+        scores.num_rec_matched_tracks += 1
+        scores.num_edge_fps_in_matched_tracks += unmatched_edges
+
+
+def get_identity_switches(track):
+    frames = track.get_frames()
+    start_cell = track.cells_by_frame(frames[0])
+    assert len(start_cell) == 1
+    start_cell = start_cell[0]
+    next_edges = list(track.next_edges(start_cell))
+    return get_switches_helper(track, next_edges, None)
+
+
+def get_switches_helper(track, next_edges, prev_y_track_id):
+    num_identity_switches = 0
+
+    while len(next_edges) == 1:
+        next_edge = next_edges[0]
+        y_track_id = track.edges[next_edge]['y_track_id']
+
+        if y_track_id == -1:
+            child = next_edge[0]
+            next_edges = list(track.next_edges(child))
+            continue
+        elif prev_y_track_id is not None and prev_y_track_id != y_track_id:
+            num_identity_switches += 1
+        child = next_edge[0]
+        next_edges = list(track.next_edges(child))
+        prev_y_track_id = y_track_id
+
+    if len(next_edges) == 0:
+        return num_identity_switches
+    elif len(next_edges) == 2:
+        # special case: nothing is matched before the division
+        if prev_y_track_id is None and\
+                track.edges[next_edges[0]]['y_track_id'] !=\
+                track.edges[next_edges[1]]['y_track_id']:
+            assert num_identity_switches == 0
+            num_identity_switches = 1
+        return num_identity_switches +\
+            get_switches_helper(track, [next_edges[0]], prev_y_track_id) +\
+            get_switches_helper(track, [next_edges[1]], prev_y_track_id)
+
+
+def add_f_score(scores):
+    tp = scores.num_matched_edges
+    fp = scores.num_edge_fps_in_matched_tracks
+    fn = scores.num_fn_edges
+
+    scores.precision = tp / (tp + fp)
+    scores.recall = tp / (tp + fn)
+    scores.f_score = 2 * scores.precision * scores.recall / (
+                     scores.precision + scores.recall)
+    scores.f2_score = 5 * scores.precision * scores.recall / (
+                     4 * scores.precision + scores.recall)
+
+
+def get_segment_lengths(x_track):
+    lengths = []
+    subgraphs = {}
+    for u, v, data in x_track.edges(data=True):
+        label = data['y_track_id']
+        if label != -1:
+            if label not in subgraphs.keys():
+                subgraphs[label] = nx.Graph()
+            subgraphs[label].add_edge(u, v)
+
+    for subgraph in subgraphs.values():
+        for c in nx.connected_components(subgraph):
+            component = subgraph.subgraph(c)
+            lengths.append(component.number_of_edges())
+
+    return lengths
