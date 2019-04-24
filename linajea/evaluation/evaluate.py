@@ -1,6 +1,7 @@
 from .match import match_edges
 import logging
 import networkx as nx
+from collections import deque
 
 logger = logging.getLogger(__name__)
 
@@ -10,7 +11,7 @@ class Scores:
     def __repr__(self):
 
         return """\
-EDGE STATISTICS
+                EDGE STATISTICS
      num gt: %d
 num matches: %d
         fps: %d
@@ -28,36 +29,44 @@ TRACK STATISTICS
     edge fps
  in matched : %d
  avg segment: %f
- identity sw: %d
-         """ % (
-            # edge scores
-            self.num_gt_edges,
-            self.num_matched_edges,
-            self.num_fp_edges,
-            self.num_fn_edges,
-            self.precision,
-            self.recall,
-            self.f_score,
-            self.f2_score,
 
-            # track stats
-            self.num_gt_matched_tracks,
-            self.num_gt_tracks,
-            self.num_rec_matched_tracks,
-            self.num_rec_tracks,
-            self.num_edge_fps_in_matched_tracks,
-            self.avg_segment_length,
-            self.num_identity_switches,
-            )
+DIVISION STATISTICS
+gt_divisions: %d
+rec_divisions: %d
+fp_divisions: %d
+         """ % (
+                 # edge scores
+                 self.num_gt_edges,
+                 self.num_matched_edges,
+                 self.num_fp_edges,
+                 self.num_fn_edges,
+                 self.precision,
+                 self.recall,
+                 self.f_score,
+                 self.f2_score,
+
+                 # track stats
+                 self.num_gt_matched_tracks,
+                 self.num_gt_tracks,
+                 self.num_rec_matched_tracks,
+                 self.num_rec_tracks,
+                 self.num_edge_fps_in_matched_tracks,
+                 self.avg_segment_length,
+
+                 # division stats
+                 self.num_gt_divisions,
+                 self.num_rec_divisions_in_matched_tracks,
+                 self.num_fp_divisions,
+                 )
 
 
 def evaluate(gt_track_graph, rec_track_graph, matching_threshold):
 
     logger.info("Matching GT edges to REC edges...")
     gt_edges, rec_edges, edge_matches = match_edges(
-        gt_track_graph,
-        rec_track_graph,
-        matching_threshold)
+            gt_track_graph,
+            rec_track_graph,
+            matching_threshold)
 
     scores = Scores()
     scores.num_gt_edges = len(gt_edges)
@@ -92,44 +101,149 @@ def get_track_related_statistics(
     scores.num_gt_matched_tracks = 0
     scores.num_rec_matched_tracks = 0
     scores.num_edge_fps_in_matched_tracks = 0
-    scores.num_identity_switches = 0
+    scores.num_fp_divisions = 0
     reconstruction_lengths = []
 
-    # add y track label to x edges
-    logger.info("Adding matched track label to gt edges")
+    # set up data structures
     edges_to_track_id_y = {}
     for index, track in enumerate(y_tracks):
         for edge in track.edges():
             edges_to_track_id_y[edge] = index
-    x_edges_to_y_track_ids = {}
+    x_edges_to_y_edges = {}
     for x_edge, y_edge in edge_matches:
-        x_edges_to_y_track_ids[x_edge] = edges_to_track_id_y[y_edge]
+        x_edges_to_y_edges[x_edge] = y_edge
+
+    matched_y_track_ids = set()
 
     for track in x_tracks:
         matched = False
-        for edge in track.edges():
-            if edge in x_edges_to_y_track_ids:
-                label = x_edges_to_y_track_ids[edge]
+        for x_edge in track.edges():
+            if x_edge in x_edges_to_y_edges:
+                label = edges_to_track_id_y[x_edges_to_y_edges[x_edge]]
                 matched = True
+                matched_y_track_ids.add(label)
             else:
                 label = -1
-            track.edges[edge]['y_track_id'] = label
+            track.edges[x_edge]['y_track_id'] = label
         if matched:
             scores.num_gt_matched_tracks += 1
 
     matched_y_edges = set(y for x, y in edge_matches)
 
-    logger.info("Getting identity switches and segment lengths")
+    logger.info("Getting segment lengths")
     for x_track in x_tracks:
-        num_identity_switches = get_identity_switches(x_track)
-        segment_lengths = get_segment_lengths(x_track)
-        scores.num_identity_switches += num_identity_switches
+
+        # get error free lengths
+        segment_lengths = []
+        start_cells = deque(x_track.cells_by_frame(x_track.get_frames()[0]))
+        assert len(start_cells) == 1
+        while len(start_cells) > 0:
+            start_cell = start_cells.popleft()
+            if start_cell not in x_track.nodes:
+                continue
+            next_edges = x_track.next_edges(start_cell)
+            next_edges = deque([(edge, None) for edge in next_edges])
+            length = 0
+            while len(next_edges) > 0:
+                next_edge, prev_cell_match = next_edges.pop()
+                source, target = next_edge
+
+                if next_edge not in x_edges_to_y_edges:
+                    # false negative, no next edge in this segment
+                    # add source (later cell) to start_cells
+                    start_cells.append(source)
+                    continue
+
+                edge_match = x_edges_to_y_edges[next_edge]
+                source_match, target_match = edge_match
+
+                if prev_cell_match is not None and\
+                        prev_cell_match != target_match:
+                    # identity switch - no next edge in this segment
+                    # add target (earlier cell) to start_cells
+                    start_cells.append(target)
+                    continue
+
+                matched_track = y_tracks[edges_to_track_id_y[edge_match]]
+                next_edges_in_matched_track = list(
+                        matched_track.next_edges(target_match))
+
+                if prev_cell_match is not None and\
+                        len(next_edges_in_matched_track) > 1:
+                    # division in matched track
+                    assert edge_match in next_edges_in_matched_track
+                    next_edges_in_matched_track.remove(edge_match)
+                    assert len(next_edges_in_matched_track) == 1
+                    other_edge_in_matched = next_edges_in_matched_track[0]
+                    if other_edge_in_matched not in matched_y_edges:
+                        # false positive division, no next edge in this segment
+                        # add target (earlier cell) to start_cells
+                        scores.num_fp_divisions += 1
+                        start_cells.append(target)
+                        continue
+
+                    x_target_next_edges = list(x_track.next_edges(target))
+                    if len(x_target_next_edges) == 1:
+                        # false positive division, no next edge in this segment
+                        # add target (earlier cell) to start_cells
+                        scores.num_fp_divisions += 1
+                        start_cells.append(target)
+                        continue
+
+                    assert len(x_target_next_edges) == 2
+                    assert next_edge in x_target_next_edges
+                    x_target_next_edges.remove(next_edge)
+                    x_division_other_edge = x_target_next_edges[0]
+                    if x_division_other_edge not in x_edges_to_y_edges or\
+                            x_edges_to_y_edges[x_division_other_edge] !=\
+                            other_edge_in_matched:
+                        # false positive division, no next edge in this segment
+                        # add target (earlier cell) to start_cells
+                        scores.num_fp_divisions += 1
+                        start_cells.append(target)
+                        continue
+
+                # edge continues segment
+                # add one to length of segment
+                # add next edges to queue for this segment
+                length += 1
+                continuing_edges = x_track.next_edges(source)
+                for cont_edge in continuing_edges:
+                    next_edges.append((cont_edge, source_match))
+
+            # no more edges in this segment
+            if length > 0:
+                segment_lengths.append(length)
+        # add track stats to overall
         reconstruction_lengths.extend(segment_lengths)
+
     scores.avg_segment_length = float(
-            sum(reconstruction_lengths)) / len(reconstruction_lengths)
+        sum(reconstruction_lengths)) / len(reconstruction_lengths)
+
+    # division stats
+    scores.num_gt_divisions = 0
+    scores.num_rec_divisions_in_matched_tracks = 0
+
+    for track_id, track in enumerate(x_tracks):
+        node_degrees = {node: degree for node, degree in track.in_degree()}
+        logger.debug("Max degree for track %d: %d"
+                     % (track_id, max(node_degrees.values())))
+        assert max(node_degrees.values()) <= 2,\
+            ("Max in degree should be less than 2, "
+             "got %d in track %d"
+             % (max(node_degrees.values()), track_id))
+        parents = [node for node, degree in node_degrees.items()
+                   if degree == 2]
+        logger.debug("Parent nodes: %s" % parents)
+        scores.num_gt_divisions += len(parents)
+
+    for track_id in matched_y_track_ids:
+        track = y_tracks[track_id]
+        parents = [node for node in track.nodes if track.in_degree(node) == 2]
+        scores.num_rec_divisions_in_matched_tracks += len(parents)
 
     logger.info("Getting information about rec matched tracks")
-    for y_track_index in set(x_edges_to_y_track_ids.values()):
+    for y_track_index in matched_y_track_ids:
         y_track = y_tracks[y_track_index]
         unmatched_edges = 0
         for edge in y_track.edges():
@@ -137,46 +251,6 @@ def get_track_related_statistics(
                 unmatched_edges += 1
         scores.num_rec_matched_tracks += 1
         scores.num_edge_fps_in_matched_tracks += unmatched_edges
-
-
-def get_identity_switches(track):
-    frames = track.get_frames()
-    start_cell = track.cells_by_frame(frames[0])
-    assert len(start_cell) == 1
-    start_cell = start_cell[0]
-    next_edges = list(track.next_edges(start_cell))
-    return get_switches_helper(track, next_edges, None)
-
-
-def get_switches_helper(track, next_edges, prev_y_track_id):
-    num_identity_switches = 0
-
-    while len(next_edges) == 1:
-        next_edge = next_edges[0]
-        y_track_id = track.edges[next_edge]['y_track_id']
-
-        if y_track_id == -1:
-            child = next_edge[0]
-            next_edges = list(track.next_edges(child))
-            continue
-        elif prev_y_track_id is not None and prev_y_track_id != y_track_id:
-            num_identity_switches += 1
-        child = next_edge[0]
-        next_edges = list(track.next_edges(child))
-        prev_y_track_id = y_track_id
-
-    if len(next_edges) == 0:
-        return num_identity_switches
-    elif len(next_edges) == 2:
-        # special case: nothing is matched before the division
-        if prev_y_track_id is None and\
-                track.edges[next_edges[0]]['y_track_id'] !=\
-                track.edges[next_edges[1]]['y_track_id']:
-            assert num_identity_switches == 0
-            num_identity_switches = 1
-        return num_identity_switches +\
-            get_switches_helper(track, [next_edges[0]], prev_y_track_id) +\
-            get_switches_helper(track, [next_edges[1]], prev_y_track_id)
 
 
 def add_f_score(scores):
@@ -187,12 +261,12 @@ def add_f_score(scores):
     scores.precision = tp / (tp + fp)
     scores.recall = tp / (tp + fn)
     scores.f_score = 2 * scores.precision * scores.recall / (
-                     scores.precision + scores.recall)
+            scores.precision + scores.recall)
     scores.f2_score = 5 * scores.precision * scores.recall / (
-                     4 * scores.precision + scores.recall)
+            4 * scores.precision + scores.recall)
 
 
-def get_segment_lengths(x_track):
+def get_error_free_lengths(x_track):
     lengths = []
     subgraphs = {}
     for u, v, data in x_track.edges(data=True):

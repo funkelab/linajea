@@ -85,7 +85,6 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.num_rec_tracks, 1)
         self.assertEqual(scores.num_edge_fps_in_matched_tracks, 0)
         self.assertEqual(scores.avg_segment_length, 3)
-        self.assertEqual(scores.num_identity_switches, 0)
 
     def test_imperfect_evaluation(self):
         cells, edges, roi = self.getTrack1()
@@ -107,7 +106,6 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.num_rec_tracks, 2)
         self.assertEqual(scores.num_edge_fps_in_matched_tracks, 0)
         self.assertEqual(scores.avg_segment_length, 1)
-        self.assertEqual(scores.num_identity_switches, 1)
 
     def test_fn_division_evaluation(self):
         cells, edges, roi = self.getDivisionTrack()
@@ -131,7 +129,9 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.num_rec_tracks, 2)
         self.assertEqual(scores.num_edge_fps_in_matched_tracks, 0)
         self.assertEqual(scores.avg_segment_length, 2.5)
-        self.assertEqual(scores.num_identity_switches, 1)
+        self.assertEqual(scores.num_gt_divisions, 1)
+        self.assertEqual(scores.num_rec_divisions_in_matched_tracks, 0)
+        self.assertEqual(scores.num_fp_divisions, 0)
 
     def test_fn_division_evaluation2(self):
         cells, edges, roi = self.getDivisionTrack()
@@ -158,4 +158,32 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.num_rec_tracks, 2)
         self.assertEqual(scores.num_edge_fps_in_matched_tracks, 1)
         self.assertEqual(scores.avg_segment_length, 2)
-        self.assertEqual(scores.num_identity_switches, 1)
+        self.assertEqual(scores.num_gt_divisions, 1)
+        self.assertEqual(scores.num_rec_divisions_in_matched_tracks, 0)
+        self.assertEqual(scores.num_fp_divisions, 0)
+
+    def test_fp_division_evaluation(self):
+        cells, edges, roi = self.getDivisionTrack()
+        gt_cells = cells.copy()
+        gt_edges = edges.copy()
+        # remove division from gt
+        gt_edges.remove((5, 2))
+        gt_track_graph = self.create_graph(gt_cells, gt_edges, roi)
+        for cell in cells:
+            cell[1]['y'] += 1
+        rec_track_graph = self.create_graph(cells, edges, roi)
+        scores = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2)
+
+        self.assertEqual(scores.num_matched_edges, 5)
+        self.assertEqual(scores.num_fp_edges, 1)
+        self.assertEqual(scores.num_fn_edges, 0)
+        self.assertEqual(scores.num_gt_tracks, 2)
+        self.assertEqual(scores.num_gt_matched_tracks, 2)
+        self.assertEqual(scores.num_rec_matched_tracks, 1)
+        self.assertEqual(scores.num_rec_tracks, 1)
+        self.assertEqual(scores.num_edge_fps_in_matched_tracks, 1)
+        self.assertAlmostEqual(scores.avg_segment_length, 5.0/3.0)
+        self.assertEqual(scores.num_gt_divisions, 0)
+        self.assertEqual(scores.num_rec_divisions_in_matched_tracks, 1)
+        self.assertEqual(scores.num_fp_divisions, 1)
