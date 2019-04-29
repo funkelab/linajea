@@ -35,7 +35,10 @@ class CandidateDatabase(MongoDbGraphProvider):
     def get_selected_graph(
             self,
             roi):
-        subgraph = self.get_graph(roi, edges_filter={self.selected_key: True})
+        subgraph = self.get_graph(
+                roi,
+                edges_filter={self.selected_key: True},
+                edge_attrs=[self.selected_key])
         unattached_nodes = [node for node in subgraph.nodes()
                             if subgraph.degree(node) == 0]
         subgraph.remove_nodes_from(unattached_nodes)
