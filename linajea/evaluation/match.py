@@ -79,8 +79,10 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
             node_pairs_xy[node_x] = node_x_neighbors
 
     edge_costs = get_edge_costs(edges_x, edges_y, node_pairs_xy)
+    y_edges_in_range = set(edge[1] for edge in edge_costs.keys())
     edge_matches, _ = match(edge_costs, 2*matching_threshold + 1)
-    return edges_x, edges_y, edge_matches
+    edge_fps = len(y_edges_in_range) - len(edge_matches)
+    return edges_x, edges_y, edge_matches, edge_fps
 
 
 def get_edge_costs(edges_x, edges_y, node_pairs_xy):
