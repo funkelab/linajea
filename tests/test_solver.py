@@ -40,15 +40,17 @@ class TestSolver(unittest.TestCase):
                 'localhost')
         roi = daisy.Roi((0, 0, 0, 0), (4, 5, 5, 5))
         graph = graph_provider[roi]
-        parameters = linajea.tracking.TrackingParameters()
-        parameters.cost_appear = 2.0
-        parameters.cost_disappear = 2.0
-        parameters.cost_split = 0
-        parameters.weight_distance_cost = 0.1
-        parameters.weight_node_score = 1.0
-        parameters.threshold_node_score = 0.0
-        parameters.threshold_edge_score = 0.0
-        parameters.max_cell_move = 1.0
+        ps = {
+                "cost_appear": 2.0,
+                "cost_disappear": 2.0,
+                "cost_split": 0,
+                "weight_distance_cost": 0.1,
+                "weight_node_score": 1.0,
+                "threshold_node_score": 0.0,
+                "threshold_edge_score": 0.0,
+                "max_cell_move": 1.0,
+            }
+        parameters = linajea.tracking.TrackingParameters(**ps)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)
@@ -99,14 +101,17 @@ class TestSolver(unittest.TestCase):
                 'localhost')
         roi = daisy.Roi((0, 0, 0, 0), (5, 5, 5, 5))
         graph = graph_provider[roi]
-        parameters = linajea.tracking.TrackingParameters()
-        parameters.cost_appear = 1.0
-        parameters.cost_disappear = 1.0
-        parameters.cost_split = 0
-        parameters.weight_distance_cost = 0.1
-        parameters.weight_node_score = 1.0
-        parameters.threshold_node_score = 0.0
-        parameters.threshold_edge_score = 0.0
+        ps = {
+                "cost_appear": 1.0,
+                "cost_disappear": 1.0,
+                "cost_split": 0,
+                "weight_distance_cost": 0.1,
+                "weight_node_score": 1.0,
+                "threshold_node_score": 0.0,
+                "threshold_edge_score": 0.0,
+                "max_cell_move": 1.0,
+            }
+        parameters = linajea.tracking.TrackingParameters(**ps)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)

@@ -102,7 +102,8 @@ class TestEvalMatch(unittest.TestCase):
         graph_y.add_nodes_from(cells_y)
         graph_y.add_edges_from(edges_y)
         track_graph_y = TrackGraph(graph_y)
-        ex, ey, matches = match_edges(track_graph_x, track_graph_y, 2)
+        ex, ey, matches, fp_edges = match_edges(
+                track_graph_x, track_graph_y, 2)
         edge_matches = [(ex[x_ind], ey[y_ind]) for x_ind, y_ind in matches]
         expected_edge_matches = [
                 ((1, 0), (1, 0)),

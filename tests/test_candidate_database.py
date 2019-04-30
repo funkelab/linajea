@@ -75,10 +75,22 @@ class TestParameterIds(TestCase):
         db._MongoDbGraphProvider__connect()
         db._MongoDbGraphProvider__open_db()
         db.database['parameters'].drop()
+        ps = {
+                "cost_appear": 1.0,
+                "cost_disappear": 1.0,
+                "cost_split": 0,
+                "weight_distance_cost": 0.1,
+                "weight_node_score": 1.0,
+                "threshold_node_score": 0.0,
+                "threshold_edge_score": 0.0,
+                "max_cell_move": 1.0,
+            }
+        block_size = [5, 500, 500, 500]
+        context = [2, 100, 100, 100]
         for i in range(10):
-            tp = linajea.tracking.TrackingParameters()
+            tp = linajea.tracking.TrackingParameters(**ps)
             tp.cost_appear = i
-            _id = db.get_parameters_id(tp)
+            _id = db.get_parameters_id(tp, block_size, context)
             self.assertEqual(_id, i + 1)
 
     def test_unique_id_multi_worker(self):
@@ -90,8 +102,20 @@ class TestParameterIds(TestCase):
         db._MongoDbGraphProvider__open_db()
         db.database['parameters'].drop()
         tps = []
+        ps = {
+                "cost_appear": 1.0,
+                "cost_disappear": 1.0,
+                "cost_split": 0,
+                "weight_distance_cost": 0.1,
+                "weight_node_score": 1.0,
+                "threshold_node_score": 0.0,
+                "threshold_edge_score": 0.0,
+                "max_cell_move": 1.0,
+            }
+        block_size = [5, 500, 500, 500]
+        context = [2, 100, 100, 100]
         for i in range(10):
-            tp = linajea.tracking.TrackingParameters()
+            tp = linajea.tracking.TrackingParameters(**ps)
             tp.cost_appear = i
             tps.append(tp)
 
@@ -102,7 +126,7 @@ class TestParameterIds(TestCase):
                 self.params = parameters
 
             def run(self):
-                return self.db.get_parameters_id(self.params)
+                return self.db.get_parameters_id(self.params, block_size, context)
 
         processes = [ID_Process(db, tp) for tp in tps]
         for _id, process in enumerate(processes):
