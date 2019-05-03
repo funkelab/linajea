@@ -133,8 +133,9 @@ class TracksSource(BatchProvider):
         first ``ndims`` are used. If negative, all but the last ``-ndims`` are
         used.
         '''
-        tokens = [[t.strip(',') for t in line.split()]
-                  for line in open(self.filename, 'r')]
+        with open(self.filename, 'r') as f:
+            tokens = [[t.strip(',') for t in line.split()]
+                      for line in f]
         locations = np.array(
             [
                 [float(d) for d in line[:ndims]]

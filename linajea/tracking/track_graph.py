@@ -18,7 +18,7 @@ class TrackGraph(nx.DiGraph):
         frame_key (``string``, optional):
 
             The name of the node attribute that corresponds to the frame of the
-            node. Defaults to "frame".
+            node. Defaults to "t".
 
         roi (``daisy.Roi``, optional)
 

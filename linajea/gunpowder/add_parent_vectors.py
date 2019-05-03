@@ -128,8 +128,8 @@ class AddParentVectors(BatchFilter):
                     del points.data[i]
 
             if len(points.data) == 0:
-                logger.warn("Returning empty batch for key %s and roi %s"
-                            % (self.points, request_roi))
+                logger.warning("Returning empty batch for key %s and roi %s"
+                               % (self.points, request_roi))
 
     def __draw_parent_vectors(
             self, points, data_roi, voxel_size, offset, radius):
@@ -179,11 +179,11 @@ class AddParentVectors(BatchFilter):
                 continue
 
             if point.parent_id is None:
-                logger.warn("Skipping point without parent")
+                logger.warning("Skipping point without parent")
                 continue
 
             if point.parent_id not in points.data:
-                logger.warn(
+                logger.warning(
                     "parent %d of %d not in %s",
                     point.parent_id,
                     point_id, self.points)
@@ -219,7 +219,7 @@ class AddParentVectors(BatchFilter):
             mask = np.logical_or(mask, point_mask)
 
         if empty:
-            logger.warn("No parent vectors written for points %s"
-                        % points.data)
+            logger.warning("No parent vectors written for points %s"
+                           % points.data)
 
         return parent_vectors, mask.astype(np.float32)
