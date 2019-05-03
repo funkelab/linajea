@@ -3,12 +3,17 @@ import logging
 import linajea
 import unittest
 import daisy
+import pymongo
 
 logging.basicConfig(level=logging.INFO)
-logging.getLogger('linajea.tracking').setLevel(logging.DEBUG)
+# logging.getLogger('linajea.tracking').setLevel(logging.DEBUG)
 
 
 class TestSolver(unittest.TestCase):
+
+    def delete_db(self, db_name, db_host):
+        client = pymongo.MongoClient(db_host)
+        client.drop_database(db_name)
 
     def test_solver_basic(self):
         #   x
@@ -35,9 +40,11 @@ class TestSolver(unittest.TestCase):
             {'source': 4, 'target': 1, 'score': 1.0, 'distance': 2.0},
             {'source': 5, 'target': 3, 'score': 1.0, 'distance': 0.0},
         ]
+        db_name = 'linajea_test_solver'
+        db_host = 'localhost'
         graph_provider = linajea.CandidateDatabase(
-                'linajea_test_solver',
-                'localhost')
+                db_name,
+                db_host)
         roi = daisy.Roi((0, 0, 0, 0), (4, 5, 5, 5))
         graph = graph_provider[roi]
         ps = {
@@ -72,6 +79,7 @@ class TestSolver(unittest.TestCase):
                 (5, 3)
                 ]
         self.assertCountEqual(selected_edges, expected_result)
+        self.delete_db(db_name, db_host)
 
     def test_solver_node_close_to_edge(self):
         #   x
@@ -96,9 +104,11 @@ class TestSolver(unittest.TestCase):
             {'source': 3, 'target': 1, 'score': 1.0, 'distance': 1.0},
             {'source': 4, 'target': 1, 'score': 1.0, 'distance': 2.0},
         ]
+        db_name = 'linajea_test_solver'
+        db_host = 'localhost'
         graph_provider = linajea.CandidateDatabase(
-                'linajea_test_solver',
-                'localhost')
+                db_name,
+                db_host)
         roi = daisy.Roi((0, 0, 0, 0), (5, 5, 5, 5))
         graph = graph_provider[roi]
         ps = {
@@ -125,3 +135,4 @@ class TestSolver(unittest.TestCase):
             if node in [2, 4]:
                 close = not close
             self.assertFalse(close)
+        self.delete_db(db_name, db_host)

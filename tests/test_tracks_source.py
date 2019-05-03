@@ -6,8 +6,8 @@ import unittest
 import numpy as np
 
 logger = logging.getLogger(__name__)
-# logging.basicConfig(level=logging.INFO)
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.DEBUG)
 
 TEST_FILE = 'testdata.txt'
 
@@ -129,8 +129,8 @@ class TracksSourceTestCase(unittest.TestCase):
 
         expected_parent_vectors_x = np.zeros(shape=(1, 4, 4, 4))
         expected_parent_vectors_x[0, 1, 2, 3] = -3.0
-        print("MASK")
-        print(batch[mask].data)
+        # print("MASK")
+        # print(batch[mask].data)
         self.assertListEqual(expected_mask.tolist(), batch[mask].data.tolist())
 
         parent_vectors = batch[pv_array].data

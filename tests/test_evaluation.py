@@ -4,24 +4,18 @@ import logging
 import unittest
 import linajea
 import daisy
+import pymongo
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-logging.getLogger('linajea.evaluation').setLevel(logging.DEBUG)
+# logging.getLogger('linajea.evaluation').setLevel(logging.DEBUG)
 
 
 class EvaluationTestCase(unittest.TestCase):
 
-    def get_tracks(self, cells, edges, roi):
-        g = self.create_graph(cells, edges, roi)
-        tracks = g.get_tracks()
-
-        str_x = "\nTracks:\n"
-        for track_id, track in enumerate(tracks):
-            str_x += "Track %d has nodes %s and edges %s\n"\
-                % (track_id, track.nodes, track.edges)
-        logger.debug(str_x)
-        return tracks
+    def delete_db(self):
+        client = pymongo.MongoClient('localhost')
+        client.drop_database('test_eval')
 
     def create_graph(self, cells, edges, roi):
         db = linajea.CandidateDatabase('test_eval', 'localhost')
@@ -92,6 +86,7 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 1.0)
         self.assertAlmostEqual(scores.f_score, 1.0)
+        self.delete_db()
 
     def test_imperfect_evaluation(self):
         cells, edges, roi = self.getTrack1()
@@ -120,6 +115,7 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 2./3)
         self.assertAlmostEqual(scores.f_score, 4./5)
+        self.delete_db()
 
     def test_fn_division_evaluation(self):
         cells, edges, roi = self.getDivisionTrack()
@@ -149,6 +145,7 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.num_fp_divisions, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 5./6)
+        self.delete_db()
 
     def test_fn_division_evaluation2(self):
         cells, edges, roi = self.getDivisionTrack()
@@ -181,6 +178,7 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.num_fp_divisions, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 4./5)
+        self.delete_db()
 
     def test_fp_division_evaluation(self):
         cells, edges, roi = self.getDivisionTrack()
@@ -210,3 +208,4 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.num_fp_divisions, 1)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 1.0)
+        self.delete_db()
