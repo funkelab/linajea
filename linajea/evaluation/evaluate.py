@@ -61,7 +61,11 @@ fp_divisions: %d
                  )
 
 
-def evaluate(gt_track_graph, rec_track_graph, matching_threshold):
+def evaluate(
+        gt_track_graph,
+        rec_track_graph,
+        matching_threshold,
+        error_details=False):
 
     logger.info("Matching GT edges to REC edges...")
     gt_edges, rec_edges, edge_matches, edge_fps = match_edges(
@@ -77,7 +81,8 @@ def evaluate(gt_track_graph, rec_track_graph, matching_threshold):
     scores.edge_matches = [(gt_edges[gt_ind], rec_edges[rec_ind])
                            for gt_ind, rec_ind in edge_matches]
 
-    get_track_related_statistics(gt_track_graph, rec_track_graph, scores)
+    get_track_related_statistics(
+            gt_track_graph, rec_track_graph, scores, error_details)
     add_f_score(scores)
     return scores
 
@@ -85,7 +90,8 @@ def evaluate(gt_track_graph, rec_track_graph, matching_threshold):
 def get_track_related_statistics(
         x_track_graph,
         y_track_graph,
-        scores
+        scores,
+        error_details=False
         ):
     logger.info("Getting track related statistics")
     edge_matches = scores.edge_matches
@@ -107,6 +113,11 @@ def get_track_related_statistics(
     scores.num_fp_divisions = 0
     scores.identity_switches = 0
     reconstruction_lengths = []
+    if error_details:
+        scores.fn_edges = []
+        scores.fp_division_nodes = []
+        scores.tp_division_nodes = []
+        scores.identity_switch_nodes = []
 
     # set up data structures
     edges_to_track_id_y = {}
@@ -133,7 +144,8 @@ def get_track_related_statistics(
 
     logger.info("Getting segment lengths")
     for x_track in x_tracks:
-        logger.debug("Getting segments for track with nodes %s" % list(x_track.nodes()))
+        logger.debug("Getting segments for track with nodes %s"
+                     % list(x_track.nodes()))
         # get error free lengths
         segment_lengths = []
         start_cells = deque(x_track.cells_by_frame(x_track.get_frames()[0]))
@@ -152,6 +164,9 @@ def get_track_related_statistics(
                 if next_edge not in x_edges_to_y_edges:
                     # false negative, no next edge in this segment
                     # add source (later cell) to start_cells
+                    if error_details:
+                        scores.fn_edges.append((int(next_edge[0]),
+                                                int(next_edge[1])))
                     start_cells.append(source)
                     continue
 
@@ -160,9 +175,11 @@ def get_track_related_statistics(
 
                 if prev_cell_match is not None and\
                         prev_cell_match != target_match:
-                    scores.identity_switches += 1
                     # identity switch - no next edge in this segment
                     # add target (earlier cell) to start_cells
+                    scores.identity_switches += 1
+                    if error_details:
+                        scores.identity_switch_nodes.append(int(target))
                     start_cells.append(target)
                     continue
 
@@ -191,7 +208,11 @@ def get_track_related_statistics(
                                     other_edge_y:
                                 # true positive division
                                 fp_division = False
-                                scores.num_tp_divisions += 1
+                                # this is double counted by each child edge
+                                scores.num_tp_divisions += 0.5
+                                if error_details:
+                                    scores.tp_division_nodes.append(
+                                            int(target))
 
                     if fp_division and prev_cell_match is not None:
                         # false positive division, no next edge in this segment
@@ -199,6 +220,8 @@ def get_track_related_statistics(
                         scores.num_fp_divisions += 1
                         logger.debug("False positive division")
                         start_cells.append(target)
+                        if error_details:
+                            scores.fp_division_nodes.append(int(target))
                         continue
 
                 # edge continues segment
