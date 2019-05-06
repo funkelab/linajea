@@ -1,7 +1,8 @@
 from __future__ import print_function, division, absolute_import
-from .mamut_writer import MamutWriter
-from .mamut_reader import MamutReader
-from .mamut_mongo_reader import MamutMongoReader
+# flake8: noqa
+from .mamut_writer import MamutWriter  
+from .mamut_reader import MamutReader  
+from .mamut_mongo_reader import MamutMongoReader  
 from .mamut_matched_tracks_reader import MamutMatchedTracksReader
 from .mamut_xml_templates import (
         track_template,

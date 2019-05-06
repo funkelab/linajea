@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 import tensorflow as tf
 
+
 def conv4d(
         inputs,
         filters,
@@ -29,13 +30,13 @@ def conv4d(
     convolution as a sequence of 1D convolutions::
 
         I.shape == (h, w)
-        k.shape == (U, V) and U%2 = V%2 = 1
+        k.shape == (U, V) and U % 2 = V % 2 = 1
 
         # we assume kernel is indexed as follows:
-        u in [-U/2,...,U/2]
-        v in [-V/2,...,V/2]
+        u in [-U/2, ..., U/2]
+        v in [-V/2, ..., V/2]
 
-        (k*I)[i,j] = Σ_u Σ_v k[u,v] I[i+u,j+v]
+        (k*I)[i, j] = Σ_u Σ_v k[u, v] I[i+u, j+v]
                    = Σ_u (k[u]*I[i+u])[j]
         (k*I)[i]   = Σ_u k[u]*I[i+u]
         (k*I)      = Σ_u k[u]*I_u, with I_u[i] = I[i+u] shifted I by u
@@ -43,49 +44,49 @@ def conv4d(
         Example:
 
             I = [
-                [0,0,0],
-                [1,1,1],
-                [1,1,0],
-                [1,0,0],
-                [0,0,1]
+                [0, 0, 0],
+                [1, 1, 1],
+                [1, 1, 0],
+                [1, 0, 0],
+                [0, 0, 1]
             ]
 
             k = [
-                [1,1,1],
-                [1,2,1],
-                [1,1,3]
+                [1, 1, 1],
+                [1, 2, 1],
+                [1, 1, 3]
             ]
 
             # convolve every row in I with every row in k, comments show output
             # row the convolution contributes to
             (I*k[0]) = [
-                [0,0,0], # I[0] with k[0] ⇒ (k*I)[ 1] ✔
-                [2,3,2], # I[1] with k[0] ⇒ (k*I)[ 2] ✔
-                [2,2,1], # I[2] with k[0] ⇒ (k*I)[ 3] ✔
-                [1,1,0], # I[3] with k[0] ⇒ (k*I)[ 4] ✔
-                [0,1,1]  # I[4] with k[0] ⇒ (k*I)[ 5]
+                [0, 0, 0], # I[0] with k[0] ⇒ (k*I)[ 1] ✔
+                [2, 3, 2], # I[1] with k[0] ⇒ (k*I)[ 2] ✔
+                [2, 2, 1], # I[2] with k[0] ⇒ (k*I)[ 3] ✔
+                [1, 1, 0], # I[3] with k[0] ⇒ (k*I)[ 4] ✔
+                [0, 1, 1]  # I[4] with k[0] ⇒ (k*I)[ 5]
             ]
             (I*k[1]) = [
-                [0,0,0], # I[0] with k[1] ⇒ (k*I)[ 0] ✔
-                [3,4,3], # I[1] with k[1] ⇒ (k*I)[ 1] ✔
-                [3,3,1], # I[2] with k[1] ⇒ (k*I)[ 2] ✔
-                [2,1,0], # I[3] with k[1] ⇒ (k*I)[ 3] ✔
-                [0,1,2]  # I[4] with k[1] ⇒ (k*I)[ 4] ✔
+                [0, 0, 0], # I[0] with k[1] ⇒ (k*I)[ 0] ✔
+                [3, 4, 3], # I[1] with k[1] ⇒ (k*I)[ 1] ✔
+                [3, 3, 1], # I[2] with k[1] ⇒ (k*I)[ 2] ✔
+                [2, 1, 0], # I[3] with k[1] ⇒ (k*I)[ 3] ✔
+                [0, 1, 2]  # I[4] with k[1] ⇒ (k*I)[ 4] ✔
             ]
             (I*k[2]) = [
-                [0,0,0], # I[0] with k[2] ⇒ (k*I)[-1]
-                [4,5,2], # I[1] with k[2] ⇒ (k*I)[ 0] ✔
-                [4,2,1], # I[2] with k[2] ⇒ (k*I)[ 1] ✔
-                [1,1,0], # I[3] with k[2] ⇒ (k*I)[ 2] ✔
-                [0,3,1]  # I[4] with k[2] ⇒ (k*I)[ 3] ✔
+                [0, 0, 0], # I[0] with k[2] ⇒ (k*I)[-1]
+                [4, 5, 2], # I[1] with k[2] ⇒ (k*I)[ 0] ✔
+                [4, 2, 1], # I[2] with k[2] ⇒ (k*I)[ 1] ✔
+                [1, 1, 0], # I[3] with k[2] ⇒ (k*I)[ 2] ✔
+                [0, 3, 1]  # I[4] with k[2] ⇒ (k*I)[ 3] ✔
             ]
 
             # the sum of all valid output rows gives k*I (here shown for row 2)
             (k*I)[2] = (
-                [2,3,2] +
-                [3,3,1] +
-                [1,1,0] +
-            ) = [6,7,3]
+                [2, 3, 2] +
+                [3, 3, 1] +
+                [1, 1, 0] +
+            ) = [6, 7, 3]
     '''
 
     # check arguments
@@ -106,23 +107,23 @@ def conv4d(
     # input, kernel, and output sizes
     (b, c_i, l_i, d_i, h_i, w_i) = tuple(inputs.get_shape().as_list())
     if isinstance(kernel_size, int):
-        (l_k, d_k, h_k, w_k) = (kernel_size,)*4
+        (l_k, d_k, h_k, w_k) = (kernel_size, )*4
     else:
         (l_k, d_k, h_k, w_k) = kernel_size
 
     # output size for 'valid' convolution
     if padding == 'valid':
-        (l_o, d_o, h_o, w_o) = (
+        (l_o, _, _, _) = (
             l_i - l_k + 1,
             d_i - d_k + 1,
             h_i - h_k + 1,
             w_i - w_k + 1
         )
     else:
-        (l_o, d_o, h_o, w_o) = (l_i, d_i, h_i, w_i)
+        (l_o, _, _, _) = (l_i, d_i, h_i, w_i)
 
     # output tensors for each 3D frame
-    frame_results = [ None ]*l_o
+    frame_results = [None] * l_o
 
     # convolve each kernel frame i with each input frame j
     for i in range(l_k):
@@ -140,7 +141,7 @@ def conv4d(
 
             # convolve input frame j with kernel frame i
             frame_conv3d = tf.layers.conv3d(
-                tf.reshape(inputs[:,:,j,:], (b, c_i, d_i, h_i, w_i)),
+                tf.reshape(inputs[:, :, j, :], (b, c_i, d_i, h_i, w_i)),
                 filters,
                 kernel_size=(d_k, h_k, w_k),
                 padding=padding,
@@ -153,7 +154,7 @@ def conv4d(
                 bias_regularizer=bias_regularizer,
                 activity_regularizer=activity_regularizer,
                 trainable=trainable,
-                name=name + '_3dchan%d'%i,
+                name=name + '_3dchan % d' % i,
                 reuse=reuse_kernel)
 
             # subsequent frame convolutions should use the same kernel
@@ -170,6 +171,7 @@ def conv4d(
         output = activation(output)
 
     return output
+
 
 if __name__ == "__main__":
 
@@ -199,22 +201,21 @@ if __name__ == "__main__":
         k2 = tf.get_default_graph().get_tensor_by_name(
             'conv4d_valid_3dchan2/kernel:0').eval().flatten()
 
-        print("conv4d at (0, 0, 0, 0): %s"%o[0,0,0,0,0,0])
-        i0 = i[0,0,0,0:3,0:3,0:3].flatten()
-        i1 = i[0,0,1,0:3,0:3,0:3].flatten()
-        i2 = i[0,0,2,0:3,0:3,0:3].flatten()
+        print("conv4d at (0, 0, 0, 0):  % s" % o[0, 0, 0, 0, 0, 0])
+        i0 = i[0, 0, 0, 0:3, 0:3, 0:3].flatten()
+        i1 = i[0, 0, 1, 0:3, 0:3, 0:3].flatten()
+        i2 = i[0, 0, 2, 0:3, 0:3, 0:3].flatten()
 
         compare = (i0*k0 + i1*k1 + i2*k2).sum()
-        print("manually computed value at (0, 0, 0, 0): %s"%compare)
+        print("manually computed value at (0, 0, 0, 0):  % s" % compare)
 
-        print("conv4d at (4, 4, 4, 4): %s"%o[0,0,4,4,4,4])
-        i0 = i[0,0,4,4:7,4:7,4:7].flatten()
-        i1 = i[0,0,5,4:7,4:7,4:7].flatten()
-        i2 = i[0,0,6,4:7,4:7,4:7].flatten()
+        print("conv4d at (4, 4, 4, 4):  % s" % o[0, 0, 4, 4, 4, 4])
+        i0 = i[0, 0, 4, 4:7, 4:7, 4:7].flatten()
+        i1 = i[0, 0, 5, 4:7, 4:7, 4:7].flatten()
+        i2 = i[0, 0, 6, 4:7, 4:7, 4:7].flatten()
 
         compare = (i0*k0 + i1*k1 + i2*k2).sum()
-        print("manually computed value at (4, 4, 4, 4): %s"%compare)
-
+        print("manually computed value at (4, 4, 4, 4):  % s" % compare)
 
     output = conv4d(
         inputs,
@@ -231,14 +232,14 @@ if __name__ == "__main__":
         s.run(tf.global_variables_initializer())
         o = s.run(output)
 
-        print("conv4d at (0, 0, 0, 0): %s"%o[0,0,0,0,0,0])
-        i0 = i[0,0,0:2,0:2,0:2,0:2]
-        print("manually computed value at (0, 0, 0, 0): %s"%i0.sum())
+        print("conv4d at (0, 0, 0, 0):  % s" % o[0, 0, 0, 0, 0, 0])
+        i0 = i[0, 0, 0:2, 0:2, 0:2, 0:2]
+        print("manually computed value at (0, 0, 0, 0):  % s" % i0.sum())
 
-        print("conv4d at (5, 5, 5, 5): %s"%o[0,0,5,5,5,5])
-        i5 = i[0,0,4:7,4:7,4:7,4:7]
-        print("manually computed value at (5, 5, 5, 5): %s"%i5.sum())
+        print("conv4d at (5, 5, 5, 5):  % s" % o[0, 0, 5, 5, 5, 5])
+        i5 = i[0, 0, 4:7, 4:7, 4:7, 4:7]
+        print("manually computed value at (5, 5, 5, 5):  % s" % i5.sum())
 
-        print("conv4d at (9, 10, 11, 12): %s"%o[0,0,9,10,11,12])
-        i9 = i[0,0,8:,9:,10:,11:]
-        print("manually computed value at (9, 10, 11, 12): %s"%i9.sum())
+        print("conv4d at (9, 10, 11, 12):  % s" % o[0, 0, 9, 10, 11, 12])
+        i9 = i[0, 0, 8:, 9:, 10:, 11:]
+        print("manually computed value at (9, 10, 11, 12):  % s" % i9.sum())

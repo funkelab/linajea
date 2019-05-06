@@ -2,6 +2,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def print_time(seconds):
     logger.debug("Time spent in seconds: {}".format(seconds))
     seconds = int(seconds)
@@ -11,5 +12,5 @@ def print_time(seconds):
     seconds -= 3600 * hours
     minutes = seconds // 60
     seconds -= 60 * minutes
-    logger.info("Time spent: {} days {} hours {} minutes {} seconds".format(days, hours, minutes, seconds))
-
+    logger.info("Time spent: %d days %d hours %d minutes %d seconds"
+                % (days, hours, minutes, seconds))

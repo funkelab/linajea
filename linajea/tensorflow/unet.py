@@ -1,6 +1,7 @@
 import tensorflow as tf
 from .conv4d import conv4d
 
+
 def conv_pass(
         fmaps_in,
         kernel_size,
@@ -20,8 +21,8 @@ def conv_pass(
 
         f_in:
 
-            The input tensor of shape ``(batch_size, channels, [length,] depth,
-            height, width)``.
+            The input tensor of shape ``(batch_size, channels, [length, ]
+            depth, height, width)``.
 
         kernel_size:
 
@@ -37,7 +38,7 @@ def conv_pass(
 
         activation:
 
-            Which activation to use after a convolution. Accepts the name of any
+            Which activation to use after a convolution. Accepts the name of a
             tensorflow activation function (e.g., ``relu`` for ``tf.nn.relu``).
 
     '''
@@ -56,7 +57,7 @@ def conv_pass(
             conv_op = tf.layers.conv3d
         else:
             raise RuntimeError(
-                "Input tensor of shape %s not supported"%(in_shape,))
+                "Input tensor of shape  % s not supported" % (in_shape, ))
 
         fmaps = conv_op(
             inputs=fmaps,
@@ -65,7 +66,7 @@ def conv_pass(
             padding='valid',
             data_format='channels_first',
             activation=activation,
-            name=name + '_%i'%i)
+            name=name + '_ % i' % i)
 
         out_shape = tuple(fmaps.get_shape().as_list())
 
@@ -77,6 +78,7 @@ def conv_pass(
                 fmaps = tf.reshape(fmaps, out_shape)
 
     return fmaps
+
 
 def downsample(fmaps_in, factors, name='down'):
 
@@ -116,6 +118,7 @@ def downsample(fmaps_in, factors, name='down'):
 
     return fmaps
 
+
 def upsample(fmaps_in, factors, num_fmaps, activation='relu', name='up'):
 
     if activation is not None:
@@ -132,6 +135,7 @@ def upsample(fmaps_in, factors, num_fmaps, activation='relu', name='up'):
         name=name)
 
     return fmaps
+
 
 def crop_tzyx(fmaps_in, shape):
     '''Crop spatial and time dimensions to match shape.
@@ -160,12 +164,12 @@ def crop_tzyx(fmaps_in, shape):
 
     if in_is_4d:
         offset = [
-            0, # batch
-            0, # channel
-            (in_shape[2] - shape[2])//2, # t
-            (in_shape[3] - shape[3])//2, # z
-            (in_shape[4] - shape[4])//2, # y
-            (in_shape[5] - shape[5])//2, # x
+            0,  # batch
+            0,  # channel
+            (in_shape[2] - shape[2])//2,  # t
+            (in_shape[3] - shape[3])//2,  # z
+            (in_shape[4] - shape[4])//2,  # y
+            (in_shape[5] - shape[5])//2,  # x
         ]
         size = [
             in_shape[0],
@@ -177,11 +181,11 @@ def crop_tzyx(fmaps_in, shape):
         ]
     else:
         offset = [
-            0, # batch
-            0, # channel
-            (in_shape[2] - shape[2])//2, # z
-            (in_shape[3] - shape[3])//2, # y
-            (in_shape[4] - shape[4])//2, # x
+            0,  # batch
+            0,  # channel
+            (in_shape[2] - shape[2])//2,  # z
+            (in_shape[3] - shape[3])//2,  # y
+            (in_shape[4] - shape[4])//2,  # x
         ]
         size = [
             in_shape[0],
@@ -199,6 +203,7 @@ def crop_tzyx(fmaps_in, shape):
         fmaps = tf.reshape(fmaps, shape)
 
     return fmaps
+
 
 def unet(
         fmaps_in,
@@ -223,7 +228,7 @@ def unet(
 
     The U-Net expects 3D or 4D tensors shaped like::
 
-        ``(batch=1, channels, [length,] depth, height, width)``.
+        ``(batch=1, channels, [length, ] depth, height, width)``.
 
     This U-Net performs only "valid" convolutions, i.e., sizes of the feature
     maps decrease after each convolution. It will perfrom 4D convolutions as
@@ -240,7 +245,8 @@ def unet(
         num_fmaps:
 
             The number of feature maps in the first layer. This is also the
-            number of output feature maps. Stored in the ``channels`` dimension.
+            number of output feature maps.
+            Stored in the ``channels`` dimension.
 
         fmap_inc_factor:
 
@@ -255,7 +261,7 @@ def unet(
 
         activation:
 
-            Which activation to use after a convolution. Accepts the name of any
+            Which activation to use after a convolution. Accepts the name of a
             tensorflow activation function (e.g., ``relu`` for ``tf.nn.relu``).
 
         layer:
@@ -264,7 +270,7 @@ def unet(
     '''
 
     prefix = "    "*layer
-    print(prefix + "Creating U-Net layer %i"%layer)
+    print(prefix + "Creating U-Net layer  % i" % layer)
     print(prefix + "f_in: " + str(fmaps_in.shape))
 
     # convolve
@@ -274,7 +280,7 @@ def unet(
         num_fmaps=num_fmaps,
         num_repetitions=2,
         activation=activation,
-        name='unet_layer_%i_left'%layer)
+        name='unet_layer_ % i_left' % layer)
 
     print(prefix + "f_left: " + str(f_left.shape))
 
@@ -289,7 +295,7 @@ def unet(
     g_in = downsample(
         f_left,
         downsample_factors[layer],
-        'unet_down_%i_to_%i'%(layer, layer + 1))
+        'unet_down_ % i_to_ % i' % (layer, layer + 1))
 
     print(prefix + "g_in: " + str(g_in.shape))
 
@@ -310,7 +316,7 @@ def unet(
         downsample_factors[layer],
         num_fmaps,
         activation=activation,
-        name='unet_up_%i_to_%i'%(layer + 1, layer))
+        name='unet_up_ % i_to_ % i' % (layer + 1, layer))
 
     print(prefix + "g_out_upsampled: " + str(g_out_upsampled.shape))
 
@@ -330,24 +336,25 @@ def unet(
         kernel_size=3,
         num_fmaps=num_fmaps,
         num_repetitions=2,
-        name='unet_layer_%i_right'%layer)
+        name='unet_layer_ % i_right' % layer)
 
     print(prefix + "f_out: " + str(f_out.shape))
 
     return f_out
+
 
 if __name__ == "__main__":
 
     # test
     raw = tf.placeholder(tf.float32, shape=(1, 1, 84, 268, 268))
 
-    model = unet(raw, 12, 5, [[1,3,3],[1,3,3],[1,3,3]])
+    model = unet(raw, 12, 5, [[1, 3, 3], [1, 3, 3], [1, 3, 3]])
     tf.train.export_meta_graph(filename='unet.meta')
 
     with tf.Session() as session:
         session.run(tf.initialize_all_variables())
         tf.summary.FileWriter('.', graph=tf.get_default_graph())
-        # writer = tf.train.SummaryWriter(logs_path, graph=tf.get_default_graph())
-
+        # writer = tf.train.SummaryWriter(
+        #       logs_path, graph=tf.get_default_graph())
 
     print(model.shape)

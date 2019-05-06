@@ -1,5 +1,5 @@
 # Template pre-spots (root and features).
-
+# flake8: noqa
 begin_template = '''<?xml version="1.0" encoding="UTF-8"?>
 <TrackMate version="3.4.2">
   <Model spatialunits="pixels" timeunits="frames">
