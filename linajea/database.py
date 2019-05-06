@@ -7,12 +7,44 @@ logger = logging.getLogger(__name__)
 
 class CandidateDatabase(MongoDbGraphProvider):
     '''Wrapper for daisy mongo graph that allows storing
-    ILP paramter sets, matched tracks, and scores.'''
+    ILP parameter sets and scores, and easy retrieval of
+    selected linage graphs.
 
+    Arguments:
+
+        db_name (``string``):
+
+            The name of the MongoDB database.
+
+        db_host (``string``):
+
+            The URL of the MongoDB host.
+
+        mode (``string``, optional):
+
+            One of ``r``, ``r+``, or ``w``. Defaults to ``r+``. ``w`` drops the
+            node, edge, and meta collections.
+
+        total_roi (``bool``, optional):
+
+            Gets written into graph metadata if provided.
+
+        endpoint_names (``list`` or ``tuple`` with two elements, optional):
+
+            What keys to use for the start and end of an edge. Default is
+            ['source', 'target']
+
+        parameters_id (``int``, optional):
+
+           If provided, sets the parameters_id so that get_selected_graph
+           will retrieve the results of solving with the given parameters
+           and reset_selection will remove results of given parameters
+
+    '''
     def __init__(
             self,
             db_name,
-            mongo_url,
+            db_host,
             mode='r',
             total_roi=None,
             endpoint_names=['source', 'target'],
@@ -20,7 +52,7 @@ class CandidateDatabase(MongoDbGraphProvider):
 
         super().__init__(
                 db_name,
-                host=mongo_url,
+                host=db_host,
                 mode=mode,
                 total_roi=total_roi,
                 directed=True,
@@ -32,9 +64,14 @@ class CandidateDatabase(MongoDbGraphProvider):
         if parameters_id:
             self.set_parameters_id(parameters_id)
 
-    def get_selected_graph(
-            self,
-            roi):
+    def get_selected_graph(self, roi):
+        '''Gets the edges selected by the candidate database's parameters_id
+        within roi and all connected nodes. Ignores attribute keys on edges
+        other than selected key of parameters_id to speed up retrieval and
+        manipulation of resulting networx graph.
+        '''
+        assert self.selected_key is not None,\
+            "No selected key provided, cannot get selected graph"
         subgraph = self.get_graph(
                 roi,
                 edges_filter={self.selected_key: True},
@@ -45,6 +82,9 @@ class CandidateDatabase(MongoDbGraphProvider):
         return subgraph
 
     def reset_selection(self):
+        ''' Removes all selections for self.parameters_id from mongodb
+        edges collection
+        '''
         if self.parameters_id is None:
             logger.warn("No parameters id: cannot reset selection")
             return
@@ -94,6 +134,9 @@ class CandidateDatabase(MongoDbGraphProvider):
         return int(params_id)
 
     def insert_with_next_id(self, document, collection):
+        '''Inserts a new set of parameters into the database, assigning
+        the next sequential int id
+        '''
         count_coll = self.database['parameters']
 
         while True:
@@ -117,7 +160,8 @@ class CandidateDatabase(MongoDbGraphProvider):
         return document['_id']
 
     def get_parameters(self, params_id):
-        '''Returns null if there are no parameters with the given id'''
+        '''Gets the parameters associated with the given id.
+        Returns null if there are no parameters with the given id'''
         self._MongoDbGraphProvider__connect()
         self._MongoDbGraphProvider__open_db()
         try:
@@ -130,10 +174,14 @@ class CandidateDatabase(MongoDbGraphProvider):
         return params
 
     def set_parameters_id(self, parameters_id):
+        '''Sets the parameters_id and selected_key for the CandidateDatabase,
+        so that you can use reset_selection and/or get_selected_graph'''
         self.parameters_id = int(parameters_id)
         self.selected_key = 'selected_' + str(self.parameters_id)
 
     def get_score(self, parameters_id):
+        '''Returns the score for the given parameters_id, or
+        None if no score available'''
         self._MongoDbGraphProvider__connect()
         self._MongoDbGraphProvider__open_db()
         score = None
@@ -150,6 +198,8 @@ class CandidateDatabase(MongoDbGraphProvider):
         return score
 
     def write_score(self, parameters_id, score):
+        '''Writes the score for the given parameters_id to the
+        scores collection, along with the associated parameters'''
         parameters = self.get_parameters(parameters_id)
         assert parameters is not None,\
             "No parameters with id %d" % parameters_id
