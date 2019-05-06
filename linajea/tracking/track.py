@@ -12,6 +12,8 @@ class TrackingParameters(object):
     def __init__(
             self,
             model_type='default',
+            block_size=None,
+            context=None,
             cost_appear=None,
             cost_disappear=None,
             cost_split=None,
@@ -29,6 +31,12 @@ class TrackingParameters(object):
         self.model_type = model_type
 
         # ALL MODEL TYPES:
+        # block size and context
+
+        assert block_size is not None, "Failed to specify block_size"
+        self.block_size = block_size
+        assert context is not None, "Failed to specify context"
+        self.context = context
 
         # track costs:
         assert cost_appear is not None, "Failed to specify cost_appear"

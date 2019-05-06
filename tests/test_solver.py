@@ -56,6 +56,8 @@ class TestSolver(unittest.TestCase):
                 "threshold_node_score": 0.0,
                 "threshold_edge_score": 0.0,
                 "max_cell_move": 1.0,
+                "block_size": [5, 100, 100, 100],
+                "context": [2, 100, 100, 100],
             }
         parameters = linajea.tracking.TrackingParameters(**ps)
 
@@ -120,6 +122,8 @@ class TestSolver(unittest.TestCase):
                 "threshold_node_score": 0.0,
                 "threshold_edge_score": 0.0,
                 "max_cell_move": 1.0,
+                "block_size": [5, 100, 100, 100],
+                "context": [2, 100, 100, 100],
             }
         parameters = linajea.tracking.TrackingParameters(**ps)
 

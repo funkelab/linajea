@@ -132,15 +132,15 @@ class DatabaseTestCase(TestCase):
                 "threshold_node_score": 0.0,
                 "threshold_edge_score": 0.0,
                 "max_cell_move": 1.0,
+                "block_size": [5, 100, 100, 100],
+                "context": [2, 100, 100, 100],
             }
         parameters = linajea.tracking.TrackingParameters(**ps)
-        block_size = [5, 100, 100, 100]
-        context = [2, 100, 100, 100]
 
         db = CandidateDatabase(
                 db_name,
                 db_host)
-        params_id = db.get_parameters_id(parameters, block_size, context)
+        params_id = db.get_parameters_id(parameters)
 
         score = Scores()
         score.num_gt_edges = 2
@@ -172,6 +172,8 @@ class TestParameterIds(TestCase):
                 "threshold_node_score": 0.0,
                 "threshold_edge_score": 0.0,
                 "max_cell_move": 1.0,
+                "block_size": [5, 100, 100, 100],
+                "context": [2, 100, 100, 100],
             }
 
     def test_unique_id_one_worker(self):
@@ -181,13 +183,11 @@ class TestParameterIds(TestCase):
                 db_name,
                 db_host,
                 mode='w')
-        block_size = [5, 500, 500, 500]
-        context = [2, 100, 100, 100]
         for i in range(10):
             tp = linajea.tracking.TrackingParameters(
                     **self.get_tracking_params())
             tp.cost_appear = i
-            _id = db.get_parameters_id(tp, block_size, context)
+            _id = db.get_parameters_id(tp)
             self.assertEqual(_id, i + 1)
         self.delete_db(db_name, db_host)
 
@@ -199,8 +199,6 @@ class TestParameterIds(TestCase):
                 db_host,
                 mode='w')
         tps = []
-        block_size = [5, 500, 500, 500]
-        context = [2, 100, 100, 100]
         for i in range(10):
             tp = linajea.tracking.TrackingParameters(
                     **self.get_tracking_params())
@@ -214,8 +212,7 @@ class TestParameterIds(TestCase):
                 self.params = parameters
 
             def run(self):
-                return self.db.get_parameters_id(
-                        self.params, block_size, context)
+                return self.db.get_parameters_id(self.params)
 
         processes = [ID_Process(db, tp) for tp in tps]
         for process in processes:
