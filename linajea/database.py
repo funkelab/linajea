@@ -58,6 +58,7 @@ class CandidateDatabase(MongoDbGraphProvider):
         logger.info("Done resetting solution for parameters_id %s"
                     % self.parameters_id)
 
+    # TODO: Should block size and context be part of tracking params?
     def get_parameters_id(
             self,
             tracking_parameters,

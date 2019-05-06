@@ -1,5 +1,6 @@
 from linajea import CandidateDatabase
 import linajea.tracking
+from linajea.evaluation.evaluate import Scores
 from daisy import Roi
 from unittest import TestCase
 import logging
@@ -71,6 +72,88 @@ class DatabaseTestCase(TestCase):
         subgraph = candidate_db[roi]
         self.assertTrue(subgraph.number_of_nodes() > 0)
         self.assertTrue(subgraph.number_of_edges() > 0)
+
+    def test_get_selected_graph_and_reset_selection(self):
+        db_name = 'test_linajea_database'
+        db_host = 'localhost'
+        total_roi = Roi((0, 0, 0, 0), (5, 10, 10, 10))
+
+        write_db = CandidateDatabase(
+                db_name,
+                db_host,
+                mode='w',
+                total_roi=total_roi)
+
+        sub_graph = write_db[total_roi]
+        points = [
+                (1, {'t': 0, 'z': 1, 'y': 2, 'x': 3}),
+                (2, {'t': 1, 'z': 1, 'y': 2, 'x': 3}),
+                (3, {'t': 2, 'z': 1, 'y': 2, 'x': 3}),
+                (4, {'t': 3, 'z': 1, 'y': 2, 'x': 3}),
+                (5, {'t': 2, 'z': 5, 'y': 2, 'x': 3}),
+                (6, {'t': 3, 'z': 5, 'y': 2, 'x': 3}),
+                ]
+        edges = [
+                (2, 1, {'selected_1': True}),
+                (3, 2, {'selected_1': True}),
+                (4, 3, {'selected_1': True}),
+                (5, 2, {'selected_1': False}),
+                (6, 5, {'selected_1': False}),
+                ]
+        sub_graph.add_nodes_from(points)
+        sub_graph.add_edges_from(edges)
+        sub_graph.write_nodes()
+        sub_graph.write_edges()
+
+        logger.debug("Creating new database to read data")
+        read_db = CandidateDatabase(
+                db_name,
+                db_host,
+                mode='r',
+                parameters_id=1)
+        selected_graph = read_db.get_selected_graph(total_roi)
+        self.assertEqual(selected_graph.number_of_nodes(), 4)
+        self.assertEqual(selected_graph.number_of_edges(), 3)
+
+        read_db.reset_selection()
+        unselected_graph = read_db.get_selected_graph(total_roi)
+        self.assertEqual(unselected_graph.number_of_nodes(), 0)
+        self.assertEqual(unselected_graph.number_of_edges(), 0)
+
+    def test_write_and_get_score(self):
+        db_name = 'test_linajea_database'
+        db_host = 'localhost'
+        ps = {
+                "cost_appear": 2.0,
+                "cost_disappear": 2.0,
+                "cost_split": 0,
+                "weight_distance_cost": 0.1,
+                "weight_node_score": 1.0,
+                "threshold_node_score": 0.0,
+                "threshold_edge_score": 0.0,
+                "max_cell_move": 1.0,
+            }
+        parameters = linajea.tracking.TrackingParameters(**ps)
+        block_size = [5, 100, 100, 100]
+        context = [2, 100, 100, 100]
+
+        db = CandidateDatabase(
+                db_name,
+                db_host)
+        params_id = db.get_parameters_id(parameters, block_size, context)
+
+        score = Scores()
+        score.num_gt_edges = 2
+        score.num_matched_edges = 2
+        score.num_fp_edges = 1
+        score.num_fn_edges = 0
+        score.matched_edges = [[1, 4], [5, 6]]
+        db.write_score(params_id, score)
+        score_dict = db.get_score(params_id)
+
+        compare_dict = score.__dict__
+        compare_dict.update(db.get_parameters(params_id))
+        self.assertDictEqual(compare_dict, score_dict)
 
 
 class TestParameterIds(TestCase):
