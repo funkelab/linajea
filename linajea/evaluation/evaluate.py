@@ -146,10 +146,12 @@ def get_track_related_statistics(
     for x_track in x_tracks:
         logger.debug("Getting segments for track with nodes %s"
                      % list(x_track.nodes()))
-        # get error free lengths
+
         segment_lengths = []
+        start_of_gt_track = True
         start_cells = deque(x_track.cells_by_frame(x_track.get_frames()[0]))
         assert len(start_cells) == 1
+
         while len(start_cells) > 0:
             start_cell = start_cells.popleft()
             if start_cell not in x_track.nodes:
@@ -157,6 +159,7 @@ def get_track_related_statistics(
             next_edges = x_track.next_edges(start_cell)
             next_edges = deque([(edge, None) for edge in next_edges])
             length = 0
+
             while len(next_edges) > 0:
                 next_edge, prev_cell_match = next_edges.pop()
                 source, target = next_edge
@@ -214,7 +217,8 @@ def get_track_related_statistics(
                                     scores.tp_division_nodes.append(
                                             int(target))
 
-                    if fp_division and prev_cell_match is not None:
+                    if fp_division and\
+                            (start_of_gt_track or prev_cell_match is not None):
                         # false positive division, no next edge in this segment
                         # add target (earlier cell) to start_cells
                         scores.num_fp_divisions += 1
@@ -235,6 +239,8 @@ def get_track_related_statistics(
             # no more edges in this segment
             if length > 0:
                 segment_lengths.append(length)
+            start_of_gt_track = False
+
         logger.debug("Found segment lengths %s" % segment_lengths)
         # add track stats to overall
         reconstruction_lengths.extend(segment_lengths)

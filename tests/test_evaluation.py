@@ -209,3 +209,36 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 1.0)
         self.delete_db()
+
+    def test_fp_division_evaluation_at_beginning_of_gt(self):
+        cells, edges, roi = self.getTrack1()
+        gt_cells = cells.copy()
+        gt_edges = edges.copy()
+        gt_track_graph = self.create_graph(gt_cells, gt_edges, roi)
+        # add split at beginning of reconstruction
+        for cell in cells:
+            cell[1]['y'] += 1
+        cells.append(
+                (5, {'t': 1, 'z': 2, 'y': 1, 'x': 0})
+                )
+        edges.append((5, 1))
+        rec_track_graph = self.create_graph(cells, edges, roi)
+        scores = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2)
+
+        self.assertEqual(scores.num_matched_edges, 3)
+        self.assertEqual(scores.num_fp_edges, 0)
+        self.assertEqual(scores.num_fn_edges, 0)
+        self.assertEqual(scores.num_gt_tracks, 1)
+        self.assertEqual(scores.num_gt_matched_tracks, 1)
+        self.assertEqual(scores.num_rec_matched_tracks, 1)
+        self.assertEqual(scores.num_rec_tracks, 1)
+        self.assertAlmostEqual(scores.aeftl, 3)
+        self.assertAlmostEqual(scores.erl, 3)
+        self.assertEqual(scores.identity_switches, 0)
+        self.assertEqual(scores.num_gt_divisions, 0)
+        self.assertEqual(scores.num_tp_divisions, 0)
+        self.assertEqual(scores.num_fp_divisions, 1)
+        self.assertAlmostEqual(scores.precision, 1.0)
+        self.assertAlmostEqual(scores.recall, 1.0)
+        self.delete_db()
