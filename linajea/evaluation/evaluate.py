@@ -151,8 +151,8 @@ def get_track_related_statistics(
         start_of_gt_track = True
         start_frame = x_track.get_frames()[0]
         start_cells = deque(x_track.cells_by_frame(start_frame))
-        assert len(start_cells) == 1, "%d cells in start frame %d"\
-            % (len(start_cells), start_frame)
+        assert len(start_cells) == 1, "%s cells in start frame %d"\
+            % (start_cells, start_frame)
 
         while len(start_cells) > 0:
             start_cell = start_cells.popleft()
