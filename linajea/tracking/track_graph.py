@@ -52,13 +52,16 @@ class TrackGraph(nx.DiGraph):
 
             self.begin = min(frames)
             self.end = max(frames) + 1
+            remove_nodes = []
             for cell in self.nodes:
                 if self.frame_key not in self.nodes[cell]:
+                    remove_nodes.append(cell)
                     continue
                 t = self.nodes[cell][self.frame_key]
                 if t not in self._cells_by_frame:
                     self._cells_by_frame[t] = []
                 self._cells_by_frame[t].append(cell)
+            self.remove_nodes_from(remove_nodes)
 
         for u, v in self.edges:
             if self.frame_key not in self.nodes[v]:
