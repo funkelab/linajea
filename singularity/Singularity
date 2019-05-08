@@ -8,8 +8,6 @@ This container contains linajea lineage tracking software.
 
 Maintainer Jan Funke
 Name linajea
-Version v1.5.3
-
 
 %setup
 mkdir -p ${SINGULARITY_ROOTFS}/src/linajea
