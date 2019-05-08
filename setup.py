@@ -1,6 +1,4 @@
-from Cython.Distutils import build_ext
-from distutils.core import setup
-from distutils.extension import Extension
+from setuptools import setup
 
 setup(
         name='linajea',
@@ -16,12 +14,5 @@ setup(
             'linajea.tensorflow',
             'linajea.tracking',
             'linajea.evaluation',
-        ],
-        ext_modules=[
-            Extension(
-                'linajea.target_counts',
-                sources=['linajea/target_counts.pyx'],
-                extra_compile_args=['-O3'])
-        ],
-        cmdclass={'build_ext': build_ext}
+        ]
 )
