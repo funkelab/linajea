@@ -254,6 +254,7 @@ def get_track_related_statistics(
                          reconstruction_lengths)) / scores.num_gt_edges
     # division stats
     scores.num_gt_divisions = 0
+    scores.num_fn_division_edges = 0
     for track_id, track in enumerate(x_tracks):
         node_degrees = track.in_degree()
         max_node_degree = max([v for _, v in node_degrees])
@@ -267,12 +268,21 @@ def get_track_related_statistics(
                    if degree == 2]
         logger.debug("Parent nodes: %s" % parents)
         scores.num_gt_divisions += len(parents)
+        for parent in parents:
+            next_edges = track.next_edges(parent)
+            assert len(next_edges) == 2
+            for edge in next_edges:
+                if edge not in x_edges_to_y_edges:
+                    scores.num_fn_division_edges += 1
+    logger.info("Subtracting %d fn_division_edges from %d fn_edges"
+                % (scores.num_fn_division_edges, scores.num_fn_edges))
+    scores.num_fn_edges -= scores.num_fn_division_edges
 
 
 def add_f_score(scores):
     tp = scores.num_matched_edges
     fp = scores.num_fp_edges
-    fn = scores.num_fn_edges
+    fn = scores.num_fn_edges + scores.num_fn_division_edges
 
     scores.precision = tp / (tp + fp)
     scores.recall = tp / (tp + fn)
