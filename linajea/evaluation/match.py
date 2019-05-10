@@ -198,6 +198,7 @@ def match(costs, no_match_cost):
     solver.set_objective(objective)
     solver.set_constraints(constraints)
     solver.set_num_threads(1)
+    solver.set_timeout(240)
 
     solution, message = solver.solve()
     sol_cost = solution.get_value()
