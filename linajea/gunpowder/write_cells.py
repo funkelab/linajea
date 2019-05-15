@@ -2,6 +2,9 @@ from funlib import math
 import gunpowder as gp
 import numpy as np
 import pymongo
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class WriteCells(gp.BatchFilter):
@@ -72,7 +75,7 @@ class WriteCells(gp.BatchFilter):
                 'parent_vector': tuple(float(x) for x in parent_vector)
             })
 
-            print(
+            logger.debug(
                 "ID=%d, score=%f, parent_vector=%s" % (
                     cell_id, score, parent_vector))
 
