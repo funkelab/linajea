@@ -1,4 +1,4 @@
-TAG="linajea:v1.5.11"
+TAG="linajea:v1.5.12"
 
 TMP_FILE:=$(shell mktemp).img
 
