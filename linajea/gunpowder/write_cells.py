@@ -16,7 +16,13 @@ class WriteCells(gp.BatchFilter):
             parent_vectors,
             score_threshold,
             db_host,
-            db_name):
+            db_name,
+            edge_length=1):
+        '''Edge length indicates the length of the edge of the cube
+        from which parent vectors will be read. The cube will be centered
+        around the maxima, and predictions within the cube of voxels
+        will be averaged to get the parent vector to store in the db
+        '''
 
         self.maxima = maxima
         self.cell_indicator = cell_indicator
@@ -25,6 +31,8 @@ class WriteCells(gp.BatchFilter):
         self.db_host = db_host
         self.db_name = db_name
         self.client = None
+        assert edge_length % 2 == 1, "Edge length should be odd"
+        self.edge_length = edge_length
 
     def process(self, batch, request):
 
@@ -58,9 +66,13 @@ class WriteCells(gp.BatchFilter):
         for index in np.argwhere(maxima*cell_indicator > self.score_threshold):
 
             index = gp.Coordinate(index)
-
+            radius = (self.edge_length - 1) / 2
             score = cell_indicator[index]
-            parent_vector = parent_vectors[(Ellipsis,) + index]
+            if radius == 0:
+                parent_vector = parent_vectors[(Ellipsis,) + index]
+            else:
+                parent_vector = self.get_avg_pv(parent_vectors, index, radius)
+            logger.info("Parent vector: %s" % str(parent_vector))
             position = roi.get_begin() + voxel_size*index
 
             cell_id = int(math.cantor_number(
@@ -73,7 +85,7 @@ class WriteCells(gp.BatchFilter):
                 'z': position[1],
                 'y': position[2],
                 'x': position[3],
-                'parent_vector': tuple(float(x) for x in parent_vector)
+                'parent_vector': parent_vector
             })
 
             logger.debug(
@@ -82,3 +94,20 @@ class WriteCells(gp.BatchFilter):
 
         if len(cells) > 0:
             self.cells.insert_many(cells)
+
+    def get_avg_pv(parent_vectors, index, radius):
+
+        offsets = []
+        for z in range(index[1] - radius, index[1] + radius + 1):
+            for y in range(index[2] - radius, index[2] + radius + 1):
+                for x in range(index[3] - radius, index[3] + radius + 1):
+                    c = gp.Coordinate((z, y, x))
+                    c_with_time = gp.Coordinate((index[0], z, y, x))
+                    relative_pos = c - index[1:]
+                    offset_relative_to_c = parent_vectors[
+                            (Ellipsis,) + c_with_time]
+                    offsets.append(offset_relative_to_c + relative_pos)
+        logger.debug("Offsets to average: %s" + str(offsets))
+        parent_vector = tuple(float(sum(col) / len(col))
+                              for col in zip(*offsets))
+        return parent_vector
