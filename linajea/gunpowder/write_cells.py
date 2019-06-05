@@ -63,7 +63,8 @@ class WriteCells(gp.BatchFilter):
             parent_vector = parent_vectors[(Ellipsis,) + index]
             position = roi.get_begin() + voxel_size*index
 
-            cell_id = int(math.cantor_number(roi.get_begin()/voxel_size + index))
+            cell_id = int(math.cantor_number(
+                roi.get_begin()/voxel_size + index))
 
             cells.append({
                 'id': cell_id,
