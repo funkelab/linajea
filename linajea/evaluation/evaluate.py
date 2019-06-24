@@ -72,7 +72,7 @@ def evaluate(
             gt_track_graph,
             rec_track_graph,
             matching_threshold)
-
+    logger.info("Done matching")
     scores = Scores()
     scores.num_gt_edges = len(gt_edges)
     scores.num_matched_edges = len(edge_matches)

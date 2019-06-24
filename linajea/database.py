@@ -64,18 +64,22 @@ class CandidateDatabase(MongoDbGraphProvider):
         if parameters_id:
             self.set_parameters_id(parameters_id)
 
-    def get_selected_graph(self, roi):
+    def get_selected_graph(self, roi, edge_attrs=None):
         '''Gets the edges selected by the candidate database's parameters_id
         within roi and all connected nodes. Ignores attribute keys on edges
         other than selected key of parameters_id to speed up retrieval and
         manipulation of resulting networx graph.
         '''
+        if edge_attrs is None:
+            edge_attrs = []
+        edge_attrs.append(self.selected_key)
+
         assert self.selected_key is not None,\
             "No selected key provided, cannot get selected graph"
         subgraph = self.get_graph(
                 roi,
                 edges_filter={self.selected_key: True},
-                edge_attrs=[self.selected_key])
+                edge_attrs=edge_attrs)
         unattached_nodes = [node for node in subgraph.nodes()
                             if subgraph.degree(node) == 0]
         subgraph.remove_nodes_from(unattached_nodes)
