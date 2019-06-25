@@ -64,9 +64,11 @@ class WriteCells(gp.BatchFilter):
 
         cells = []
         for index in np.argwhere(maxima*cell_indicator > self.score_threshold):
-
             index = gp.Coordinate(index)
-            radius = (self.edge_length - 1) / 2
+            logger.debug("Getting parent vector at index %s" % str(index))
+
+            radius = (self.edge_length - 1) // 2
+            logger.debug("Using radius %d" % radius)
             score = cell_indicator[index]
             if radius == 0:
                 parent_vector = parent_vectors[(Ellipsis,) + index]
@@ -96,11 +98,23 @@ class WriteCells(gp.BatchFilter):
             self.cells.insert_many(cells)
 
     def get_avg_pv(parent_vectors, index, radius):
-
+        logger.debug("Getting average parent vectors with radius"
+                     " %d around index %s" % (radius, str(index)))
         offsets = []
-        for z in range(index[1] - radius, index[1] + radius + 1):
-            for y in range(index[2] - radius, index[2] + radius + 1):
-                for x in range(index[3] - radius, index[3] + radius + 1):
+        pv_shape = parent_vectors.shape
+        # channels, t, z, y, x
+        assert(len(pv_shape) == 5)
+        pv_max_z = pv_shape[2]
+        pv_max_y = pv_shape[3]
+        pv_max_x = pv_shape[4]
+        logger.debug("Type of index[1]: %s   index[1] %s"
+                     % (str(type(index[1])), str(index[1])))
+        for z in range(max(0, index[1] - radius),
+                       min(index[1] + radius + 1, pv_max_z)):
+            for y in range(max(0, index[2] - radius),
+                           min(index[2] + radius + 1, pv_max_y)):
+                for x in range(max(0, index[3] - radius),
+                               min(index[3] + radius + 1, pv_max_x)):
                     c = gp.Coordinate((z, y, x))
                     c_with_time = gp.Coordinate((index[0], z, y, x))
                     relative_pos = c - index[1:]

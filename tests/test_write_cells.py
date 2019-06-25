@@ -22,3 +22,5 @@ class WriteCellsTestCase(unittest.TestCase):
                          (13., 40., 67.))
         self.assertEqual(WriteCells.get_avg_pv(parent_vectors, index, 1),
                          (13., 40., 67.))
+        self.assertEqual(WriteCells.get_avg_pv(parent_vectors, index, 2),
+                         (13., 40., 67.))
