@@ -73,7 +73,8 @@ class WriteCells(gp.BatchFilter):
             if radius == 0:
                 parent_vector = parent_vectors[(Ellipsis,) + index]
             else:
-                parent_vector = self.get_avg_pv(parent_vectors, index, radius)
+                parent_vector = WriteCells.get_avg_pv(
+                        parent_vectors, index, radius)
             logger.info("Parent vector: %s" % str(parent_vector))
             position = roi.get_begin() + voxel_size*index
 
