@@ -107,6 +107,7 @@ def extract_edges_in_block(
 
     if graph.number_of_nodes() == 0:
         logger.info("No cells in roi %s. Skipping", block.read_roi)
+        linajea.write_done(block, 'extract_edges', db_name, db_host)
         return
 
     logger.info(
