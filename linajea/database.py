@@ -177,6 +177,7 @@ class CandidateDatabase(MongoDbGraphProvider):
         so that you can use reset_selection and/or get_selected_graph'''
         self.parameters_id = int(parameters_id)
         self.selected_key = 'selected_' + str(self.parameters_id)
+        logger.debug("Set selected_key to %s" % self.selected_key)
 
     def get_score(self, parameters_id):
         '''Returns the score for the given parameters_id, or
