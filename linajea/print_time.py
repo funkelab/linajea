@@ -4,6 +4,9 @@ logger = logging.getLogger(__name__)
 
 
 def print_time(seconds):
+    ''' A function to pretty print a number of seconds as
+    days, hours, minutes, seconds
+    '''
     logger.debug("Time spent in seconds: {}".format(seconds))
     seconds = int(seconds)
     days = seconds // 86400
