@@ -1,0 +1,37 @@
+README: Linajea
+
+This is the main software repository for the linajea cell tracking project. 
+Includes tools and infrastructure for running a pipeline that starts
+from light sheet data and ends in extracted cell lineage tracks.
+The linajea_experiments repository contains example scripts, network setups,
+and data folders, and is the location where you will actually
+run training and inference scripts. This library contains all the supporting
+code to run those experiments, and is where most of the interesting
+functionality resides, other than network architecture definition.
+
+
+VERSIONING
+After and initial period for experimentation with high change in the code base,
+we are releasing version 1.0. After that release, the master branch will remain
+stable, and all improvements will be made on a dev branch. Minor version updates
+will include minor bugfixes and added functionality, while major version updates
+will be reserved for changes that break backwards compatibility.
+
+We also have a series of singularity containers which we started formally versioning
+well before the repo as a whole, and thus the container versions were already at 1.5.14
+by the time we created version 1.0 of the code. It makes sense to now align the versions
+of the singularity containers with the versions of the code, so I will be changing the 
+old containers to start with 0 (eg 0.5.4 instead of 1.5.4) and then start from 1.0.
+
+
+CONTRIBUTING
+If you make any improvements to the software, please create a new branch named
+descriptively for the feature you are upgrading or bug you are fixing, commit
+your changes to that branch, and create a pull request asking for my (cmalinmayor)
+permission to merge. Help is always appreciated! 
+
+
+OTHER
+Many of the modules in this project have their own README to provide more information.
+If you can't find the answers you need there or in the code documentation, feel free
+to contact me!
