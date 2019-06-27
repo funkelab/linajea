@@ -14,5 +14,6 @@ setup(
             'linajea.tensorflow',
             'linajea.tracking',
             'linajea.evaluation',
+            'linajea.process_blockwise',
         ]
 )

@@ -119,6 +119,7 @@ def solve_in_block(db_host, db_name, parameters, block, parameters_id):
     if num_edges == 0:
         logger.info("No edges in roi %s. Skipping"
                     % block.read_roi)
+        write_done(block, 'solve_' + str(parameters_id), db_name, db_host)
         return 0
 
     track(graph, parameters, graph_provider.selected_key)
