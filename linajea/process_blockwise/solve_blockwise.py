@@ -1,6 +1,7 @@
 import daisy
 import json
-from linajea import CandidateDatabase, check_function, write_done
+from linajea import CandidateDatabase
+from .daisy_check_functions import check_function, write_done
 from linajea.tracking import TrackingParameters, track
 import logging
 import os

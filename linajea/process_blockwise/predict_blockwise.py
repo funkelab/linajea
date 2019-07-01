@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from linajea import check_function
+from .daisy_check_functions import check_function
 import daisy
 import json
 import logging

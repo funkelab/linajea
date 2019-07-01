@@ -3,6 +3,7 @@ from scipy.spatial import KDTree
 import daisy
 import json
 import linajea
+from .daisy_check_functions import write_done, check_function
 import logging
 import numpy as np
 import os
@@ -76,7 +77,7 @@ def extract_edges_blockwise(
             db_host,
             edge_move_threshold,
             b),
-        check_function=lambda b: linajea.check_function(
+        check_function=lambda b: check_function(
             b,
             'extract_edges',
             db_name,
@@ -206,5 +207,5 @@ def extract_edges_in_block(
     logger.info(
         "Wrote edges in %.3fs",
         time.time() - start)
-    linajea.write_done(block, 'extract_edges', db_name, db_host)
+    write_done(block, 'extract_edges', db_name, db_host)
     return 0
