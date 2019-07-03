@@ -4,6 +4,7 @@ import daisy
 import json
 import logging
 import os
+from funlib.run import run
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ def predict_blockwise(
         frames=None,
         frame_context=1,
         num_workers=16,
+        singularity_image='linajea/linajea:v1.0',
         **kwargs):
 
     data_dir = '../01_data'
@@ -79,6 +81,7 @@ def predict_blockwise(
             sample,
             db_host,
             db_name,
+            singularity_image,
             cell_score_threshold),
         check_function=lambda b: check_function(
             b,
@@ -95,27 +98,35 @@ def predict_worker(
         sample,
         db_host,
         db_name,
+        singularity_image,
         cell_score_threshold):
 
     worker_id = daisy.Context.from_env().worker_id
-
+    image_path = '/nrs/funke/singularity/'
+    image = image_path + singularity_image + '.img'
+    logger.debug("Using singularity image %s" % image)
+    cmd = run(
+            command='python -u %s %d %s %s %s %f' % (
+                os.path.join('../02_setups', setup, 'predict.py'),
+                iteration,
+                sample,
+                db_host,
+                db_name,
+                cell_score_threshold
+                ),
+            queue='gpu_tesla',
+            num_gpus=1,
+            num_cpus=4,
+            singularity_image=image,
+            mount_dirs=['/groups', '/nrs'],
+            execute=False,
+            expand=False,
+            )
     logger.info("Starting predict worker...")
 
-    daisy.call([
-        'run_lsf',
-        '-c', '4',
-        '-g', '1',
-        '-q', 'gpu_tesla',
-        '-s', 'linajea/linajea:v1.5.14',
-        'python -u %s %d %s %s %s %f' % (
-            os.path.join('../02_setups', setup, 'predict.py'),
-            iteration,
-            sample,
-            db_host,
-            db_name,
-            cell_score_threshold
-        )],
-        log_out='predict_%d.out' % worker_id,
-        log_err='predict_%d.err' % worker_id)
+    daisy.call(
+        cmd,
+        log_out='logs/predict_%s_%d.out' % (setup, worker_id),
+        log_err='logs/predict_%s_%d.err' % (setup, worker_id))
 
     logger.info("Predict worker finished")
