@@ -89,7 +89,8 @@ def predict_blockwise(
             db_name,
             db_host),
         num_workers=num_workers,
-        read_write_conflict=False)
+        read_write_conflict=False,
+        max_retries=0)
 
 
 def predict_worker(
