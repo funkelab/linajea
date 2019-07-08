@@ -1,10 +1,13 @@
 from __future__ import absolute_import
-from .daisy_check_functions import check_function
-import daisy
 import json
 import logging
 import os
+import time
+
+import daisy
 from funlib.run import run
+
+from .daisy_check_functions import check_function
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +104,8 @@ def predict_worker(
         db_name,
         singularity_image,
         cell_score_threshold):
-
     worker_id = daisy.Context.from_env().worker_id
+    worker_time = time.time()
     image_path = '/nrs/funke/singularity/'
     image = image_path + singularity_image + '.img'
     logger.debug("Using singularity image %s" % image)
@@ -127,7 +130,7 @@ def predict_worker(
 
     daisy.call(
         cmd,
-        log_out='logs/predict_%s_%d.out' % (setup, worker_id),
-        log_err='logs/predict_%s_%d.err' % (setup, worker_id))
+        log_out='logs/predict_%s_%d_%d.out' % (setup, worker_time, worker_id),
+        log_err='logs/predict_%s_%d_%d.err' % (setup, worker_time, worker_id))
 
     logger.info("Predict worker finished")
