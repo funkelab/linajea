@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
         name='linajea',
-        version='0.1',
+        version='1.0',
         description='Lineage Tracking in 4D Microscopy Volumes.',
         url='https://github.com/funkelab/linajea',
         author='Jan Funke',
@@ -14,5 +14,6 @@ setup(
             'linajea.tensorflow',
             'linajea.tracking',
             'linajea.evaluation',
+            'linajea.process_blockwise',
         ]
 )

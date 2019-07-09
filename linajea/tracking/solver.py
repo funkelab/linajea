@@ -6,7 +6,10 @@ logger = logging.getLogger(__name__)
 
 
 class Solver(object):
-
+    '''
+    Class for initializing and solving the ILP problem for
+    creating tracks from candidate nodes and edges using pylp
+    '''
     def __init__(self, track_graph, parameters, selected_key):
 
         self.graph = track_graph

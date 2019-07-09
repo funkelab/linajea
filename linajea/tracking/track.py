@@ -93,6 +93,31 @@ class TrackingParameters(object):
 
 
 def track(graph, parameters, selected_key, frame_key='t'):
+    ''' A wrapper function that takes a daisy subgraph and input parameters,
+    creates and solves the ILP to create tracks, and updates the daisy subgraph
+    to reflect the selected nodes and edges.
+
+    Args:
+
+        graph (``daisy.SharedSubgraph``):
+
+            The candidate graph to extract tracks from
+
+        parameters (``TrackingParameters``)
+
+            The parameters to use when optimizing the tracking ILP
+
+        selected_key (``string``)
+
+            The key used to store the `true` or `false` selection status of
+            each node and edge in graph.
+
+        frame_key (``string``, optional):
+
+            The name of the node attribute that corresponds to the frame of the
+            node. Defaults to "t".
+
+    '''
     # assuming graph is a daisy subgraph
     if graph.number_of_nodes() == 0:
         return

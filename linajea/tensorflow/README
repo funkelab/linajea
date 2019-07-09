@@ -1,0 +1,10 @@
+README: Tensorflow module
+
+This is a deprecated module, having been replaced by
+funlib.learn.tensorflow. Setups older than setup10 
+used the linajea.tensorflow U-Net in their mknet.py,
+and setup10 and more recent use funlib.learn.tensorflow. 
+
+Other users who have modeled their setups after older
+setups are encouraged to switch to the funlib U-Net
+used in setup10+.

@@ -19,8 +19,9 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
             If the nodes on both ends of an edge are within matching_threshold
             real world units, then they are allowed to be matched
 
-    Returns a list of edges in x, a list of edges in y, and a list of edge
-    matches [(id_x, id_y), ...] referring to indexes in the returned lists
+    Returns a list of edges in x, a list of edges in y, a list of edge
+    matches [(id_x, id_y), ...] referring to indexes in the returned lists,
+    and a list of edge false positives
     '''
     begin = min(track_graph_x.get_frames()[0], track_graph_x.get_frames()[0])
     end = max(track_graph_x.get_frames()[1], track_graph_x.get_frames()[1]) + 1

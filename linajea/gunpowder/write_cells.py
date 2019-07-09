@@ -67,14 +67,12 @@ class WriteCells(gp.BatchFilter):
             index = gp.Coordinate(index)
             logger.debug("Getting parent vector at index %s" % str(index))
 
-            radius = (self.edge_length - 1) // 2
-            logger.debug("Using radius %d" % radius)
             score = cell_indicator[index]
-            if radius == 0:
+            if self.edge_length == 1:
                 parent_vector = parent_vectors[(Ellipsis,) + index]
             else:
                 parent_vector = WriteCells.get_avg_pv(
-                        parent_vectors, index, radius)
+                        parent_vectors, index, self.edge_length)
             logger.info("Parent vector: %s" % str(parent_vector))
             position = roi.get_begin() + voxel_size*index
 
@@ -98,7 +96,30 @@ class WriteCells(gp.BatchFilter):
         if len(cells) > 0:
             self.cells.insert_many(cells)
 
-    def get_avg_pv(parent_vectors, index, radius):
+    def get_avg_pv(parent_vectors, index, edge_length):
+        ''' Computes the average parent vector offset from the parent vectors
+        in a cube centered at index. Accounts for the fact that each parent
+        vector is a relative offset from its source location, not from index.
+
+        Args:
+
+            parent_vectors (``np.array``):
+
+                A numpy array of parent vectors with dimensions
+                (channels, time, z, y, x).
+
+            index (``gp.Coordinate``):
+
+                A 4D coordiante (t, z, y, x) indicating the target
+                location to get the average parent vector for.
+
+            edge_length (``int``):
+
+                Length of each side of the cube within which the
+                parent vectors are averaged.
+
+        '''
+        radius = (edge_length - 1) // 2
         logger.debug("Getting average parent vectors with radius"
                      " %d around index %s" % (radius, str(index)))
         offsets = []
