@@ -69,7 +69,8 @@ class WriteCells(gp.BatchFilter):
 
             score = cell_indicator[index]
             if self.edge_length == 1:
-                parent_vector = parent_vectors[(Ellipsis,) + index]
+                parent_vector = tuple(
+                    float(x) for x in parent_vectors[(Ellipsis,) + index])
             else:
                 parent_vector = WriteCells.get_avg_pv(
                         parent_vectors, index, self.edge_length)
