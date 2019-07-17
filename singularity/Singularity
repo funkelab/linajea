@@ -86,6 +86,9 @@ export DAISY_ROOT=/src/daisy
 export PYTHONPATH=${DAISY_ROOT}:$PYTHONPATH
 export GUNPOWDER_ROOT=/src/gunpowder
 export PYTHONPATH=${GUNPOWDER_ROOT}:$PYTHONPATH
+# ignore locally installed python modules (in ~/.local)
+export PYTHONNOUSERSITE=True
+# prevent multithreading in numpy
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
