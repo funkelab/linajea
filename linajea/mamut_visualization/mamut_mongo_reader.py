@@ -20,6 +20,8 @@ class MamutMongoReader(MamutReader):
             key=None):
         db = linajea.CandidateDatabase(
                 db_name, self.mongo_url, parameters_id=key)
+        if frames is None:
+            frames = [0, 1000]
         roi = daisy.Roi((frames[0], 0, 0, 0),
                         (frames[1] - frames[0], 10000, 10000, 10000))
         nodes = db.read_nodes(roi)
