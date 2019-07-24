@@ -78,7 +78,7 @@ def evaluate_setup(
                    subgraph.number_of_edges(),
                    time.time() - start_time))
 
-    if subgraph.number_of_edges == 0:
+    if subgraph.number_of_edges() == 0:
         logger.warn("No selected edges for parameters_id %d. Skipping"
                     % parameters_id)
         return
