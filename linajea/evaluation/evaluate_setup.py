@@ -40,7 +40,11 @@ def evaluate_setup(
     data_dir = '../01_data'
 
     # get absolute paths
-    sample_dir = os.path.abspath(os.path.join(data_dir, sample))
+    if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
+        sample_dir = os.path.abspath(os.path.join(data_dir,
+                                                  os.path.dirname(sample)))
+    else:
+        sample_dir = os.path.abspath(os.path.join(data_dir, sample))
 
     # get ROI of source
     with open(os.path.join(sample_dir, 'attributes.json'), 'r') as f:
@@ -74,7 +78,7 @@ def evaluate_setup(
                    subgraph.number_of_edges(),
                    time.time() - start_time))
 
-    if subgraph.number_of_edges == 0:
+    if subgraph.number_of_edges() == 0:
         logger.warn("No selected edges for parameters_id %d. Skipping"
                     % parameters_id)
         return

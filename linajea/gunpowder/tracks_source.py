@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class TrackPoint(Point):
 
-    def __init__(self, location, parent_id, track_id):
+    def __init__(self, location, parent_id, track_id, value=None):
 
         super(TrackPoint, self).__init__(location)
 
@@ -17,6 +17,7 @@ class TrackPoint(Point):
         self.original_location = np.array(location, dtype=np.float32)
         self.parent_id = parent_id
         self.track_id = track_id
+        self.value = value
         self.freeze()
 
 
@@ -51,12 +52,14 @@ class TracksSource(BatchProvider):
             positions to convert them to world units.
     '''
 
-    def __init__(self, filename, points, points_spec=None, scale=None):
+    def __init__(self, filename, points, points_spec=None, scale=None,
+                 read_dims=-3):
 
         self.filename = filename
         self.points = points
         self.points_spec = points_spec
         self.scale = scale
+        self.read_dims = read_dims
         self.ndims = None
         self.locations = None
         self.track_info = None
@@ -119,13 +122,16 @@ class TracksSource(BatchProvider):
                 # parent_id
                 track_info[1] if track_info[1] > 0 else None,
                 # track_id
-                track_info[2])
+                track_info[2],
+                # radius
+                value=track_info[3] if len(track_info) > 3 else None)
             for location, track_info in zip(filtered_locations,
                                             filtered_track_info)
         }
 
     def _read_points(self):
-        self.locations, self.track_info, self.ndims = self._parse_csv(ndims=-3)
+        self.locations, self.track_info, self.ndims = \
+            self._parse_csv(ndims=self.read_dims)
 
     def _parse_csv(self, ndims=0):
         '''Read one point per line. If ``ndims`` is 0, all values in one line

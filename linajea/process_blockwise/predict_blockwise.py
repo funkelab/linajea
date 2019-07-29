@@ -29,7 +29,12 @@ def predict_blockwise(
     setup_dir = '../02_setups'
 
     # get absolute paths
-    sample_dir = os.path.abspath(os.path.join(data_dir, sample))
+    if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
+        sample_dir = os.path.abspath(os.path.join(data_dir,
+                                                  os.path.dirname(sample)))
+    else:
+        sample_dir = os.path.abspath(os.path.join(data_dir, sample))
+
     setup_dir = os.path.abspath(os.path.join(setup_dir, setup))
     # get ROI of source
     with open(os.path.join(sample_dir, 'attributes.json'), 'r') as f:

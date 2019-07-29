@@ -26,7 +26,11 @@ def solve_blockwise(
     data_dir = '../01_data'
 
     # get absolute paths
-    sample_dir = os.path.abspath(os.path.join(data_dir, sample))
+    if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
+        sample_dir = os.path.abspath(os.path.join(data_dir,
+                                                  os.path.dirname(sample)))
+    else:
+        sample_dir = os.path.abspath(os.path.join(data_dir, sample))
 
     # get ROI of source
     with open(os.path.join(sample_dir, 'attributes.json'), 'r') as f:
