@@ -7,10 +7,6 @@ import os
 import json
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s %(name)s %(levelname)-8s %(message)s')
-# logging.getLogger('comatch.match').setLevel(logging.DEBUG)
 
 
 def evaluate_setup(
