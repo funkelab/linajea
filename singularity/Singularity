@@ -1,5 +1,5 @@
 Bootstrap: localimage
-From: /nrs/funke/singularity/linajea/pylp_base:v0.5.img
+From: /nrs/funke/singularity/linajea/pylp_base:v1.1-dev.img
 
 %help
 This container contains linajea lineage tracking software.
@@ -81,11 +81,26 @@ git checkout ${FUNLIB_RUN_REVISION}
 pip install -r requirements.txt
 PYTHONPATH=${FUNLIB_RUN_ROOT}:$PYTHONPATH
 
+#install funlib.tensorflow.learn
+
+FUNLIB_LEARN_TF_ROOT=/src/funlib.learn.tensorflow
+FUNLIB_LEARN_TF_REPOSITORY=https://github.com/cmalinmayor/funlib.learn.tensorflow.git
+FUNLIB_LEARN_TF_REVISION=4bbd2589a77f238ba8e7514802557c2d510839b1
+
+mkdir -p ${FUNLIB_LEARN_TF_ROOT}
+cd ${FUNLIB_LEARN_TF_ROOT}
+git clone ${FUNLIB_LEARN_TF_REPOSITORY} . && \
+git checkout ${FUNLIB_LEARN_TF_REVISION}
+pip install -r requirements.txt
+PYTHONPATH=${FUNLIB_LEARN_TF_ROOT}:$PYTHONPATH
+
 %environment
 export DAISY_ROOT=/src/daisy
 export PYTHONPATH=${DAISY_ROOT}:$PYTHONPATH
 export GUNPOWDER_ROOT=/src/gunpowder
 export PYTHONPATH=${GUNPOWDER_ROOT}:$PYTHONPATH
+export FUNLIB_LEARN_TF_ROOT=/src/funlib.learn.tensorflow
+export PYTHONPATH=${FUNLIB_LEARN_TF_ROOT}:$PYTHONPATH
 # ignore locally installed python modules (in ~/.local)
 export PYTHONNOUSERSITE=True
 # prevent multithreading in numpy
