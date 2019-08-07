@@ -33,7 +33,7 @@ conda install python=3.6
 
 # install tensorflow
 
-conda install tensorflow-gpu=1.14
+conda install tensorflow-gpu=1.14 cudatoolkit=10.0
 
 # install dependencies for gunpowder
 
