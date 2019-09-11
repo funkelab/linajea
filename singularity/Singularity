@@ -60,6 +60,19 @@ git clone ${COMATCH_REPOSITORY} . && \
 git checkout ${COMATCH_REVISION}
 python setup.py install
 
+#install funlib.tensorflow.learn
+
+FUNLIB_LEARN_TF_ROOT=/src/funlib.learn.tensorflow
+FUNLIB_LEARN_TF_REPOSITORY=https://github.com/funkelab/funlib.learn.tensorflow.git
+FUNLIB_LEARN_TF_REVISION=bb08e4ee3bab498d80dfdfee9e8f7fd6fd8975a0
+
+mkdir -p ${FUNLIB_LEARN_TF_ROOT}
+cd ${FUNLIB_LEARN_TF_ROOT}
+git clone ${FUNLIB_LEARN_TF_REPOSITORY} . && \
+git checkout ${FUNLIB_LEARN_TF_REVISION}
+pip install -r requirements.txt
+PYTHONPATH=${FUNLIB_LEARN_TF_ROOT}:$PYTHONPATH
+
 # install linajea
 
 cd /src/linajea
@@ -81,18 +94,6 @@ git checkout ${FUNLIB_RUN_REVISION}
 pip install -r requirements.txt
 PYTHONPATH=${FUNLIB_RUN_ROOT}:$PYTHONPATH
 
-#install funlib.tensorflow.learn
-
-FUNLIB_LEARN_TF_ROOT=/src/funlib.learn.tensorflow
-FUNLIB_LEARN_TF_REPOSITORY=https://github.com/cmalinmayor/funlib.learn.tensorflow.git
-FUNLIB_LEARN_TF_REVISION=4bbd2589a77f238ba8e7514802557c2d510839b1
-
-mkdir -p ${FUNLIB_LEARN_TF_ROOT}
-cd ${FUNLIB_LEARN_TF_ROOT}
-git clone ${FUNLIB_LEARN_TF_REPOSITORY} . && \
-git checkout ${FUNLIB_LEARN_TF_REVISION}
-pip install -r requirements.txt
-PYTHONPATH=${FUNLIB_LEARN_TF_ROOT}:$PYTHONPATH
 
 %environment
 export DAISY_ROOT=/src/daisy
