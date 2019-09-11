@@ -185,7 +185,8 @@ def get_track_related_statistics(
                     scores.identity_switches += 1
                     if error_details:
                         scores.identity_switch_nodes.append(int(target))
-                    start_cells.append(target)
+                    if len(x_track.next_edges(target)) < 2:
+                        start_cells.append(target)
                     continue
 
                 matched_track = y_tracks[edges_to_track_id_y[edge_match]]
