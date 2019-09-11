@@ -14,6 +14,7 @@ def evaluate_setup(
         db_host,
         db_name,
         gt_db_name,
+        matching_threshold,
         frames=None,
         from_scratch=True,
         error_details=False,
@@ -98,7 +99,7 @@ def evaluate_setup(
     score = evaluate(
             gt_track_graph,
             track_graph,
-            matching_threshold=25,
+            matching_threshold=matching_threshold,
             error_details=error_details)
 
     logger.info("Done evaluating results for %d. Saving results to mongo."
