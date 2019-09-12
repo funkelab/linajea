@@ -2,6 +2,9 @@ from linajea.evaluation.match import match, get_edge_costs, match_edges
 import unittest
 import networkx as nx
 from linajea.tracking import TrackGraph
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 
 class TestEvalMatch(unittest.TestCase):
@@ -63,11 +66,16 @@ class TestEvalMatch(unittest.TestCase):
                 (1, 2),
                 (3, 4),
                 ]
+        edges_y_by_source = {}
+        for edge_id_y, (u, v) in enumerate(edges_y):
+            assert u not in edges_y_by_source,\
+                    "Each edge should have a unique source node"
+            edges_y_by_source[u] = (v, edge_id_y)
         node_pairs_xy = {
                 1: [(1, 0.5), (3, 0.5)],
                 2: [(2, 0.5)]
                 }
-        edge_costs = get_edge_costs(edges_x, edges_y, node_pairs_xy)
+        edge_costs = get_edge_costs(edges_x, edges_y_by_source, node_pairs_xy)
         expected_edge_costs = {
                 (0, 0): 1.0
                 }
