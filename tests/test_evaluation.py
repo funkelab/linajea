@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 # logging.getLogger('linajea.evaluation').setLevel(logging.DEBUG)
 
 
+class Scores(object):
+    pass
+
+
 class EvaluationTestCase(unittest.TestCase):
 
     def delete_db(self):
@@ -67,9 +71,14 @@ class EvaluationTestCase(unittest.TestCase):
         for cell in cells:
             cell[1]['y'] += 1
         rec_track_graph = self.create_graph(cells, edges, roi)
-        scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2)
-
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                calc_aeftl=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
         self.assertEqual(scores.num_matched_edges, 3)
         self.assertEqual(scores.num_fp_edges, 0)
         self.assertEqual(scores.num_fn_edges, 0)
@@ -81,8 +90,8 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.erl, 3)
         self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.num_gt_divisions, 0)
-        self.assertEqual(scores.num_tp_divisions, 0)
         self.assertEqual(scores.num_fp_divisions, 0)
+        self.assertEqual(scores.num_fn_divisions, 0)
         self.assertEqual(scores.num_fn_division_edges, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 1.0)
@@ -97,8 +106,14 @@ class EvaluationTestCase(unittest.TestCase):
         # introduce a split error
         del edges[1]
         rec_track_graph = self.create_graph(cells, edges, roi)
-        scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2)
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                calc_aeftl=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
 
         self.assertEqual(scores.num_matched_edges, 2)
         self.assertEqual(scores.num_fp_edges, 0)
@@ -111,7 +126,7 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.erl, 2./3)
         self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.num_gt_divisions, 0)
-        self.assertEqual(scores.num_tp_divisions, 0)
+        self.assertEqual(scores.num_fn_divisions, 0)
         self.assertEqual(scores.num_fp_divisions, 0)
         self.assertEqual(scores.num_fn_division_edges, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
@@ -129,12 +144,18 @@ class EvaluationTestCase(unittest.TestCase):
         # introduce a split error
         edges.remove((5, 2))
         rec_track_graph = self.create_graph(cells, edges, roi)
-        scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2)
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                calc_aeftl=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
 
         self.assertEqual(scores.num_matched_edges, 5)
         self.assertEqual(scores.num_fp_edges, 0)
-        self.assertEqual(scores.num_fn_edges, 0)
+        self.assertEqual(scores.num_fn_edges, 1)
         self.assertEqual(scores.num_gt_tracks, 1)
         self.assertEqual(scores.num_gt_matched_tracks, 1)
         self.assertEqual(scores.num_rec_matched_tracks, 2)
@@ -143,7 +164,7 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.erl, 13./6)
         self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.num_gt_divisions, 1)
-        self.assertEqual(scores.num_tp_divisions, 0)
+        self.assertEqual(scores.num_fn_divisions, 1)
         self.assertEqual(scores.num_fp_divisions, 0)
         self.assertEqual(scores.num_fn_division_edges, 1)
         self.assertAlmostEqual(scores.precision, 1.0)
@@ -163,12 +184,18 @@ class EvaluationTestCase(unittest.TestCase):
         # introduce a split error
         edges.remove((5, 2))
         rec_track_graph = self.create_graph(cells, edges, roi)
-        scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2)
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                calc_aeftl=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
 
         self.assertEqual(scores.num_matched_edges, 4)
         self.assertEqual(scores.num_fp_edges, 0)
-        self.assertEqual(scores.num_fn_edges, 0)
+        self.assertEqual(scores.num_fn_edges, 1)
         self.assertEqual(scores.num_gt_tracks, 1)
         self.assertEqual(scores.num_gt_matched_tracks, 1)
         self.assertEqual(scores.num_rec_matched_tracks, 2)
@@ -177,7 +204,7 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.erl, 8./5)
         self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.num_gt_divisions, 1)
-        self.assertEqual(scores.num_tp_divisions, 0)
+        self.assertEqual(scores.num_fn_divisions, 1)
         self.assertEqual(scores.num_fp_divisions, 0)
         self.assertEqual(scores.num_fn_division_edges, 1)
         self.assertAlmostEqual(scores.precision, 1.0)
@@ -194,8 +221,14 @@ class EvaluationTestCase(unittest.TestCase):
         for cell in cells:
             cell[1]['y'] += 1
         rec_track_graph = self.create_graph(cells, edges, roi)
-        scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2)
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                calc_aeftl=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
 
         self.assertEqual(scores.num_matched_edges, 5)
         self.assertEqual(scores.num_fp_edges, 0)
@@ -208,7 +241,7 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.erl, 9./5)
         self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.num_gt_divisions, 0)
-        self.assertEqual(scores.num_tp_divisions, 0)
+        self.assertEqual(scores.num_fn_divisions, 0)
         self.assertEqual(scores.num_fp_divisions, 1)
         self.assertEqual(scores.num_fn_division_edges, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
@@ -228,8 +261,14 @@ class EvaluationTestCase(unittest.TestCase):
                 )
         edges.append((5, 1))
         rec_track_graph = self.create_graph(cells, edges, roi)
-        scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2)
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                calc_aeftl=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
 
         self.assertEqual(scores.num_matched_edges, 3)
         self.assertEqual(scores.num_fp_edges, 0)
@@ -242,7 +281,7 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.erl, 3)
         self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.num_gt_divisions, 0)
-        self.assertEqual(scores.num_tp_divisions, 0)
+        self.assertEqual(scores.num_fn_divisions, 0)
         self.assertEqual(scores.num_fp_divisions, 1)
         self.assertEqual(scores.num_fn_division_edges, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
