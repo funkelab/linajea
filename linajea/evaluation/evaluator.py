@@ -6,7 +6,30 @@ logger = logging.getLogger(__name__)
 
 
 class Evaluator:
+    ''' A class for evaluating linajea results after matching.
+    Takes flags to indicate which metrics to compute.
+    Statistics about the gt and reconstrution stored in a dict
+    in self.stats. Error metrics in self.error_metrics.
+    Specific locations in the gt or reconstruction where errors
+    occurr in self.error_details.
 
+    Args:
+        x_track_graph (`linajea.TrackGraph`):
+            The ground truth track graph
+
+        y_track_graph (`linajea.TrackGraph`):
+            The reconstructed track graph
+
+        edge_matches (list of ((int, int), (int, int))):
+            List of edge matches, where each edge match
+            is a tuple of (x_edge, y_edge), and each edge is a tuple
+            of (source_id, target_id)
+
+        unselected_potential_matches (int):
+            The number of rec edges within the matching radius
+            that were not matched to a gt edge (to use as a
+            proxy for edge fps if sparse annotations)
+    '''
     def __init__(
             self,
             x_track_graph,
@@ -16,6 +39,7 @@ class Evaluator:
             ):
         self.stats = {}
         self.error_metrics = {}
+        self.error_details = {}
 
         self.x_track_graph = x_track_graph
         self.y_track_graph = y_track_graph
@@ -28,15 +52,82 @@ class Evaluator:
         logger.debug("Found %d gt tracks and %d rec tracks"
                      % (len(self.x_tracks), len(self.y_tracks)))
         self.matched_track_ids = self.__get_track_matches()
+
+        # get statistics
         self._get_track_stats()
         self._get_edge_stats()
         self._get_division_stats()
 
-    def get_fn_edges(self):
+    def evaluate(
+            self,
+            sparse=True,
+            fn_division_edges=False,
+            f_score=False,
+            aeftl=False,
+            error_details=False,
+            **kwargs):
+        ''' Compute error metrics and details.
+
+        Args:
+            sparse (bool):
+                If True, assume the ground truth is sparse. If False,
+                assume the ground truth is dense. Calculate edge and div
+                false positives accordingly. Defaults to True.
+
+            fn_division_edges (bool):
+                If True, calculate the number of fn edges that are in
+                divisions. Regardless, fn_edges includes all fn_edges,
+                including those with divisions. To separate the division
+                fn edges out, you will have to set this to true and then
+                subtract from fn_edges externally. Defaults to False.
+
+            f_score (bool):
+                Flag indicating whether or not to calculate edge precision,
+                recall, and f-score. Defaults to False
+
+            aeftl (bool):
+                Flag indicating whether or not to calculate the AEFTL and ERL.
+                Defaults to False.
+
+            error_details (bool):
+                Flag indicating whether or not to store node_ids of errors.
+                If True, will store the gt edge (source_id, target_id) of all
+                fn edges, the x node_id of all identity switches, the y parent
+                node id of all fp divisions, and the x parent node id of all
+                fn and tp divisions.
+
+            kwargs:
+                Any extra arguments, to be ignored
+        '''
+        self.get_fn_edges(error_details=error_details)
+        self.get_fp_edges(sparse=sparse)
+        self.get_identity_switches(error_details=error_details)
+        self.get_fp_divisions(sparse=sparse, error_details=error_details)
+        self.get_fn_divisions(count_fn_edges=fn_division_edges,
+                              error_details=error_details)
+        if f_score:
+            self.get_f_score()
+        if aeftl:
+            self.get_aeftl_and_erl()
+
+    def get_fn_edges(self, error_details=False):
+        ''' Store the number of false negative edges in
+        self.error_metrics['num_fn_edges'], and optionally store the
+        (source_id, target_id) of all fn edges in
+        self.error_dtails['fn_edges']
+        '''
         self.error_metrics['num_fn_edges'] = self.stats['num_gt_edges']\
             - self.stats['num_matched_edges']
+        if error_details:
+            matched_edges = set([match[0] for match in self.edge_matches])
+            gt_edges = set(self.x_track_graph.edges)
+            self.error_details['fn_edges'] = gt_edges - matched_edges
 
     def get_fp_edges(self, sparse=True):
+        ''' Store the number of fp edges in self.error_metrics['num_fp_edges'].
+        If sparse, this is the number of unselected potential matches.
+        If dense, this is the number of unmatched rec edges.
+        '''
         if sparse:
             self.error_metrics['num_fp_edges'] =\
                 self.unselected_potential_matches
@@ -44,11 +135,19 @@ class Evaluator:
             self.error_metrics['num_fp_edges'] = self.stats['num_rec_edges']\
                 - self.stats['num_matched_edges']
 
-    def get_identity_switches(self):
-        # will loop through all gt_cells, for all pairs of prev_edge (<=1)
-        # and next_edge (<=2), see if both edges have matches, and if
-        # these edge matches match the same rec cell to the gt cell.
+    def get_identity_switches(self, error_details=False):
+        ''' Store the number of identity switches in
+        self.error_metrics['identity_switches'] and optionally
+        store the gt node ids of all locations of identity switches
+        in self.error_details['identity_switches']
+
+        Will loop through all gt_cells, for all pairs of prev_edge (<=1)
+        and next_edge (<=2), see if both edges have matches, and if
+        these edge matches match the same rec cell to the gt cell.
+        '''
         num_is = 0
+        if error_details:
+            is_nodes = []
         x_edges_to_y_edges = self.__get_x_edges_to_y_edges()
         for gt_cell in self.x_track_graph.nodes():
             prev_edges = list(self.x_track_graph.prev_edges(gt_cell))
@@ -75,13 +174,23 @@ class Evaluator:
                                  " next edge match target %s: identity switch"
                                  % (prev_edge_match, next_edge_match))
                     num_is += 1
+                    if error_details:
+                        is_nodes.append(gt_cell)
         self.error_metrics['identity_switches'] = num_is
+        if error_details:
+            self.error_details['identity_switches'] = is_nodes
 
-    def get_fp_divisions(self, sparse=True):
-        # for every division in rec tracks, determine if next edges match
-        # to gt, and if matches have same gt target node
-        # if sparse, ignore if no next edges match and previous edge
-        # also doesnt match
+    def get_fp_divisions(self, sparse=True, error_details=False):
+        ''' Store the number of fp divisions in
+        self.error_metrics['num_fp_divisions'], and optionally store
+        the y parent ids of all fp divisions in
+        error_details['fp_divisions']. If sparse, ignore
+        y divisions where no adjacent edges (next or previous) match
+        to ground truth.
+
+        For every division in rec tracks, determine if next edges match
+        to gt, and if matches have same gt target node
+        '''
         try:
             self.y_parents
         except AttributeError:
@@ -89,6 +198,8 @@ class Evaluator:
 
         y_edges_to_x_edges = self.__get_y_edges_to_x_edges()
         fp_divisions = 0
+        if error_details:
+            fp_div_nodes = []
         for y_parent in self.y_parents:
             next_edges = self.y_track_graph.next_edges(y_parent)
             assert len(next_edges) == 2,\
@@ -110,17 +221,29 @@ class Evaluator:
                 logger.debug("At least one rec division edge had no match. "
                              "FP division")
                 fp_divisions += 1
+                if error_details:
+                    fp_div_nodes.append(y_parent)
                 continue
             if next_edge_matches[0][1] != next_edge_matches[1][1]:
                 logger.debug("gt matches for division edges do not "
                              "have same target (%s, %s). FP division."
                              % (next_edge_matches[0], next_edge_matches[1]))
                 fp_divisions += 1
+                if error_details:
+                    fp_div_nodes.append(y_parent)
         self.error_metrics['num_fp_divisions'] = fp_divisions
+        if error_details:
+            self.error_details['fp_divisions'] = fp_div_nodes
 
-    def get_fn_divisions(self, count_fn_edges=True):
-        # for every division parent node in gt tracks, determine if next edges
-        # have matches, and if matches point to the same target node
+    def get_fn_divisions(self, count_fn_edges=True, error_details=False):
+        ''' Store the number of fn divisions in
+        self.error_metrics['num_fn_divisions']. Any gt division that is
+        not recreated exactly by the reconstruction is fn (even if
+        all edges are matched, since they could be matched to different tracks)
+
+        For every division parent node in gt tracks, determine if next edges
+        have matches, and if matches point to the same target node
+        '''
         try:
             self.x_parents
         except AttributeError:
@@ -128,8 +251,12 @@ class Evaluator:
 
         x_edges_to_y_edges = self.__get_x_edges_to_y_edges()
         fn_divisions = 0
+        if error_details:
+            fn_div_nodes = []
+            tp_div_nodes = []
         if count_fn_edges:
             fn_division_edges = 0
+
         for x_parent in self.x_parents:
             next_edges = self.x_track_graph.next_edges(x_parent)
             assert len(next_edges) == 2,\
@@ -141,6 +268,8 @@ class Evaluator:
                 logger.debug("At least one gt division edge had no match. "
                              "FN division")
                 fn_divisions += 1
+                if error_details:
+                    fn_div_nodes.append(x_parent)
                 if count_fn_edges:
                     fn_division_edges += next_edge_matches.count(None)
                 continue
@@ -149,9 +278,18 @@ class Evaluator:
                              " same target (%s, %s). FN division."
                              % (next_edge_matches[0], next_edge_matches[1]))
                 fn_divisions += 1
+                if error_details:
+                    fn_div_nodes.append(x_parent)
+            else:
+                # tp division
+                if error_details:
+                    tp_div_nodes.append(x_parent)
         self.error_metrics['num_fn_divisions'] = fn_divisions
         if count_fn_edges:
             self.error_metrics['num_fn_division_edges'] = fn_division_edges
+        if error_details:
+            self.error_details['fn_divisions'] = fn_div_nodes
+            self.error_details['tp_divisions'] = tp_div_nodes
 
     def get_f_score(self):
         tp = self.stats['num_matched_edges']
@@ -166,8 +304,11 @@ class Evaluator:
                 precision + recall)
 
     def get_aeftl_and_erl(self):
-        # TODO: THIS HAS A BUG AND POTENTIALLY DOUBLE COUNTS BRANCHES
-        # AFTER A DIVISION - BEWARE!
+        ''' Store the AEFTL and ERL in self.error_metrics['aeftl'/'erl']
+        THIS HAS A BUG AND POTENTIALLY DOUBLE COUNTS BRANCHES
+        AFTER A DIVISION - BEWARE!
+        '''
+
         logger.warn("AEFTL/ERL CALCULATION IS BUGGY")
         logger.info("Getting AEFTL and ERL")
 
@@ -263,8 +404,10 @@ class Evaluator:
         logger.debug("Segment lengths: %s" % reconstruction_lengths)
         self.error_metrics['aeftl'] = float(
             sum(reconstruction_lengths)) / len(reconstruction_lengths)
-        self.error_metrics['erl'] = sum(map(lambda b: math.pow(b, 2),
-                             reconstruction_lengths)) / self.x_track_graph.number_of_edges()
+        self.error_metrics['erl'] = sum(map(
+            lambda b: math.pow(b, 2),
+            reconstruction_lengths
+            )) / self.x_track_graph.number_of_edges()
 
     def _get_track_stats(self):
         self.stats['num_gt_tracks'] = len(self.x_tracks)

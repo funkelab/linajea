@@ -9,10 +9,7 @@ def evaluate(
         gt_track_graph,
         rec_track_graph,
         matching_threshold,
-        error_details=False,
-        sparse=True,
-        calc_aeftl=False):
-
+        **kwargs):
     logger.info("Matching GT edges to REC edges...")
     gt_edges, rec_edges, edge_matches, unselected_potential_matches = match_edges(
             gt_track_graph,
@@ -26,12 +23,5 @@ def evaluate(
             rec_track_graph,
             edge_matches,
             unselected_potential_matches)
-    evaluator.get_fn_edges()
-    evaluator.get_fp_edges(sparse=sparse)
-    evaluator.get_identity_switches()
-    evaluator.get_fp_divisions(sparse=sparse)
-    evaluator.get_fn_divisions(count_fn_edges=True)
-    evaluator.get_f_score()
-    if calc_aeftl:
-        evaluator.get_aeftl_and_erl()
+    evaluator.evaluate(**kwargs)
     return evaluator

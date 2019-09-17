@@ -73,7 +73,9 @@ class EvaluationTestCase(unittest.TestCase):
         rec_track_graph = self.create_graph(cells, edges, roi)
         evaluator = e.evaluate(
                 gt_track_graph, rec_track_graph, matching_threshold=2,
-                calc_aeftl=True)
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
         stats = evaluator.stats
         error_metrics = evaluator.error_metrics
         scores = Scores()
@@ -108,7 +110,9 @@ class EvaluationTestCase(unittest.TestCase):
         rec_track_graph = self.create_graph(cells, edges, roi)
         evaluator = e.evaluate(
                 gt_track_graph, rec_track_graph, matching_threshold=2,
-                calc_aeftl=True)
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
         stats = evaluator.stats
         error_metrics = evaluator.error_metrics
         scores = Scores()
@@ -146,7 +150,9 @@ class EvaluationTestCase(unittest.TestCase):
         rec_track_graph = self.create_graph(cells, edges, roi)
         evaluator = e.evaluate(
                 gt_track_graph, rec_track_graph, matching_threshold=2,
-                calc_aeftl=True)
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
         stats = evaluator.stats
         error_metrics = evaluator.error_metrics
         scores = Scores()
@@ -186,7 +192,9 @@ class EvaluationTestCase(unittest.TestCase):
         rec_track_graph = self.create_graph(cells, edges, roi)
         evaluator = e.evaluate(
                 gt_track_graph, rec_track_graph, matching_threshold=2,
-                calc_aeftl=True)
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
         stats = evaluator.stats
         error_metrics = evaluator.error_metrics
         scores = Scores()
@@ -223,7 +231,9 @@ class EvaluationTestCase(unittest.TestCase):
         rec_track_graph = self.create_graph(cells, edges, roi)
         evaluator = e.evaluate(
                 gt_track_graph, rec_track_graph, matching_threshold=2,
-                calc_aeftl=True)
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
         stats = evaluator.stats
         error_metrics = evaluator.error_metrics
         scores = Scores()
@@ -263,7 +273,9 @@ class EvaluationTestCase(unittest.TestCase):
         rec_track_graph = self.create_graph(cells, edges, roi)
         evaluator = e.evaluate(
                 gt_track_graph, rec_track_graph, matching_threshold=2,
-                calc_aeftl=True)
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
         stats = evaluator.stats
         error_metrics = evaluator.error_metrics
         scores = Scores()

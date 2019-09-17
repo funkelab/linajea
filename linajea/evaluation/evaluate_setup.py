@@ -17,7 +17,6 @@ def evaluate_setup(
         matching_threshold,
         frames=None,
         from_scratch=True,
-        error_details=False,
         **kwargs):
 
     parameters = linajea.tracking.TrackingParameters(**kwargs)
@@ -100,7 +99,7 @@ def evaluate_setup(
             gt_track_graph,
             track_graph,
             matching_threshold=matching_threshold,
-            error_details=error_details)
+            **kwargs)
 
     logger.info("Done evaluating results for %d. Saving results to mongo."
                 % parameters_id)
