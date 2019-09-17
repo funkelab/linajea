@@ -209,10 +209,14 @@ class Evaluator:
             if next_edge_matches.count(None) == 2 and sparse:
                 logger.debug("Neither child edge matched, and sparse is true")
                 prev_edges = self.y_track_graph.prev_edges(y_parent)
+                if len(prev_edges) == 0:
+                    logger.debug("No parent edge to match, and sparse is true."
+                                 " No fp div")
+                    continue
                 assert len(prev_edges) == 1,\
                     ("y parent has more than one previous edge (%s)"
                      % prev_edges)
-                prev_edge = prev_edges[0]
+                prev_edge = list(prev_edges)[0]
                 if prev_edge not in y_edges_to_x_edges:
                     logger.debug("Previous edge also has no match, and "
                                  "sparse is true - ignoring this division")
@@ -453,11 +457,12 @@ class Evaluator:
     def __repr__(self):
 
         lines = []
-        lines.append("Statistics")
-        for k, v in self.stats:
+        lines.append("STATISTICS")
+        for k, v in self.stats.items():
             lines.append(k + "\t\t" + str(v))
-        lines.append("Error Metrics")
-        for k, v in self.error_metrics:
+        lines.append("")
+        lines.append("ERROR METRICS")
+        for k, v in self.error_metrics.items():
             lines.append(k + "\t\t" + str(v))
         return "\n".join(lines)
 

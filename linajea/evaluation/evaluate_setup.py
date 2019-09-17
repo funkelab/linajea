@@ -5,6 +5,7 @@ import daisy
 import time
 import os
 import json
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -14,12 +15,15 @@ def evaluate_setup(
         db_host,
         db_name,
         gt_db_name,
-        matching_threshold,
+        matching_threshold=None,
         frames=None,
         from_scratch=True,
         **kwargs):
 
     parameters = linajea.tracking.TrackingParameters(**kwargs)
+    if matching_threshold is None:
+        logger.error("No matching threshold for evaluation")
+        sys.exit()
 
     # determine parameters id from database
     results_db = linajea.CandidateDatabase(
