@@ -374,7 +374,7 @@ class Evaluator:
                             fp_division = True
                         else:
                             assert next_edge in next_edges_in_gt_track
-                            next_edges_in_gt_track.remove(edge_match)
+                            next_edges_in_gt_track.remove(next_edge)
                             other_edge_x = next_edges_in_gt_track[0]
                             other_edge_match = x_edges_to_y_edges.get(other_edge_x)
                             if other_edge_match not in next_edges_in_matched_track:
