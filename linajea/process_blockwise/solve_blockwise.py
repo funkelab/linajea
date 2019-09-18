@@ -105,7 +105,9 @@ def solve_in_block(db_host, db_name, parameters, block, parameters_id):
     start_time = time.time()
     graph = graph_provider.get_graph(
             block.read_roi,
-            edge_attrs=["prediction_distance", "distance"]
+            edge_attrs=["prediction_distance",
+                        "distance",
+                        graph_provider.selected_key]
             )
 
     # remove dangling nodes and edges
