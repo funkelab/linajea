@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 # logging.getLogger('linajea.evaluation').setLevel(logging.DEBUG)
 
 
+class Scores(object):
+    pass
+
+
 class EvaluationTestCase(unittest.TestCase):
 
     def delete_db(self):
@@ -67,9 +71,16 @@ class EvaluationTestCase(unittest.TestCase):
         for cell in cells:
             cell[1]['y'] += 1
         rec_track_graph = self.create_graph(cells, edges, roi)
-        scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2)
-
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
         self.assertEqual(scores.num_matched_edges, 3)
         self.assertEqual(scores.num_fp_edges, 0)
         self.assertEqual(scores.num_fn_edges, 0)
@@ -81,8 +92,8 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.erl, 3)
         self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.num_gt_divisions, 0)
-        self.assertEqual(scores.num_tp_divisions, 0)
         self.assertEqual(scores.num_fp_divisions, 0)
+        self.assertEqual(scores.num_fn_divisions, 0)
         self.assertEqual(scores.num_fn_division_edges, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 1.0)
@@ -97,8 +108,16 @@ class EvaluationTestCase(unittest.TestCase):
         # introduce a split error
         del edges[1]
         rec_track_graph = self.create_graph(cells, edges, roi)
-        scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2)
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
 
         self.assertEqual(scores.num_matched_edges, 2)
         self.assertEqual(scores.num_fp_edges, 0)
@@ -111,7 +130,7 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.erl, 2./3)
         self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.num_gt_divisions, 0)
-        self.assertEqual(scores.num_tp_divisions, 0)
+        self.assertEqual(scores.num_fn_divisions, 0)
         self.assertEqual(scores.num_fp_divisions, 0)
         self.assertEqual(scores.num_fn_division_edges, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
@@ -129,12 +148,20 @@ class EvaluationTestCase(unittest.TestCase):
         # introduce a split error
         edges.remove((5, 2))
         rec_track_graph = self.create_graph(cells, edges, roi)
-        scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2)
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
 
         self.assertEqual(scores.num_matched_edges, 5)
         self.assertEqual(scores.num_fp_edges, 0)
-        self.assertEqual(scores.num_fn_edges, 0)
+        self.assertEqual(scores.num_fn_edges, 1)
         self.assertEqual(scores.num_gt_tracks, 1)
         self.assertEqual(scores.num_gt_matched_tracks, 1)
         self.assertEqual(scores.num_rec_matched_tracks, 2)
@@ -143,7 +170,7 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.erl, 13./6)
         self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.num_gt_divisions, 1)
-        self.assertEqual(scores.num_tp_divisions, 0)
+        self.assertEqual(scores.num_fn_divisions, 1)
         self.assertEqual(scores.num_fp_divisions, 0)
         self.assertEqual(scores.num_fn_division_edges, 1)
         self.assertAlmostEqual(scores.precision, 1.0)
@@ -163,12 +190,20 @@ class EvaluationTestCase(unittest.TestCase):
         # introduce a split error
         edges.remove((5, 2))
         rec_track_graph = self.create_graph(cells, edges, roi)
-        scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2)
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
 
         self.assertEqual(scores.num_matched_edges, 4)
         self.assertEqual(scores.num_fp_edges, 0)
-        self.assertEqual(scores.num_fn_edges, 0)
+        self.assertEqual(scores.num_fn_edges, 1)
         self.assertEqual(scores.num_gt_tracks, 1)
         self.assertEqual(scores.num_gt_matched_tracks, 1)
         self.assertEqual(scores.num_rec_matched_tracks, 2)
@@ -177,7 +212,7 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.erl, 8./5)
         self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.num_gt_divisions, 1)
-        self.assertEqual(scores.num_tp_divisions, 0)
+        self.assertEqual(scores.num_fn_divisions, 1)
         self.assertEqual(scores.num_fp_divisions, 0)
         self.assertEqual(scores.num_fn_division_edges, 1)
         self.assertAlmostEqual(scores.precision, 1.0)
@@ -194,8 +229,16 @@ class EvaluationTestCase(unittest.TestCase):
         for cell in cells:
             cell[1]['y'] += 1
         rec_track_graph = self.create_graph(cells, edges, roi)
-        scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2)
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
 
         self.assertEqual(scores.num_matched_edges, 5)
         self.assertEqual(scores.num_fp_edges, 0)
@@ -208,7 +251,7 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.erl, 9./5)
         self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.num_gt_divisions, 0)
-        self.assertEqual(scores.num_tp_divisions, 0)
+        self.assertEqual(scores.num_fn_divisions, 0)
         self.assertEqual(scores.num_fp_divisions, 1)
         self.assertEqual(scores.num_fn_division_edges, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
@@ -228,8 +271,16 @@ class EvaluationTestCase(unittest.TestCase):
                 )
         edges.append((5, 1))
         rec_track_graph = self.create_graph(cells, edges, roi)
-        scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2)
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
 
         self.assertEqual(scores.num_matched_edges, 3)
         self.assertEqual(scores.num_fp_edges, 0)
@@ -242,9 +293,148 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.erl, 3)
         self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.num_gt_divisions, 0)
-        self.assertEqual(scores.num_tp_divisions, 0)
+        self.assertEqual(scores.num_fn_divisions, 0)
         self.assertEqual(scores.num_fp_divisions, 1)
         self.assertEqual(scores.num_fn_division_edges, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 1.0)
+        self.delete_db()
+
+    def test_one_off_fp_division_evaluation(self):
+        roi = daisy.Roi((0, 0, 0, 0), (5, 5, 5, 5))
+        gt_cells = [
+                (251, {'t': 0, 'z': 0, 'y': 0, 'x': 0}),
+                (261, {'t': 1, 'z': 0, 'y': 0, 'x': 0}),
+                (271, {'t': 2, 'z': 0, 'y': 0, 'x': 0}),
+                (281, {'t': 3, 'z': 0, 'y': 0, 'x': 0}),
+                (282, {'t': 3, 'z': 3, 'y': 0, 'x': 0}),
+                (291, {'t': 4, 'z': 0, 'y': 0, 'x': 0}),
+                (301, {'t': 5, 'z': 0, 'y': 0, 'x': 0}),
+                (302, {'t': 5, 'z': -3, 'y': 0, 'x': 0}),
+            ]
+        gt_edges = [
+            (261, 251),
+            (271, 261),
+            (281, 271),
+            (282, 271),
+            (291, 281),
+            (301, 291),
+            (302, 291),
+            ]
+        gt_track_graph = self.create_graph(gt_cells, gt_edges, roi)
+
+        cells = [
+                (2297, {'t': 0, 'z': 0, 'y': 0, 'x': 0}),
+                (2788, {'t': 1, 'z': 0, 'y': 0, 'x': 0}),
+                (2944, {'t': 2, 'z': 0, 'y': 0, 'x': 0}),
+                (2453, {'t': 3, 'z': 0, 'y': 0, 'x': 0}),
+                (3108, {'t': 2, 'z': 1, 'y': 0, 'x': 0}),
+                (2990, {'t': 3, 'z': 3, 'y': 0, 'x': 0}),
+                (2497, {'t': 4, 'z': 0, 'y': 0, 'x': 0}),
+                (2498, {'t': 5, 'z': 0, 'y': 0, 'x': 0}),
+                (2499, {'t': 5, 'z': -3, 'y': 0, 'x': 0}),
+            ]
+        edges = [
+            (2788, 2297),
+            (2944, 2788),
+            (3108, 2788),
+            (2990, 3108),
+            (2453, 2944),
+            (2497, 2453),
+            (2498, 2497),
+            (2499, 2497),
+            ]
+        for cell in cells:
+            cell[1]['y'] += 1
+        rec_track_graph = self.create_graph(cells, edges, roi)
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
+
+        print(scores)
+        self.assertEqual(scores.identity_switches, 1)
+        self.assertEqual(scores.num_gt_divisions, 2)
+        self.assertEqual(scores.num_fn_divisions, 1)
+        self.assertEqual(scores.num_fp_divisions, 1)
+        self.assertEqual(scores.num_fn_division_edges, 0)
+        self.assertEqual(scores.num_fn_edges, 0)
+        self.delete_db()
+
+    def test_one_off_fp_division_evaluation2(self):
+        roi = daisy.Roi((0, 0, 0, 0), (10, 5, 5, 5))
+        gt_cells = [
+                (251, {'t': 0, 'z': 0, 'y': 0, 'x': 0}),
+                (261, {'t': 1, 'z': 0, 'y': 0, 'x': 0}),
+                (271, {'t': 2, 'z': 0, 'y': 0, 'x': 0}),
+                (281, {'t': 3, 'z': 0, 'y': 0, 'x': 0}),
+                (282, {'t': 3, 'z': 3, 'y': 0, 'x': 0}),
+                (291, {'t': 4, 'z': 0, 'y': 0, 'x': 0}),
+                (292, {'t': 4, 'z': 3, 'y': 0, 'x': 0}),
+                (301, {'t': 5, 'z': 0, 'y': 0, 'x': 0}),
+                (302, {'t': 5, 'z': -3, 'y': 0, 'x': 0}),
+            ]
+        gt_edges = [
+            (261, 251),
+            (271, 261),
+            (281, 271),
+            (282, 271),
+            (291, 281),
+            (292, 282),
+            (301, 291),
+            (302, 291),
+            ]
+        gt_track_graph = self.create_graph(gt_cells, gt_edges, roi)
+
+        cells = [
+                (2297, {'t': 0, 'z': 0, 'y': 0, 'x': 0}),
+                (2788, {'t': 1, 'z': 0, 'y': 0, 'x': 0}),
+                (2944, {'t': 2, 'z': 0, 'y': 0, 'x': 0}),
+                (2453, {'t': 3, 'z': 0, 'y': 0, 'x': 0}),
+                (3108, {'t': 2, 'z': 1, 'y': 0, 'x': 0}),
+                (2990, {'t': 3, 'z': 3, 'y': 0, 'x': 0}),
+                (2497, {'t': 4, 'z': 0, 'y': 0, 'x': 0}),
+                (2498, {'t': 5, 'z': 0, 'y': 0, 'x': 0}),
+                (2499, {'t': 5, 'z': -3, 'y': 0, 'x': 0}),
+                (2991, {'t': 3, 'z': 4, 'y': 0, 'x': 0}),
+                (2992, {'t': 4, 'z': 3, 'y': 0, 'x': 0}),
+            ]
+        edges = [
+            (2788, 2297),
+            (2944, 2788),
+            (3108, 2788),
+            (2990, 3108),
+            (2453, 2944),
+            (2497, 2453),
+            (2498, 2497),
+            (2499, 2497),
+            (2992, 2991),
+            ]
+        for cell in cells:
+            cell[1]['y'] += 1
+        rec_track_graph = self.create_graph(cells, edges, roi)
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
+
+        print(scores)
+        self.assertEqual(scores.identity_switches, 2)
+        self.assertEqual(scores.num_gt_divisions, 2)
+        self.assertEqual(scores.num_fn_divisions, 1)
+        self.assertEqual(scores.num_fp_divisions, 1)
+        self.assertEqual(scores.num_fn_division_edges, 0)
+        self.assertEqual(scores.num_fn_edges, 0)
         self.delete_db()

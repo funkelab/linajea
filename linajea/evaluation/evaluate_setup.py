@@ -5,6 +5,7 @@ import daisy
 import time
 import os
 import json
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -14,13 +15,15 @@ def evaluate_setup(
         db_host,
         db_name,
         gt_db_name,
-        matching_threshold,
+        matching_threshold=None,
         frames=None,
         from_scratch=True,
-        error_details=False,
         **kwargs):
 
     parameters = linajea.tracking.TrackingParameters(**kwargs)
+    if matching_threshold is None:
+        logger.error("No matching threshold for evaluation")
+        sys.exit()
 
     # determine parameters id from database
     results_db = linajea.CandidateDatabase(
@@ -96,13 +99,13 @@ def evaluate_setup(
         gt_subgraph, frame_key='t', roi=gt_subgraph.roi)
 
     logger.info("Matching edges for parameters with id %d" % parameters_id)
-    score = evaluate(
+    evaluator = evaluate(
             gt_track_graph,
             track_graph,
             matching_threshold=matching_threshold,
-            error_details=error_details)
+            **kwargs)
 
     logger.info("Done evaluating results for %d. Saving results to mongo."
                 % parameters_id)
-    results_db.write_score(parameters_id, score)
-    logger.info(score)
+    results_db.write_score(parameters_id, evaluator)
+    logger.info(evaluator)
