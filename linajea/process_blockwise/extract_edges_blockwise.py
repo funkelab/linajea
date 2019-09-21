@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from scipy.spatial import KDTree
+from scipy.spatial import cKDTree
 import daisy
 import json
 import linajea
@@ -162,7 +162,7 @@ def extract_edges_in_block(
         logger.debug("Preparing KD tree...")
         all_pre_cells = cells_by_t[pre]
         kd_data = [cell[1] for cell in all_pre_cells]
-        pre_kd_tree = KDTree(kd_data)
+        pre_kd_tree = cKDTree(kd_data)
 
         for i, nex_cell in enumerate(cells_by_t[nex]):
 

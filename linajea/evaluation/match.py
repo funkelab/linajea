@@ -72,8 +72,8 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
         # get all matching edges and distances between x and y of the current
         # frame
 
-        kd_tree_x = scipy.spatial.KDTree(positions_x)
-        kd_tree_y = scipy.spatial.KDTree(positions_y)
+        kd_tree_x = scipy.spatial.cKDTree(positions_x)
+        kd_tree_y = scipy.spatial.cKDTree(positions_y)
 
         neighbors_xy = kd_tree_x.query_ball_tree(kd_tree_y, matching_threshold)
         for i, js in enumerate(neighbors_xy):
