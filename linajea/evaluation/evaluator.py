@@ -611,6 +611,19 @@ class Evaluator:
         self.stats['num_rec_divisions'] = len(self.y_parents)
 
     @staticmethod
+    def check_track_validity(track_graph):
+        # 0 or 1 parent per node
+        out_degrees = [d for _, d in track_graph.out_degree()]
+        logger.debug("Out degrees: %s" % out_degrees)
+        assert max(out_degrees) <= 1,\
+            "Track has a node with %d > 1 parent" % max(out_degrees)
+
+        # <=2 children per node
+        in_degrees = [d for _, d in track_graph.in_degree()]
+        assert max(in_degrees) <= 2,\
+            "Track has a node with %d > 2 children" % max(in_degrees)
+
+    @staticmethod
     def _split_track_into_tracklets(track):
         ''' Split the gt tracks into tracklets, splitting at divisions.
 
