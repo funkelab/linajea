@@ -109,3 +109,4 @@ def evaluate_setup(
                 % parameters_id)
     results_db.write_score(parameters_id, evaluator)
     logger.info(evaluator)
+    logger.info(evaluator.error_details)

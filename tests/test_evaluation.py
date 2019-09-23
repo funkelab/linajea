@@ -8,7 +8,7 @@ import pymongo
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-# logging.getLogger('linajea.evaluation').setLevel(logging.DEBUG)
+#logging.getLogger('linajea.evaluation').setLevel(logging.DEBUG)
 
 
 class Scores(object):
@@ -219,6 +219,43 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.recall, 4./5)
         self.delete_db()
 
+    def test_fn_division_evaluation3(self):
+        cells, edges, roi = self.getDivisionTrack()
+        gt_cells = cells.copy()
+        gt_edges = edges.copy()
+        gt_track_graph = self.create_graph(gt_cells, gt_edges, roi)
+        for cell in cells:
+            cell[1]['y'] += 1
+        # introduce a split error
+        edges.remove((5, 2))
+        rec_track_graph = self.create_graph(cells, edges, roi)
+        evaluator = e.evaluate(
+                gt_track_graph, rec_track_graph, matching_threshold=2,
+                aeftl=True,
+                fn_division_edges=True,
+                f_score=True)
+        stats = evaluator.stats
+        error_metrics = evaluator.error_metrics
+        scores = Scores()
+        scores.__dict__ = stats
+        scores.__dict__.update(error_metrics)
+
+        self.assertEqual(scores.num_matched_edges, 5)
+        self.assertEqual(scores.num_fp_edges, 0)
+        self.assertEqual(scores.num_fn_edges, 1)
+        self.assertEqual(scores.num_gt_tracks, 1)
+        self.assertEqual(scores.num_gt_matched_tracks, 1)
+        self.assertEqual(scores.num_rec_matched_tracks, 2)
+        self.assertEqual(scores.num_rec_tracks, 2)
+        self.assertEqual(scores.identity_switches, 0)
+        self.assertEqual(scores.num_gt_divisions, 1)
+        self.assertEqual(scores.num_fn_divisions, 1)
+        self.assertEqual(scores.num_fp_divisions, 0)
+        self.assertEqual(scores.num_fn_division_edges, 1)
+        self.assertAlmostEqual(scores.precision, 1.0)
+        self.assertAlmostEqual(scores.recall, 5./6)
+        self.delete_db()
+
     def test_fp_division_evaluation(self):
         cells, edges, roi = self.getDivisionTrack()
         gt_cells = cells.copy()
@@ -359,7 +396,7 @@ class EvaluationTestCase(unittest.TestCase):
         scores.__dict__.update(error_metrics)
 
         print(scores)
-        self.assertEqual(scores.identity_switches, 1)
+        self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.num_gt_divisions, 2)
         self.assertEqual(scores.num_fn_divisions, 1)
         self.assertEqual(scores.num_fp_divisions, 1)
@@ -431,8 +468,11 @@ class EvaluationTestCase(unittest.TestCase):
         scores.__dict__.update(error_metrics)
 
         print(scores)
-        self.assertEqual(scores.identity_switches, 2)
+        self.assertEqual(scores.identity_switches, 1)
         self.assertEqual(scores.num_gt_divisions, 2)
+        self.assertEqual(scores.num_fn_divs_one_unconnected_child, 1)
+        self.assertEqual(scores.num_fn_divs_unconnected_parent, 0)
+        self.assertEqual(scores.num_fn_divs_no_connections, 0)
         self.assertEqual(scores.num_fn_divisions, 1)
         self.assertEqual(scores.num_fp_divisions, 1)
         self.assertEqual(scores.num_fn_division_edges, 0)
