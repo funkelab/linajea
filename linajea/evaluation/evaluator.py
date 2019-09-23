@@ -59,34 +59,6 @@ class Evaluator:
         self._get_edge_stats()
         self._get_division_stats()
 
-    def evaluate_tracklets(self, error_details=False):
-        tracklets = []
-        for track in self.x_tracks:
-            tracklets.extend(self._split_track_into_tracklets(track))
-        identity_switches = 0
-        fn_edges = 0
-        fp_divisions = 0
-        if error_details:
-            self.error_details['identity_switches'] = []
-            self.error_details['fn_edges'] = []
-            self.error_details['fp_divs'] = []
-        for tracklet in tracklets:
-            is_count, is_nodes = self.get_identity_switches_in_track(tracklet)
-            identity_switches += is_count
-            fn_count, fn_edge_list = self.get_fn_edges_in_track(tracklet)
-            fn_edges += fn_count
-            fp_divs_count, fp_div_nodes = self.get_fp_divisions_in_tracklet(tracklet)
-            fp_divisions += fp_divs_count
-            if error_details:
-                self.error_details['identity_switches'].extend(is_nodes)
-                self.error_details['fn_edges'].extend(fn_edge_list)
-                self.error_details['fp_divs'].extend(fp_div_nodes)
-        self.error_metrics['identity_switches'] = identity_switches
-        self.error_metrics['num_fn_edges'] = fn_edges
-        self.error_metrics['num_fp_divisions'] = fp_divisions
-
-        logger.info(self.error_details)
-
     def evaluate(
             self,
             sparse=True,
@@ -130,6 +102,7 @@ class Evaluator:
         '''
         self.evaluate_tracklets(error_details=error_details)
         self.get_fp_edges(sparse=sparse)
+        self.get_fp_divisions(sparse=sparse)
         self.get_fn_divisions(count_fn_edges=fn_division_edges,
                               error_details=error_details)
         if f_score:
@@ -137,40 +110,34 @@ class Evaluator:
         if aeftl:
             self.get_aeftl_and_erl()
 
-    @staticmethod
-    def _split_track_into_tracklets(track):
-        ''' Split the gt tracks into tracklets, splitting at divisions.
-
-        Args:
-            track (linajea.TrackGraph):
-                a single track
-
-        Returns:
-            A list of linajea.TrackGraph'''
+    def evaluate_tracklets(self, error_details=False):
         tracklets = []
-        start_frame = track.get_frames()[0]
-        start_cells = track.cells_by_frame(start_frame)
-        assert len(start_cells) == 1,\
-            ("More than 1 cell (%d) in starting frame of track: (%s)"
-                % (len(start_cells), str(start_cells)))
-        start_cell = start_cells[0]
-        track.nodes[start_cell]['start'] = True
-        tracklet_start_edges = deque(track.next_edges(start_cell))
-        while len(tracklet_start_edges) > 0:
-            tracklet_node_ids = []
-            tracklet_start_edge = tracklet_start_edges.pop()
-            tracklet_node_ids.extend(tracklet_start_edge)
-            next_edges = list(track.next_edges(tracklet_start_edge[0]))
-            while len(next_edges) == 1:
-                current_edge = next_edges[0]
-                source = current_edge[0]
-                tracklet_node_ids.append(source)
-                next_edges = list(track.next_edges(source))
-            tracklets.append(TrackGraph(track.subgraph(tracklet_node_ids)))
-            if len(next_edges) == 2:
-                tracklet_start_edges.extend(next_edges)
-
-        return tracklets
+        for track in self.x_tracks:
+            tracklets.extend(self._split_track_into_tracklets(track))
+        identity_switches = 0
+        fn_edges = 0
+        fp_divisions = 0
+        if error_details:
+            self.error_details['identity_switches'] = []
+            self.error_details['fn_edges'] = []
+            self.error_details['fp_divs'] = []
+        for tracklet in tracklets:
+            is_count, is_nodes = self.get_identity_switches_in_track(tracklet)
+            identity_switches += is_count
+            fn_count, fn_edge_list = self.get_fn_edges_in_track(tracklet)
+            fn_edges += fn_count
+            fp_divs_count, fp_div_nodes =\
+                self.get_fp_divisions_in_tracklet(tracklet)
+            fp_divisions += fp_divs_count
+            if error_details:
+                self.error_details['identity_switches'].extend(is_nodes)
+                self.error_details['fn_edges'].extend(fn_edge_list)
+                self.error_details['fp_divs'].extend(fp_div_nodes)
+        self.error_metrics['identity_switches'] = identity_switches
+        self.error_metrics['num_fn_edges'] = fn_edges
+        self.error_metrics['num_fp_divisions_in_tracklets'] = fp_divisions
+        if error_details:
+            logger.debug(self.error_details)
 
     def get_fn_edges(self, error_details=False):
         ''' Store the number of false negative edges in
@@ -273,20 +240,9 @@ class Evaluator:
             next_edge_matches = [y_edges_to_x_edges.get(next_edge)
                                  for next_edge in next_edges]
             if next_edge_matches.count(None) == 2 and sparse:
-                logger.debug("Neither child edge matched, and sparse is true")
-                prev_edges = self.y_track_graph.prev_edges(y_parent)
-                if len(prev_edges) == 0:
-                    logger.debug("No parent edge to match, and sparse is true."
-                                 " No fp div")
-                    continue
-                assert len(prev_edges) == 1,\
-                    ("y parent has more than one previous edge (%s)"
-                     % prev_edges)
-                prev_edge = list(prev_edges)[0]
-                if prev_edge not in y_edges_to_x_edges:
-                    logger.debug("Previous edge also has no match, and "
-                                 "sparse is true - ignoring this division")
-                    continue
+                logger.debug("Neither child edge matched, and sparse is true."
+                             " No FP div")
+                continue
             if None in next_edge_matches:
                 logger.debug("At least one rec division edge had no match. "
                              "FP division")
@@ -302,6 +258,13 @@ class Evaluator:
                 if error_details:
                     fp_div_nodes.append(y_parent)
         self.error_metrics['num_fp_divisions'] = fp_divisions
+        if sparse and 'num_fp_divisions_in_tracklets' in self.error_metrics:
+            assert self.error_metrics['num_fp_divisions_in_tracklets'] ==\
+                    fp_divisions,\
+                    "Expected fp divisions calculated by tracklets and not "\
+                    "to be the same. Got %d by tracklet and %d not"\
+                    % (self.error_metrics['num_fp_divisions_in_tracklets'],
+                       fp_divisions)
         if error_details:
             self.error_details['fp_divisions'] = fp_div_nodes
 
@@ -322,7 +285,8 @@ class Evaluator:
             matched_track = x_edges_to_y_edges.get(gt_edge)
             if matched_track is not None:
                 matched_target = matched_track[1]
-                matched_target_frame = self.y_track_graph.nodes[matched_target][tracklet.frame_key]
+                matched_target_frame = self.y_track_graph.nodes[
+                        matched_target][tracklet.frame_key]
                 if matched_target in y_parents:
                     if matched_target_frame != start_frame:
                         fp_divisions += 1
@@ -343,12 +307,14 @@ class Evaluator:
         ''' Store the number of fn divisions in
         self.error_metrics['num_fn_divisions']
         FN divisions are split into 3 categories. Consider node equality
-        as defined in __div_match_equality (both nodes must exist and have the same id).
+        as defined in __div_match_equality (both nodes must exist and
+        have the same id).
         The categories are defined by equalities between:
         prev_s = the source node of the edge matched to the gt prev edge
         c1_t, c2_t = the target nodes of the edges matched to the gt next edges
         (c1_t and c2_t are interchangeable)
-        If there is no edge match for a given gt edge, the associated node is None
+        If there is no edge match for a given gt edge,
+        the associated node is None
 
         1) No Connections
         self.error_metrics['num_divs_no_connections']
@@ -366,8 +332,8 @@ class Evaluator:
         c1_t = c2_t and prev_s != c1_t
 
         In the special case that there is no gt prev edge, we only consider
-        c1_t and c2_t. If c1_t = c2_t, no error. If c1_t != c2_t, no connections.
-
+        c1_t and c2_t. If c1_t = c2_t, no error.
+        If c1_t != c2_t, no connections.
         '''
         try:
             self.x_parents
@@ -382,7 +348,7 @@ class Evaluator:
         if error_details:
             fn_div_nodes = []
             fn_div_no_connection_nodes = []
-            fn_div_one_unconnected_child_nodes = []
+            fn_div_one_unconnected_nodes = []
             fn_div_unconnected_parent_nodes = []
             tp_div_nodes = []
         if count_fn_edges:
@@ -398,8 +364,10 @@ class Evaluator:
             if count_fn_edges:
                 fn_division_edges += next_edge_matches.count(None)
 
-            c1_t = next_edge_matches[0][1] if next_edge_matches[0] is not None else None
-            c2_t = next_edge_matches[1][1] if next_edge_matches[1] is not None else None
+            c1_t = next_edge_matches[0][1] if next_edge_matches[0]\
+                is not None else None
+            c2_t = next_edge_matches[1][1] if next_edge_matches[1]\
+                is not None else None
             logger.debug("c1_t: %s" % str(c1_t))
             logger.debug("c2_t: %s" % str(c2_t))
 
@@ -409,7 +377,8 @@ class Evaluator:
                  % len(prev_edges))
             if len(prev_edges) == 0:
                 # special case where gt division has no prev edge
-                logger.warning("GT Division at node %d has no prev edge" % x_parent)
+                logger.warning("GT Division at node %d has no prev edge"
+                               % x_parent)
                 if self.__div_match_node_equality(c1_t, c2_t):
                     # TP - children are connected
                     logger.debug("TP division - no gt parent")
@@ -427,7 +396,8 @@ class Evaluator:
                     continue
             prev_edge = prev_edges[0]
             prev_edge_match = x_edges_to_y_edges.get(prev_edge)
-            prev_s = prev_edge_match[0] if prev_edge_match is not None else None
+            prev_s = prev_edge_match[0] if prev_edge_match\
+                is not None else None
             logger.debug("prev_s: %s" % str(prev_s))
 
             if self.__div_match_node_equality(c1_t, c2_t):
@@ -445,14 +415,15 @@ class Evaluator:
                         fn_div_nodes.append(x_parent)
                         fn_div_unconnected_parent_nodes.append(x_parent)
             else:
-                if self.__div_match_node_equality(c1_t, prev_s) or self.__div_match_node_equality(c2_t, prev_s):
+                if self.__div_match_node_equality(c1_t, prev_s)\
+                        or self.__div_match_node_equality(c2_t, prev_s):
                     # FN - one unconnected child
                     logger.debug("FN div - one unconnected child")
                     fn_divisions += 1
                     fn_divs_one_unconnected_child += 1
                     if error_details:
                         fn_div_nodes.append(x_parent)
-                        fn_div_one_unconnected_child_nodes.append(x_parent)
+                        fn_div_one_unconnected_nodes.append(x_parent)
                 else:
                     # FN - no connections
                     logger.debug("FN div - no connections")
@@ -461,18 +432,24 @@ class Evaluator:
                     if error_details:
                         fn_div_nodes.append(x_parent)
                         fn_div_no_connection_nodes.append(x_parent)
-        self.error_metrics['num_fn_divisions'] = fn_divisions
-        self.error_metrics['num_fn_divs_no_connections'] = fn_divs_no_connections
-        self.error_metrics['num_fn_divs_one_unconnected_child'] = fn_divs_one_unconnected_child
-        self.error_metrics['num_fn_divs_unconnected_parent'] = fn_divs_unconnected_parent
+        errors = {
+            'num_fn_divisions': fn_divisions,
+            'num_fn_divs_no_connections': fn_divs_no_connections,
+            'num_fn_divs_one_unconnected_child': fn_divs_one_unconnected_child,
+            'num_fn_divs_unconnected_parent': fn_divs_unconnected_parent
+                }
+        self.error_metrics.update(errors)
         if count_fn_edges:
             self.error_metrics['num_fn_division_edges'] = fn_division_edges
         if error_details:
-            self.error_details['fn_divisions'] = fn_div_nodes
-            self.error_details['fn_divs_no_connections'] = fn_div_no_connection_nodes
-            self.error_details['fn_divs_one_unconnected_child'] = fn_div_one_unconnected_child_nodes
-            self.error_details['fn_divs_unconnected_parent'] = fn_div_unconnected_parent_nodes
-            self.error_details['tp_divisions'] = tp_div_nodes
+            details = {
+                'fn_divisions': fn_div_nodes,
+                'fn_divs_no_connections': fn_div_no_connection_nodes,
+                'fn_divs_one_unconnected_child': fn_div_one_unconnected_nodes,
+                'fn_divs_unconnected_parent': fn_div_unconnected_parent_nodes,
+                'tp_divisions': tp_div_nodes
+            }
+            self.error_details.update(details)
 
     def get_f_score(self):
         tp = self.stats['num_matched_edges']
@@ -632,6 +609,41 @@ class Evaluator:
                           if degree == 2]
         logger.debug("rec parent nodes: %s" % self.y_parents)
         self.stats['num_rec_divisions'] = len(self.y_parents)
+
+    @staticmethod
+    def _split_track_into_tracklets(track):
+        ''' Split the gt tracks into tracklets, splitting at divisions.
+
+        Args:
+            track (linajea.TrackGraph):
+                a single track
+
+        Returns:
+            A list of linajea.TrackGraph'''
+        tracklets = []
+        start_frame = track.get_frames()[0]
+        start_cells = track.cells_by_frame(start_frame)
+        assert len(start_cells) == 1,\
+            ("More than 1 cell (%d) in starting frame of track: (%s)"
+                % (len(start_cells), str(start_cells)))
+        start_cell = start_cells[0]
+        track.nodes[start_cell]['start'] = True
+        tracklet_start_edges = deque(track.next_edges(start_cell))
+        while len(tracklet_start_edges) > 0:
+            tracklet_node_ids = []
+            tracklet_start_edge = tracklet_start_edges.pop()
+            tracklet_node_ids.extend(tracklet_start_edge)
+            next_edges = list(track.next_edges(tracklet_start_edge[0]))
+            while len(next_edges) == 1:
+                current_edge = next_edges[0]
+                source = current_edge[0]
+                tracklet_node_ids.append(source)
+                next_edges = list(track.next_edges(source))
+            tracklets.append(TrackGraph(track.subgraph(tracklet_node_ids)))
+            if len(next_edges) == 2:
+                tracklet_start_edges.extend(next_edges)
+
+        return tracklets
 
     def __repr__(self):
 
