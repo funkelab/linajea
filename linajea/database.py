@@ -99,6 +99,8 @@ class CandidateDatabase(MongoDbGraphProvider):
         self._MongoDbGraphProvider__open_db()
         edge_coll = self.database['edges']
         edge_coll.update_many({}, {'$unset': {self.selected_key: ""}})
+        daisy_coll_name = 'solve_' + str(self.parameters_id) + '_daisy'
+        self.database.drop_collection(daisy_coll_name)
         logger.info("Done resetting solution for parameters_id %s"
                     % self.parameters_id)
 
