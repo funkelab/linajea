@@ -73,8 +73,8 @@ class Evaluator:
         # get division statistics
         self.gt_parents = [node for node, degree in gt_track_graph.in_degree()
                            if degree == 2]
-        self.rec_parents = [node for node, degree in rec_track_graph.in_degree()
-                            if degree == 2]
+        self.rec_parents = [node for node, degree
+                            in rec_track_graph.in_degree() if degree == 2]
         self.report.set_division_stats(len(self.gt_parents),
                                        len(self.rec_parents))
 
@@ -111,7 +111,7 @@ class Evaluator:
 
         matched_edges = set([match[0] for match in self.edge_matches])
         gt_edges = set(self.gt_track_graph.edges)
-        fn_edges = gt_edges - matched_edges
+        fn_edges = list(gt_edges - matched_edges)
         assert len(fn_edges) == num_fn_edges, "List of fn edges "\
             "has %d edges, but calculated %d fn edges"\
             % (len(fn_edges), num_fn_edges)
@@ -185,16 +185,16 @@ class Evaluator:
                 logger.debug("Neither child edge matched, and sparse is true.")
                 prev_edges = list(self.rec_track_graph.prev_edges(rec_parent))
                 if len(prev_edges) == 0:
-                    logger.debug("No edges match and sparse is true - continue")
+                    logger.debug("No edges match and sparse is true: continue")
                     continue
                 assert len(prev_edges) == 1
                 prev_edge = prev_edges[0]
                 prev_edge_match = self.rec_edges_to_gt_edges.get(prev_edge)
                 if prev_edge_match is None:
-                    logger.debug("No edges match and sparse is true - continue")
+                    logger.debug("No edges match and sparse is true: continue")
                     continue
                 if len(self.gt_track_graph.next_edges(prev_edge_match)) == 0:
-                    logger.debug("Div occurs after end of gt track - continue")
+                    logger.debug("Div occurs after end of gt track: continue")
                     continue
                 # in the case that neither child edge matches but the parent
                 # does (in the middle of a gt track) - this is a fp edge
@@ -323,7 +323,8 @@ class Evaluator:
         logger.info("Getting AEFTL and ERL")
 
         rec_matched_edges = self.rec_edges_to_gt_edges.keys()
-        rec_matched_graph = self.rec_track_graph.edge_subgraph(rec_matched_edges).copy()
+        rec_matched_graph = self.rec_track_graph.edge_subgraph(
+                rec_matched_edges).copy()
         max_node_id = max(list(rec_matched_graph.nodes))
         # split at fp_divisions
         for fp_div_node in self.report.fp_div_rec_nodes:
@@ -340,8 +341,11 @@ class Evaluator:
         # split into connected components
         segments = [rec_matched_graph.subgraph(node_set).copy() for node_set in
                     nx.weakly_connected_components(rec_matched_graph)]
-        logger.debug("Segment node sets: %s" % list(nx.weakly_connected_components(rec_matched_graph)))
-        segment_lengths = [g.number_of_edges() for g in segments if g.number_of_edges() > 0]
+        logger.debug("Segment node sets: %s"
+                     % list(nx.weakly_connected_components(
+                         rec_matched_graph)))
+        segment_lengths = [g.number_of_edges()
+                           for g in segments if g.number_of_edges() > 0]
 
         logger.debug("Found segment lengths %s" % segment_lengths)
         aeftl = float(

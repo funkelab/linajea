@@ -68,14 +68,14 @@ class Report:
 
     def set_fn_edges(self, fn_edges):
         self.fn_edges = len(fn_edges)
-        self.fn_edge_list = fn_edges
+        self.fn_edge_list = [(int(s), int(t)) for s, t in fn_edges]
 
     def set_fp_edges(self, num_fp_edges):
         self.fp_edges = num_fp_edges
 
     def set_identity_switches(self, identity_switches):
         self.identity_switches = len(identity_switches)
-        self.identity_switch_gt_nodes = identity_switches
+        self.identity_switch_gt_nodes = [int(n) for n in identity_switches]
 
     def set_fn_divisions(
             self,
@@ -90,14 +90,16 @@ class Report:
             self.fn_divs_unconnected_child +\
             self.fn_divs_unconnected_parent
 
-        self.no_connection_gt_nodes = fn_divs_no_connections
-        self.unconnected_child_gt_nodes = fn_divs_unconnected_child
-        self.unconnected_parent_gt_nodes = fn_divs_unconnected_parent
-        self.tp_div_gt_nodes = tp_divs
+        self.no_connection_gt_nodes = [int(n) for n in fn_divs_no_connections]
+        self.unconnected_child_gt_nodes = [
+                int(n) for n in fn_divs_unconnected_child]
+        self.unconnected_parent_gt_nodes = [
+                int(n) for n in fn_divs_unconnected_parent]
+        self.tp_div_gt_nodes = [int(n) for n in tp_divs]
 
     def set_fp_divisions(self, fp_divisions):
         self.fp_divisions = len(fp_divisions)
-        self.fp_div_rec_nodes = fp_divisions
+        self.fp_div_rec_nodes = [int(n) for n in fp_divisions]
 
     def set_f_score(self):
         tp = self.matched_edges
