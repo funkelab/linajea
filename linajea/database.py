@@ -197,7 +197,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             self._MongoDbGraphProvider__disconnect()
         return score
 
-    def write_score(self, parameters_id, evaluator):
+    def write_score(self, parameters_id, report):
         '''Writes the score for the given parameters_id to the
         scores collection, along with the associated parameters'''
         parameters = self.get_parameters(parameters_id)
@@ -211,8 +211,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             score_collection = self.database['scores']
             eval_dict = {'_id': parameters_id}
             eval_dict.update(parameters)
-            eval_dict.update(evaluator.stats)
-            eval_dict.update(evaluator.error_metrics)
+            eval_dict.update(report.__dict__)
             score_collection.replace_one({'_id': parameters_id},
                                          eval_dict,
                                          upsert=True)
