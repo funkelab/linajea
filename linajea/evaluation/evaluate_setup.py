@@ -18,6 +18,7 @@ def evaluate_setup(
         matching_threshold=None,
         frames=None,
         from_scratch=True,
+        sparse=True,
         **kwargs):
 
     parameters = linajea.tracking.TrackingParameters(**kwargs)
@@ -99,13 +100,13 @@ def evaluate_setup(
         gt_subgraph, frame_key='t', roi=gt_subgraph.roi)
 
     logger.info("Matching edges for parameters with id %d" % parameters_id)
-    evaluator = evaluate(
+    report = evaluate(
             gt_track_graph,
             track_graph,
             matching_threshold=matching_threshold,
-            **kwargs)
+            sparse=sparse)
 
+    logger.info(report.__dict__)
     logger.info("Done evaluating results for %d. Saving results to mongo."
                 % parameters_id)
-    results_db.write_score(parameters_id, evaluator)
-    logger.info(evaluator)
+    results_db.write_score(parameters_id, report)

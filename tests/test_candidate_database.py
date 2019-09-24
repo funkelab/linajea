@@ -1,6 +1,6 @@
 from linajea import CandidateDatabase
 import linajea.tracking
-from linajea.evaluation.evaluate import Scores
+from linajea.evaluation import Report
 from daisy import Roi
 from unittest import TestCase
 import logging
@@ -142,12 +142,11 @@ class DatabaseTestCase(TestCase):
                 db_host)
         params_id = db.get_parameters_id(parameters)
 
-        score = Scores()
-        score.num_gt_edges = 2
-        score.num_matched_edges = 2
-        score.num_fp_edges = 1
-        score.num_fn_edges = 0
-        score.matched_edges = [[1, 4], [5, 6]]
+        score = Report()
+        score.gt_edges = 2
+        score.matched_edges = 2
+        score.fp_edges = 1
+        score.fn_edges = 0
         db.write_score(params_id, score)
         score_dict = db.get_score(params_id)
 

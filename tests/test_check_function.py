@@ -1,4 +1,4 @@
-from linajea import check_function, write_done
+from linajea.process_blockwise import check_function, write_done
 from daisy import Block, Roi
 import pymongo
 import unittest
