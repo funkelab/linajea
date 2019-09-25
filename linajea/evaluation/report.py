@@ -45,6 +45,21 @@ class Report:
             rec_tracks,
             gt_matched_tracks,
             rec_matched_tracks):
+        '''
+        Args:
+            gt_tracks(int):
+                number of gt tracks
+
+            rec_tracks (int):
+                number of reconstructed tracks
+
+            gt_matched_tracks (int):
+                number of gt tracks with at least one edge matched
+
+            rec_matched_tracks (int):
+                number of reconstructed tracks with at least
+                one edge matched
+        '''
         self.gt_tracks = gt_tracks
         self.rec_tracks = rec_tracks
         self.gt_matched_tracks = gt_matched_tracks
@@ -55,6 +70,17 @@ class Report:
             gt_edges,
             rec_edges,
             matched_edges):
+        '''
+        Args:
+            gt_edges (int):
+                number of gt edges
+
+            rec_edges (int):
+                number of reconstructed edges
+
+            matched edges (int):
+                number of matched edges
+        '''
         self.gt_edges = gt_edges
         self.rec_edges = rec_edges
         self.matched_edges = matched_edges
@@ -63,10 +89,23 @@ class Report:
             self,
             gt_divisions,
             rec_divisions):
+        '''
+        Args:
+            gt_divisions (int):
+                number of gt divisions
+
+            rec_divisions (int):
+                number of reconstructed divisions
+        '''
         self.gt_divisions = gt_divisions
         self.rec_divisions = rec_divisions
 
     def set_fn_edges(self, fn_edges):
+        '''
+        Args:
+            fn_edges (list: (int, int)):
+                The list of unmatched gt edges (u, v)
+        '''
         self.fn_edges = len(fn_edges)
         self.fn_edge_list = [(int(s), int(t)) for s, t in fn_edges]
 
@@ -74,6 +113,11 @@ class Report:
         self.fp_edges = num_fp_edges
 
     def set_identity_switches(self, identity_switches):
+        '''
+        Args:
+            identity_switches (list of int):
+                A list of gt node ids where identity switches occurred
+        '''
         self.identity_switches = len(identity_switches)
         self.identity_switch_gt_nodes = [int(n) for n in identity_switches]
 
@@ -83,6 +127,16 @@ class Report:
             fn_divs_unconnected_child,
             fn_divs_unconnected_parent,
             tp_divs):
+        '''
+        Args:
+            fn_divs_... (list of int):
+                Lists of gt node ids where different kinds of fn divisions
+                occurred. See Evaluator.get_fn_divisions() for more details.
+
+            tp_divs (list of int):
+                List of gt node ids where the reconstruction correctly matches
+                the division
+        '''
         self.fn_divs_no_connections = len(fn_divs_no_connections)
         self.fn_divs_unconnected_child = len(fn_divs_unconnected_child)
         self.fn_divs_unconnected_parent = len(fn_divs_unconnected_parent)
@@ -98,6 +152,13 @@ class Report:
         self.tp_div_gt_nodes = [int(n) for n in tp_divs]
 
     def set_fp_divisions(self, fp_divisions):
+        '''
+        Args:
+            fp_divisions (list of int):
+                List of reconstruction node ids where false positive
+                divisions occurred. If dense gt, fp divs don't necessarily
+                have a gt match, so we store the rec node ids.
+        '''
         self.fp_divisions = len(fp_divisions)
         self.fp_div_rec_nodes = [int(n) for n in fp_divisions]
 

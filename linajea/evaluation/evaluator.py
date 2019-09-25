@@ -8,11 +8,8 @@ logger = logging.getLogger(__name__)
 
 class Evaluator:
     ''' A class for evaluating linajea results after matching.
-    Takes flags to indicate which metrics to compute.
-    Statistics about the gt and reconstrution stored in a dict
-    in self.stats. Error metrics in self.error_metrics.
-    Specific locations in the gt or reconstruction where errors
-    occurr in self.error_details.
+    Creates a report with statistics, error counts, and locations
+    of errors.
 
     Args:
         gt_track_graph (`linajea.TrackGraph`):
@@ -30,6 +27,11 @@ class Evaluator:
             The number of rec edges within the matching radius
             that were not matched to a gt edge (to use as a
             proxy for edge fps if sparse annotations)
+
+        sparse (bool):
+            True if the ground truth data is sparse, false if it is
+            dense. Changes how edge and division false positives
+            are counted. Defaults to true.
     '''
     def __init__(
             self,
@@ -96,9 +98,9 @@ class Evaluator:
         return self.report
 
     def get_fp_edges(self):
-        ''' Store the number of fp edges in self.report.fp_edges.
+        ''' Store the number of fp edges in self.report.
         If sparse, this is the number of unselected potential matches.
-        If dense, this is the number of unmatched rec edges.
+        If dense, this is the total number of unmatched rec edges.
         '''
         if self.sparse:
             fp_edges = self.unselected_potential_matches
@@ -123,11 +125,11 @@ class Evaluator:
 
     def get_identity_switches(self):
         ''' Store the number of identity switches and the ids
-        of the gt nodes where the IS occurs.
+        of the gt nodes where the IS occurs in self.report.
 
         Will loop through all non-division gt_cells, see if prev_edge and
         next_edge have matches, and if these edge matches match the same
-        rec cell to the gt cell. Ignore division nodes.
+        rec cell to the gt cell. Ignores division nodes.
         '''
         is_nodes = []
         for gt_cell in self.gt_track_graph.nodes():
@@ -162,9 +164,9 @@ class Evaluator:
 
     def get_fp_divisions(self):
         ''' Store the number of fp divisions and the rec node ids
-        in self.report. If sparse, ignore
-        rec divisions where no adjacent edges (next or previous) match
-        to ground truth, and if the previous match is the end of a gt track.
+        in self.report. If sparse, ignore rec divisions where no adjacent
+        edges (next or previous) match to ground truth, and if the
+        previous match is the end of a gt track.
         '''
 
         fp_div_nodes = []

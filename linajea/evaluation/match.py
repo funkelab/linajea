@@ -114,12 +114,16 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
 def get_edge_costs(edges_x, edges_y_by_source, node_pairs_xy):
     '''
     Arguments:
-        edges_x, edges_y:
-            lists of edges in x and y, where each edge is just (u, v).
-            Edge ids in edge_costs will be the index in the list of the edge
+        edges_x (list of int):
+            list of edges in x, where each edge is just (u, v).
+            Edge ids in edge_costs will be the list index of each edge
 
-        node_pairs_xy:
-            a dictionary from nodes in x to a list of
+        edges_y_by_source (dict: int -> (int, int)):
+            Dictionary of y edges, where each entry is
+            u: (v, index from original edges_y list)
+
+        node_pairs_xy (dict: int -> (int, float)):
+            A dictionary from nodes in x to a list of
             (neighboring node in y, distance)
     '''
 
