@@ -26,7 +26,7 @@ class Report:
         # METRICS
         self.precision = None
         self.recall = None
-        self.fscore = None
+        self.f_score = None
         self.aeftl = None
         self.erl = None
 
