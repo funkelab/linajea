@@ -21,20 +21,28 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
 
     Returns a list of edges in x, a list of edges in y, a list of edge
     matches [(id_x, id_y), ...] referring to indexes in the returned lists,
-    and a list of edge false positives
+    and the number of edge false positives
     '''
     begin = min(track_graph_x.get_frames()[0], track_graph_x.get_frames()[0])
     end = max(track_graph_x.get_frames()[1], track_graph_x.get_frames()[1]) + 1
 
     edges_x = [(int(u), int(v)) for u, v in track_graph_x.edges()]
     edges_y = [(int(u), int(v)) for u, v in track_graph_y.edges()]
+    edges_y_by_source = {}
+    for edge_id_y, (u, v) in enumerate(edges_y):
+        assert u not in edges_y_by_source,\
+                "Each edge should have a unique source node"
+        edges_y_by_source[u] = (v, edge_id_y)
 
-    # a dictionary from nodes in x to a list of
-    # (neighboring node in y, distance)
-    node_pairs_xy = {}
+    # a dictionary from frame ->
+    #       a dictionary of nodes in x ->
+    #           list of (neighboring node in y, distance)
+    node_pairs_xy_by_frame = {}
+    edge_matches = []
+    edge_fps = 0
 
     for t in range(begin, end):
-
+        node_pairs_xy = {}
         frame_nodes_x = []
         frame_nodes_y = []
         positions_x = []
@@ -78,31 +86,46 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
                     np.array(positions_y[j]))
                 node_x_neighbors.append((node_y, distance))
             node_pairs_xy[node_x] = node_x_neighbors
+        node_pairs_xy_by_frame[t] = node_pairs_xy
 
-    edge_costs = get_edge_costs(edges_x, edges_y, node_pairs_xy)
-    y_edges_in_range = set(edge[1] for edge in edge_costs.keys())
-    edge_matches, _ = match(edge_costs, 2*matching_threshold + 1)
-    edge_fps = len(y_edges_in_range) - len(edge_matches)
+        if t - 1 in node_pairs_xy_by_frame.keys():
+            logger.debug("finding matches in frame %d" % t)
+            node_pairs_two_frames = node_pairs_xy.copy()
+            node_pairs_two_frames.update(node_pairs_xy_by_frame[t-1])
+            edge_costs = get_edge_costs(
+                    edges_x, edges_y_by_source, node_pairs_two_frames)
+            if edge_costs == {}:
+                logger.info("No potential matches with source in frame %d" % t)
+                continue
+            logger.debug("costs: %s" % edge_costs)
+            y_edges_in_range = set(edge[1] for edge in edge_costs.keys())
+            logger.debug("Y edges in range: %s" % y_edges_in_range)
+            edge_matches_in_frame, _ = match(edge_costs,
+                                             2*matching_threshold + 1)
+            edge_matches.extend(edge_matches_in_frame)
+            edge_fps_in_frame = len(y_edges_in_range) -\
+                len(edge_matches_in_frame)
+            edge_fps += edge_fps_in_frame
+    logger.info("Done matching, found %d matches and %d edge fps"
+                % (len(edge_matches), edge_fps))
     return edges_x, edges_y, edge_matches, edge_fps
 
 
-def get_edge_costs(edges_x, edges_y, node_pairs_xy):
+def get_edge_costs(edges_x, edges_y_by_source, node_pairs_xy):
     '''
     Arguments:
-        edges_x, edges_y:
-            lists of edges in x and y, where each edge is just (u, v).
-            Edge ids in edge_costs will be the index in the list of the edge
+        edges_x (list of int):
+            list of edges in x, where each edge is just (u, v).
+            Edge ids in edge_costs will be the list index of each edge
 
-        node_pairs_xy:
-            a dictionary from nodes in x to a list of
+        edges_y_by_source (dict: int -> (int, int)):
+            Dictionary of y edges, where each entry is
+            u: (v, index from original edges_y list)
+
+        node_pairs_xy (dict: int -> (int, float)):
+            A dictionary from nodes in x to a list of
             (neighboring node in y, distance)
     '''
-
-    edges_y_by_source = {}
-    for edge_id_y, (u, v) in enumerate(edges_y):
-        assert u not in edges_y_by_source,\
-                "Each edge should have a unique source node"
-        edges_y_by_source[u] = (v, edge_id_y)
 
     edge_costs = {}
     for edge_id_x, (ux, vx) in enumerate(edges_x):

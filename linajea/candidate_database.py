@@ -99,6 +99,8 @@ class CandidateDatabase(MongoDbGraphProvider):
         self._MongoDbGraphProvider__open_db()
         edge_coll = self.database['edges']
         edge_coll.update_many({}, {'$unset': {self.selected_key: ""}})
+        daisy_coll_name = 'solve_' + str(self.parameters_id) + '_daisy'
+        self.database.drop_collection(daisy_coll_name)
         logger.info("Done resetting solution for parameters_id %s"
                     % self.parameters_id)
 
@@ -197,7 +199,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             self._MongoDbGraphProvider__disconnect()
         return score
 
-    def write_score(self, parameters_id, score):
+    def write_score(self, parameters_id, report):
         '''Writes the score for the given parameters_id to the
         scores collection, along with the associated parameters'''
         parameters = self.get_parameters(parameters_id)
@@ -211,7 +213,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             score_collection = self.database['scores']
             eval_dict = {'_id': parameters_id}
             eval_dict.update(parameters)
-            eval_dict.update(score.__dict__)
+            eval_dict.update(report.__dict__)
             score_collection.replace_one({'_id': parameters_id},
                                          eval_dict,
                                          upsert=True)

@@ -26,7 +26,11 @@ def solve_blockwise(
     data_dir = '../01_data'
 
     # get absolute paths
-    sample_dir = os.path.abspath(os.path.join(data_dir, sample))
+    if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
+        sample_dir = os.path.abspath(os.path.join(data_dir,
+                                                  os.path.dirname(sample)))
+    else:
+        sample_dir = os.path.abspath(os.path.join(data_dir, sample))
 
     # get ROI of source
     with open(os.path.join(sample_dir, 'attributes.json'), 'r') as f:
@@ -101,7 +105,9 @@ def solve_in_block(db_host, db_name, parameters, block, parameters_id):
     start_time = time.time()
     graph = graph_provider.get_graph(
             block.read_roi,
-            edge_attrs=["prediction_distance", "distance"]
+            edge_attrs=["prediction_distance",
+                        "distance",
+                        graph_provider.selected_key]
             )
 
     # remove dangling nodes and edges

@@ -23,13 +23,19 @@ def predict_blockwise(
         frame_context=1,
         num_workers=16,
         singularity_image='linajea/linajea:v1.0',
+        queue='slowpoke',
         **kwargs):
 
     data_dir = '../01_data'
     setup_dir = '../02_setups'
 
     # get absolute paths
-    sample_dir = os.path.abspath(os.path.join(data_dir, sample))
+    if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
+        sample_dir = os.path.abspath(os.path.join(data_dir,
+                                                  os.path.dirname(sample)))
+    else:
+        sample_dir = os.path.abspath(os.path.join(data_dir, sample))
+
     setup_dir = os.path.abspath(os.path.join(setup_dir, setup))
     # get ROI of source
     with open(os.path.join(sample_dir, 'attributes.json'), 'r') as f:
@@ -85,6 +91,7 @@ def predict_blockwise(
             db_host,
             db_name,
             singularity_image,
+            queue,
             cell_score_threshold),
         check_function=lambda b: check_function(
             b,
@@ -103,6 +110,7 @@ def predict_worker(
         db_host,
         db_name,
         singularity_image,
+        queue,
         cell_score_threshold):
     worker_id = daisy.Context.from_env().worker_id
     worker_time = time.time()
@@ -118,7 +126,7 @@ def predict_worker(
                 db_name,
                 cell_score_threshold
                 ),
-            queue='gpu_tesla',
+            queue=queue,
             num_gpus=1,
             num_cpus=4,
             singularity_image=image,

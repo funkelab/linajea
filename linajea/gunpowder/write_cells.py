@@ -69,11 +69,11 @@ class WriteCells(gp.BatchFilter):
 
             score = cell_indicator[index]
             if self.edge_length == 1:
-                parent_vector = parent_vectors[(Ellipsis,) + index]
+                parent_vector = tuple(
+                    float(x) for x in parent_vectors[(Ellipsis,) + index])
             else:
                 parent_vector = WriteCells.get_avg_pv(
                         parent_vectors, index, self.edge_length)
-            logger.info("Parent vector: %s" % str(parent_vector))
             position = roi.get_begin() + voxel_size*index
 
             cell_id = int(math.cantor_number(
@@ -89,7 +89,7 @@ class WriteCells(gp.BatchFilter):
                 'parent_vector': parent_vector
             })
 
-            logger.debug(
+            logger.info(
                 "ID=%d, score=%f, parent_vector=%s" % (
                     cell_id, score, parent_vector))
 
