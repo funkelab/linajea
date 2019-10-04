@@ -181,7 +181,7 @@ class CandidateDatabase(MongoDbGraphProvider):
         self.selected_key = 'selected_' + str(self.parameters_id)
         logger.debug("Set selected_key to %s" % self.selected_key)
 
-    def get_score(self, parameters_id):
+    def get_score(self, parameters_id, frames=None):
         '''Returns the score for the given parameters_id, or
         None if no score available'''
         self._MongoDbGraphProvider__connect()
@@ -190,16 +190,25 @@ class CandidateDatabase(MongoDbGraphProvider):
 
         try:
             score_collection = self.database['scores']
-            old_score = score_collection.find_one({'_id': parameters_id})
+            if frames is None:
+                old_score = score_collection.find_one({'_id': parameters_id})
+            else:
+                old_score = score_collection.find_one(
+                    {'param_id': parameters_id,
+                     'frame_start': frames[0],
+                     'frame_end': frames[1]})
             if old_score:
-                del old_score['_id']
+                if frames is None:
+                    del old_score['_id']
+                else:
+                    del old_score['param_id']
                 score = old_score
 
         finally:
             self._MongoDbGraphProvider__disconnect()
         return score
 
-    def write_score(self, parameters_id, report):
+    def write_score(self, parameters_id, report, frames=None):
         '''Writes the score for the given parameters_id to the
         scores collection, along with the associated parameters'''
         parameters = self.get_parameters(parameters_id)
@@ -211,11 +220,24 @@ class CandidateDatabase(MongoDbGraphProvider):
         try:
 
             score_collection = self.database['scores']
-            eval_dict = {'_id': parameters_id}
+            if frames is None:
+                eval_dict = {'_id': parameters_id}
+            else:
+                eval_dict = {'param_id': parameters_id}
             eval_dict.update(parameters)
+            logger.info("%s  %s", frames, eval_dict)
             eval_dict.update(report.__dict__)
-            score_collection.replace_one({'_id': parameters_id},
-                                         eval_dict,
-                                         upsert=True)
+            if frames is None:
+                score_collection.replace_one({'_id': parameters_id},
+                                             eval_dict,
+                                             upsert=True)
+            else:
+                eval_dict.update({'frame_start': frames[0],
+                                  'frame_end': frames[1]})
+                res = score_collection.replace_one({'param_id': parameters_id,
+                                              'frame_start': frames[0],
+                                              'frame_end': frames[1]},
+                                             eval_dict,
+                                             upsert=True)
         finally:
             self._MongoDbGraphProvider__disconnect()

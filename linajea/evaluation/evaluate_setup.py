@@ -33,9 +33,10 @@ def evaluate_setup(
     parameters_id = results_db.get_parameters_id(parameters)
 
     if not from_scratch:
-        old_score = results_db.get_score(parameters_id)
+        old_score = results_db.get_score(parameters_id, frames=frames)
         if old_score:
-            logger.info("Already evaluated %d. Skipping" % parameters_id)
+            logger.info("Already evaluated %d (frames: %s). Skipping" %
+                        parameters_id, frames)
             return old_score
 
     data_dir = '../01_data'
@@ -109,4 +110,4 @@ def evaluate_setup(
     logger.info(report.__dict__)
     logger.info("Done evaluating results for %d. Saving results to mongo."
                 % parameters_id)
-    results_db.write_score(parameters_id, report)
+    results_db.write_score(parameters_id, report, frames=frames)
