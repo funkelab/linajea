@@ -4,6 +4,7 @@ import daisy
 import json
 import linajea
 from .daisy_check_functions import write_done, check_function
+from ..datasets import get_source_roi
 import logging
 import numpy as np
 import os
@@ -25,21 +26,7 @@ def extract_edges_blockwise(
 
     data_dir = '../01_data'
 
-    # get absolute paths
-    if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
-        sample_dir = os.path.abspath(os.path.join(data_dir,
-                                                  os.path.dirname(sample)))
-    else:
-        sample_dir = os.path.abspath(os.path.join(data_dir, sample))
-
-    # get ROI of source
-    with open(os.path.join(sample_dir, 'attributes.json'), 'r') as f:
-        attributes = json.load(f)
-
-    voxel_size = daisy.Coordinate(attributes['resolution'])
-    shape = daisy.Coordinate(attributes['shape'])
-    offset = daisy.Coordinate(attributes['offset'])
-    source_roi = daisy.Roi(offset, shape*voxel_size)
+    voxel_size, source_roi = get_source_roi(data_dir, sample)
 
     # limit to specific frames, if given
     if frames:
@@ -51,7 +38,7 @@ def extract_edges_blockwise(
             (end - begin, None, None, None))
         source_roi = source_roi.intersect(crop_roi)
 
-    # shapes in voxels
+    # block size in world units
     block_write_roi = daisy.Roi(
         (0,)*4,
         daisy.Coordinate(block_size))
