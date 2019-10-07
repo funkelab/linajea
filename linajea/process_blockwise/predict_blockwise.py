@@ -8,6 +8,7 @@ import daisy
 from funlib.run import run
 
 from .daisy_check_functions import check_function
+from ..datasets import get_source_roi
 
 logger = logging.getLogger(__name__)
 
@@ -22,29 +23,14 @@ def predict_blockwise(
         frames=None,
         frame_context=1,
         num_workers=16,
-        singularity_image='linajea/linajea:v1.0',
+        singularity_image=None,
         queue='slowpoke',
         **kwargs):
 
-    data_dir = '../01_data'
-    setup_dir = '../02_setups'
+    data_dir = os.path.abspath('../01_data')
+    setup_dir = os.path.abspath(os.path.join('../02_setups', setup))
 
-    # get absolute paths
-    if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
-        sample_dir = os.path.abspath(os.path.join(data_dir,
-                                                  os.path.dirname(sample)))
-    else:
-        sample_dir = os.path.abspath(os.path.join(data_dir, sample))
-
-    setup_dir = os.path.abspath(os.path.join(setup_dir, setup))
-    # get ROI of source
-    with open(os.path.join(sample_dir, 'attributes.json'), 'r') as f:
-        attributes = json.load(f)
-
-    voxel_size = daisy.Coordinate(attributes['resolution'])
-    shape = daisy.Coordinate(attributes['shape'])
-    offset = daisy.Coordinate(attributes['offset'])
-    source_roi = daisy.Roi(offset, shape*voxel_size)
+    voxel_size, source_roi = get_source_roi(data_dir, sample)
 
     # limit to specific frames, if given
     if frames:
@@ -114,9 +100,12 @@ def predict_worker(
         cell_score_threshold):
     worker_id = daisy.Context.from_env().worker_id
     worker_time = time.time()
-    image_path = '/nrs/funke/singularity/'
-    image = image_path + singularity_image + '.img'
-    logger.debug("Using singularity image %s" % image)
+    if singularity_image is not None:
+        image_path = '/nrs/funke/singularity/'
+        image = image_path + singularity_image + '.img'
+        logger.debug("Using singularity image %s" % image)
+    else:
+        image = None
     cmd = run(
             command='python -u %s %d %s %s %s %f' % (
                 os.path.join('../02_setups', setup, 'predict.py'),
