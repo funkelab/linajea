@@ -23,7 +23,7 @@ def predict_blockwise(
         frames=None,
         frame_context=1,
         num_workers=16,
-        singularity_image='linajea/linajea:v1.0',
+        singularity_image=None,
         queue='slowpoke',
         **kwargs):
 
@@ -100,9 +100,12 @@ def predict_worker(
         cell_score_threshold):
     worker_id = daisy.Context.from_env().worker_id
     worker_time = time.time()
-    image_path = '/nrs/funke/singularity/'
-    image = image_path + singularity_image + '.img'
-    logger.debug("Using singularity image %s" % image)
+    if singularity_image is not None:
+        image_path = '/nrs/funke/singularity/'
+        image = image_path + singularity_image + '.img'
+        logger.debug("Using singularity image %s" % image)
+    else:
+        image = None
     cmd = run(
             command='python -u %s %d %s %s %s %f' % (
                 os.path.join('../02_setups', setup, 'predict.py'),
