@@ -1,5 +1,6 @@
 import linajea.tracking
 from .evaluate import evaluate
+from ..datasets import get_source_roi
 import logging
 import daisy
 import time
@@ -47,14 +48,7 @@ def evaluate_setup(
     else:
         sample_dir = os.path.abspath(os.path.join(data_dir, sample))
 
-    # get ROI of source
-    with open(os.path.join(sample_dir, 'attributes.json'), 'r') as f:
-        attributes = json.load(f)
-
-    voxel_size = daisy.Coordinate(attributes['resolution'])
-    shape = daisy.Coordinate(attributes['shape'])
-    offset = daisy.Coordinate(attributes['offset'])
-    source_roi = daisy.Roi(offset, shape*voxel_size)
+    voxel_size, source_roi = get_source_roi(data_dir, sample)
 
     # limit to specific frames, if given
     if frames:
