@@ -18,8 +18,7 @@ class MamutMongoReader(MamutReader):
             db_name,
             frames=None,
             key=None):
-        db = linajea.CandidateDatabase(
-                db_name, self.mongo_url, parameters_id=key)
+        db = linajea.CandidateDatabase(db_name, self.mongo_url)
         if frames is None:
             frames = [0, 1000]
         roi = daisy.Roi((frames[0], 0, 0, 0),
@@ -30,7 +29,7 @@ class MamutMongoReader(MamutReader):
             edges = db.read_edges(roi, nodes=nodes)
         else:
             edges = db.read_edges(
-                    roi, nodes=nodes, attr_filter={'selected': True})
+                    roi, nodes=nodes, attr_filter={key: True})
             logger.debug("Filtering cells")
             filtered_cell_ids = set([edge['source'] for edge in edges] +
                                     [edge['target'] for edge in edges])
@@ -58,14 +57,16 @@ class MamutMongoReader(MamutReader):
 
         db_name = data['db_name']
         group = data['group'] if 'group' in data else None
-        parameters_id = data['parameters_id']\
-            if 'parameters_id' in data else None
+        if 'parameters_id' in data:
+            selected_key = 'selected_' + str(data['parameters_id'])
+        else:
+            selected_key = None
         frames = data['frames'] if 'frames' in data else None
 
         nodes, edges = self.read_nodes_and_edges(
                 db_name,
                 frames=frames,
-                key=parameters_id)
+                key=selected_key)
 
         if not nodes:
             logger.error("No nodes found in database {}".format(db_name))
