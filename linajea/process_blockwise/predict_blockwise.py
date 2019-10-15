@@ -19,8 +19,8 @@ def predict_blockwise(
         db_host,
         db_name,
         cell_score_threshold=0,
-        frames=None,
-        frame_context=1,
+        limit_to_roi=None,
+        solve_context=None,
         num_workers=16,
         singularity_image='linajea/linajea:v1.0',
         queue='slowpoke',
@@ -47,14 +47,11 @@ def predict_blockwise(
     source_roi = daisy.Roi(offset, shape*voxel_size)
 
     # limit to specific frames, if given
-    if frames:
-        begin, end = frames
-        begin -= frame_context
-        end += frame_context
-        crop_roi = daisy.Roi(
-            (begin, None, None, None),
-            (end - begin, None, None, None))
-        source_roi = source_roi.intersect(crop_roi)
+    if limit_to_roi is not None:
+        if solve_context is None:
+            solve_context = daisy.Coordinate((2, 100, 100, 100))
+        limit_to_roi = limit_to_roi.grow(solve_context, solve_context)
+        source_roi = source_roi.intersect(limit_to_roi)
 
     # get context and total input and output ROI
     with open(os.path.join(setup_dir, 'test_net_config.json'), 'r') as f:
