@@ -129,6 +129,8 @@ class CandidateDatabase(MongoDbGraphProvider):
             else:
                 params_id = self.insert_with_next_id(params_dict,
                                                      params_collection)
+                logger.info("Parameters %s not yet in collection, adding with id %d"
+                            % (params_dict, params_id))
         finally:
             self._MongoDbGraphProvider__disconnect()
 
@@ -189,10 +191,12 @@ class CandidateDatabase(MongoDbGraphProvider):
         score = None
 
         try:
-            score_collection = self.database['scores']
             if frames is None:
+                score_collection = self.database['scores']
                 old_score = score_collection.find_one({'_id': parameters_id})
             else:
+                score_collection = self.database[
+                    'scores'+"_".join(str(f) for f in frames)]
                 old_score = score_collection.find_one(
                     {'param_id': parameters_id,
                      'frame_start': frames[0],
@@ -219,10 +223,12 @@ class CandidateDatabase(MongoDbGraphProvider):
         self._MongoDbGraphProvider__open_db()
         try:
 
-            score_collection = self.database['scores']
             if frames is None:
+                score_collection = self.database['scores']
                 eval_dict = {'_id': parameters_id}
             else:
+                score_collection = self.database[
+                    'scores'+"_".join(str(f) for f in frames)]
                 eval_dict = {'param_id': parameters_id}
             eval_dict.update(parameters)
             logger.info("%s  %s", frames, eval_dict)
