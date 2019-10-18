@@ -62,6 +62,7 @@ def predict_blockwise(
         if solve_context is None:
             solve_context = daisy.Coordinate((2, 100, 100, 100))
         predict_roi = target_roi.grow(solve_context, solve_context)
+        predict_roi = predict_roi.intersect(source_roi)
     else:
         predict_roi = source_roi
 
