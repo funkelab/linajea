@@ -19,10 +19,11 @@ def predict_blockwise(
         db_host,
         db_name,
         cell_score_threshold=0,
+        frames=None,
         limit_to_roi=None,
         solve_context=None,
         num_workers=16,
-        singularity_image='linajea/linajea:v1.0',
+        singularity_image='linajea/linajea:v1.1',
         queue='slowpoke',
         **kwargs):
 
@@ -47,11 +48,22 @@ def predict_blockwise(
     source_roi = daisy.Roi(offset, shape*voxel_size)
 
     # limit to specific frames, if given
-    if limit_to_roi is not None:
+    if limit_to_roi is not None or frames is not None:
+        target_roi = source_roi
+        if frames:
+            logger.info("Limiting prediction to frames %s" % str(frames))
+            begin, end = frames
+            frames_roi = daisy.Roi(
+                    (begin, None, None, None),
+                    (end - begin, None, None, None))
+            target_roi = target_roi.intersect(frames_roi)
+        if limit_to_roi:
+            target_roi = target_roi.intersect(limit_to_roi)
         if solve_context is None:
             solve_context = daisy.Coordinate((2, 100, 100, 100))
-        limit_to_roi = limit_to_roi.grow(solve_context, solve_context)
-        source_roi = source_roi.intersect(limit_to_roi)
+        predict_roi = target_roi.grow(solve_context, solve_context)
+    else:
+        predict_roi = source_roi
 
     # get context and total input and output ROI
     with open(os.path.join(setup_dir, 'test_net_config.json'), 'r') as f:
@@ -61,8 +73,8 @@ def predict_blockwise(
     net_input_size = daisy.Coordinate(net_input_size)*voxel_size
     net_output_size = daisy.Coordinate(net_output_size)*voxel_size
     context = (net_input_size - net_output_size)/2
-    input_roi = source_roi.grow(context, context)
-    output_roi = source_roi
+    input_roi = predict_roi.grow(context, context)
+    output_roi = predict_roi
 
     # create read and write ROI
     block_write_roi = daisy.Roi((0, 0, 0, 0), net_output_size)
