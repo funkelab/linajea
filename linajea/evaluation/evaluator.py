@@ -330,8 +330,11 @@ class Evaluator:
         max_node_id = max(list(rec_matched_graph.nodes))
         # split at fp_divisions
         for fp_div_node in self.report.fp_div_rec_nodes:
-            prev_edges = list(rec_matched_graph.prev_edges(fp_div_node))
-            next_edges = list(rec_matched_graph.next_edges(fp_div_node))
+            if fp_div_node in rec_matched_graph:
+                prev_edges = list(rec_matched_graph.prev_edges(fp_div_node))
+                next_edges = list(rec_matched_graph.next_edges(fp_div_node))
+            else:
+                continue
             if len(prev_edges) == 0 or len(next_edges) == 0:
                 continue
             for prev_edge in prev_edges:
