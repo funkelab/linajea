@@ -5,4 +5,4 @@ from .shift_augment import ShiftAugment
 from .random_location_exclude_time import RandomLocationExcludeTime
 from .tracks_source import TracksSource
 from .write_cells import WriteCells
-from .combine_channels import CombineChannels
+from .shuffle_channels import ShuffleChannels
