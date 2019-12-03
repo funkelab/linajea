@@ -23,6 +23,8 @@ class TrackingParameters(object):
             threshold_edge_score=None,
             weight_distance_cost=None,
             weight_prediction_distance_cost=None,
+            threshold_split_score=None,
+            use_cell_state=None,
             **kwargs):
 
         # "default" for the models that predict parent vectors only
@@ -90,6 +92,15 @@ class TrackingParameters(object):
             assert weight_prediction_distance_cost is not None,\
                 "Failed to specify weight_prediction_distance_cost"
         self.weight_prediction_distance_cost = weight_prediction_distance_cost
+
+
+        self.use_cell_state = use_cell_state
+        if self.use_cell_state:
+            if self.use_cell_state == 'simple':
+                assert threshold_split_score is not None, "Failed to specify threshold_split_score"
+                self.threshold_split_score = threshold_split_score
+            else:
+                raise NotImplementedError("invalid value for use_cell_state")
 
 
 def track(graph, parameters, selected_key, frame_key='t'):

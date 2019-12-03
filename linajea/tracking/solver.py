@@ -121,7 +121,7 @@ class Solver(object):
                 self._node_costs(node))
             objective.set_coefficient(
                 self.node_split[node],
-                self.parameters.cost_split)
+                self._split_costs(node))
 
         # edge selection costs
         for edge in self.graph.edges():
@@ -163,6 +163,17 @@ class Solver(object):
             self.graph.nodes[node]['score'])
 
         return score_costs*self.parameters.weight_node_score
+
+    def _split_costs(self, node):
+        if not self.parameters.use_cell_state:
+            return self.parameters.cost_split
+
+        if self.parameters.use_cell_state == 'simple':
+            return ((self.parameters.threshold_split_score -
+                     self.graph.nodes[node]['mother']) *
+                    self.parameters.cost_split)
+        else:
+            raise NotImplementedError("invalid value for use_cell_state")
 
     def _edge_costs(self, edge):
 
