@@ -96,8 +96,10 @@ class TrackingParameters(object):
 
         self.use_cell_state = use_cell_state
         if self.use_cell_state:
-            if self.use_cell_state == 'simple':
-                assert threshold_split_score is not None, "Failed to specify threshold_split_score"
+            if self.use_cell_state == 'simple' or \
+               self.use_cell_state == 'v1':
+                assert threshold_split_score is not None, \
+                    "Failed to specify threshold_split_score"
                 self.threshold_split_score = threshold_split_score
             else:
                 raise NotImplementedError("invalid value for use_cell_state")

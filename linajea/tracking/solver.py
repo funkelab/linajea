@@ -21,6 +21,9 @@ class Solver(object):
         self.node_appear = {}
         self.node_disappear = {}
         self.node_split = {}
+        if self.parameters.use_cell_state == 'v1':
+            self.edge_split = {}
+            self.node_is_daughter = {}
         self.pinned_edges = {}
 
         self.num_vars = None
@@ -69,9 +72,16 @@ class Solver(object):
             self.node_split[node] = self.num_vars + 3
             self.num_vars += 4
 
+            if self.parameters.use_cell_state == 'v1':
+                self.node_is_daughter[node] = self.num_vars
+                self.num_vars += 1
+
         for edge in self.graph.edges():
             self.edge_selected[edge] = self.num_vars
             self.num_vars += 1
+            if self.parameters.use_cell_state == 'v1':
+                self.edge_split[edge] = self.num_vars
+                self.num_vars += 1
 
     def _set_objective(self):
 
@@ -123,11 +133,19 @@ class Solver(object):
                 self.node_split[node],
                 self._split_costs(node))
 
+            if self.parameters.use_cell_state == 'v1':
+                objective.set_coefficient(
+                    self.node_is_daughter[node],
+                    self._daughter_costs(node))
+
         # edge selection costs
         for edge in self.graph.edges():
             objective.set_coefficient(
                 self.edge_selected[edge],
                 self._edge_costs(edge))
+            if self.parameters.use_cell_state == 'v1':
+                objective.set_coefficient(
+                    self.edge_split[edge], 0)
 
         self.objective = objective
 
@@ -168,12 +186,32 @@ class Solver(object):
         if not self.parameters.use_cell_state:
             return self.parameters.cost_split
 
-        if self.parameters.use_cell_state == 'simple':
+        if self.parameters.use_cell_state == 'simple' or \
+           self.parameters.use_cell_state == 'v1':
             return ((self.parameters.threshold_split_score -
                      self.graph.nodes[node]['mother']) *
                     self.parameters.cost_split)
         else:
             raise NotImplementedError("invalid value for use_cell_state")
+
+    def _daughter_costs(self, node):
+        if self.parameters.use_cell_state == 'v1':
+            return ((self.parameters.threshold_split_score -
+                     self.graph.nodes[node]['daughter']) *
+                    self.parameters.cost_split)
+        else:
+            raise NotImplementedError("invalid value for use_cell_state")
+
+    def _node_state_costs(self, node, state):
+
+        # simple linear costs based on the score of a node (negative if above
+        # threshold_node_score, positive otherwise)
+
+        score_costs = (
+            self.parameters.threshold_node_state[state] -
+            self.graph.nodes[node][state])
+
+        return score_costs*self.parameters.weight_node_state
 
     def _edge_costs(self, edge):
 
@@ -358,3 +396,23 @@ class Solver(object):
             logger.debug(
                 "set split-indicator constraints:\n\t%s\n\t%s",
                 constraint_1, constraint_2)
+
+            if self.parameters.use_cell_state == 'v1':
+                #  sum(next(edges_split))- 2*split >= 0
+                constraint_3 = pylp.LinearConstraint()
+                for edge in self.graph.next_edges(node):
+                    constraint_3.set_coefficient(self.edge_split[edge], 1)
+                constraint_3.set_coefficient(self.node_split[node], -2)
+                constraint_3.set_relation(pylp.Relation.Equal)
+                constraint_3.set_value(0)
+
+                self.constraints.add(constraint_3)
+
+                constraint_4 = pylp.LinearConstraint()
+                for edge in self.graph.prev_edges(node):
+                    constraint_4.set_coefficient(self.edge_split[edge], 1)
+                constraint_4.set_coefficient(self.node_is_daughter[node], -1)
+                constraint_4.set_relation(pylp.Relation.Equal)
+                constraint_4.set_value(0)
+
+                self.constraints.add(constraint_4)
