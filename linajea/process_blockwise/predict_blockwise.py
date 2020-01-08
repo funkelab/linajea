@@ -95,6 +95,7 @@ def predict_blockwise(
         block_write_roi,
         process_function=lambda: predict_worker(
             setup,
+            setup_dir,
             iteration,
             sample,
             db_host,
@@ -114,6 +115,7 @@ def predict_blockwise(
 
 def predict_worker(
         setup,
+        setup_dir,
         iteration,
         sample,
         db_host,
@@ -128,7 +130,7 @@ def predict_worker(
     logger.debug("Using singularity image %s" % image)
     cmd = run(
             command='python -u %s %d %s %s %s %f' % (
-                os.path.join('../02_setups', setup, 'predict.py'),
+                os.path.join(setup_dir, setup, 'predict.py'),
                 iteration,
                 sample,
                 db_host,
