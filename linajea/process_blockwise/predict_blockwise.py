@@ -25,10 +25,9 @@ def predict_blockwise(
         num_workers=16,
         singularity_image='linajea/linajea:v1.1',
         queue='slowpoke',
+        data_dir='../01_data',
+        setup_dir='../02_setups',
         **kwargs):
-
-    data_dir = '../01_data'
-    setup_dir = '../02_setups'
 
     # get absolute paths
     if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):

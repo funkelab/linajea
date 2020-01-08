@@ -17,13 +17,12 @@ def solve_blockwise(
         num_workers=8,
         frames=None,
         from_scratch=False,
+        data_dir='../01_data',
         **kwargs):
 
     parameters = TrackingParameters(**kwargs)
     block_size = daisy.Coordinate(parameters.block_size)
     context = daisy.Coordinate(parameters.context)
-
-    data_dir = '../01_data'
 
     # get absolute paths
     if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):

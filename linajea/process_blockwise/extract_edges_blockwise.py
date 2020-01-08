@@ -21,9 +21,8 @@ def extract_edges_blockwise(
         num_workers,
         frames=None,
         frame_context=1,
+        data_dir='../01_data',
         **kwargs):
-
-    data_dir = '../01_data'
 
     # get absolute paths
     if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
