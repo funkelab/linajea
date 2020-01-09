@@ -8,26 +8,28 @@ import daisy
 from funlib.run import run
 
 from .daisy_check_functions import check_function
+from linajea import load_config
 
 logger = logging.getLogger(__name__)
 
 
 def predict_blockwise(
-        setup,
-        iteration,
-        sample,
-        db_host,
-        db_name,
-        cell_score_threshold=0,
-        frames=None,
-        limit_to_roi=None,
-        solve_context=None,
-        num_workers=16,
-        singularity_image='linajea/linajea:v1.1',
-        queue='slowpoke',
-        data_dir='../01_data',
-        setup_dir='../02_setups',
-        **kwargs):
+        config_file,
+        iteration
+        ):
+    config = {
+            "solve_context": daisy.Coordinate((2, 100, 100, 100)),
+            "num_workers": 16,
+            "data_dir": '../01_data',
+            "setups_dir": '../02_setups',
+        }
+    master_config = load_config(config_file)
+    config.update(master_config['general'])
+    config.update(master_config['predict'])
+    sample = config['sample']
+    data_dir = config['data_dir']
+    setup = config['setup']
+    solve_context = config['solve_context']
 
     # get absolute paths
     if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
@@ -36,7 +38,8 @@ def predict_blockwise(
     else:
         sample_dir = os.path.abspath(os.path.join(data_dir, sample))
 
-    setup_dir = os.path.abspath(os.path.join(setup_dir, setup))
+    setup_dir = os.path.abspath(
+            os.path.join(config['setups_dir'], setup))
     # get ROI of source
     with open(os.path.join(sample_dir, 'attributes.json'), 'r') as f:
         attributes = json.load(f)
@@ -47,19 +50,24 @@ def predict_blockwise(
     source_roi = daisy.Roi(offset, shape*voxel_size)
 
     # limit to specific frames, if given
-    if limit_to_roi is not None or frames is not None:
+    if 'limit_to_roi_offset' in config or 'frames' in config:
         target_roi = source_roi
-        if frames:
+        if 'frames' in config:
+            frames = config['frames']
             logger.info("Limiting prediction to frames %s" % str(frames))
             begin, end = frames
             frames_roi = daisy.Roi(
                     (begin, None, None, None),
                     (end - begin, None, None, None))
             target_roi = target_roi.intersect(frames_roi)
-        if limit_to_roi:
+        if 'limit_to_roi_offset' in config:
+            assert 'limit_to_roi_shape' in config,\
+                    "Must specify shape and offset in config file"
+            limit_to_roi = daisy.Roi(
+                    daisy.Coordinate(config['limit_to_roi_offset']),
+                    daisy.Coordinate(config['limit_to_roi_shape']))
             target_roi = target_roi.intersect(limit_to_roi)
-        if solve_context is None:
-            solve_context = daisy.Coordinate((2, 100, 100, 100))
+
         predict_roi = target_roi.grow(solve_context, solve_context)
         predict_roi = predict_roi.intersect(source_roi)
     else:
@@ -94,49 +102,44 @@ def predict_blockwise(
         block_read_roi,
         block_write_roi,
         process_function=lambda: predict_worker(
-            setup,
-            setup_dir,
-            iteration,
-            sample,
-            db_host,
-            db_name,
-            singularity_image,
-            queue,
-            cell_score_threshold),
+            config_file,
+            iteration),
         check_function=lambda b: check_function(
             b,
             'predict',
-            db_name,
-            db_host),
-        num_workers=num_workers,
+            config['db_name'],
+            config['db_host']),
+        num_workers=config['num_workers'],
         read_write_conflict=False,
         max_retries=0)
 
 
 def predict_worker(
-        setup,
-        setup_dir,
-        iteration,
-        sample,
-        db_host,
-        db_name,
-        singularity_image,
-        queue,
-        cell_score_threshold):
+        config_file,
+        iteration):
+    config = {
+            "singularity_image": 'linajea/linajea:v1.1',
+            "queue": 'slowpoke',
+            'setups_dir': '../02_setups'
+        }
+    master_config = load_config(config_file)
+    config.update(master_config['general'])
+    config.update(master_config['predict'])
+    singularity_image = config['singularity_image']
+    queue = config['queue']
+    setups_dir = config['setups_dir']
+    setup = config['setup']
+
     worker_id = daisy.Context.from_env().worker_id
     worker_time = time.time()
     image_path = '/nrs/funke/singularity/'
     image = image_path + singularity_image + '.img'
     logger.debug("Using singularity image %s" % image)
     cmd = run(
-            command='python -u %s %d %s %s %s %f' % (
-                os.path.join(setup_dir, setup, 'predict.py'),
-                iteration,
-                sample,
-                db_host,
-                db_name,
-                cell_score_threshold
-                ),
+            command='python -u %s --config %s --iteration %d' % (
+                os.path.join(setups_dir, 'predict.py'),
+                config_file,
+                iteration),
             queue=queue,
             num_gpus=1,
             num_cpus=4,
