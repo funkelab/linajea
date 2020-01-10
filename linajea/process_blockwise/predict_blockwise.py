@@ -29,7 +29,7 @@ def predict_blockwise(
     sample = config['sample']
     data_dir = config['data_dir']
     setup = config['setup']
-    solve_context = config['solve_context']
+    solve_context = daisy.Coordinate(master_config['solve']['context'])
 
     # get absolute paths
     if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
