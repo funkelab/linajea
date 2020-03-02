@@ -19,6 +19,7 @@ def evaluate_setup(
         frames=None,
         from_scratch=True,
         sparse=True,
+        data_dir='../01_data',
         **kwargs):
 
     parameters = linajea.tracking.TrackingParameters(**kwargs)
@@ -36,10 +37,8 @@ def evaluate_setup(
         old_score = results_db.get_score(parameters_id, frames=frames)
         if old_score:
             logger.info("Already evaluated %d (frames: %s). Skipping" %
-                        parameters_id, frames)
+                        (parameters_id, frames))
             return old_score
-
-    data_dir = '../01_data'
 
     # get absolute paths
     if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):

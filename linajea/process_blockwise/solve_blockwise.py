@@ -1,7 +1,9 @@
 import daisy
 import json
 from linajea import CandidateDatabase
-from .daisy_check_functions import check_function, write_done
+from .daisy_check_functions import (
+        check_function, write_done,
+        check_function_all_blocks, write_done_all_blocks)
 from linajea.tracking import TrackingParameters, track
 import logging
 import os
@@ -17,13 +19,12 @@ def solve_blockwise(
         num_workers=8,
         frames=None,
         from_scratch=False,
+        data_dir='../01_data',
         **kwargs):
 
     parameters = TrackingParameters(**kwargs)
     block_size = daisy.Coordinate(parameters.block_size)
     context = daisy.Coordinate(parameters.context)
-
-    data_dir = '../01_data'
 
     # get absolute paths
     if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
@@ -71,8 +72,12 @@ def solve_blockwise(
         context)
 
     logger.info("Solving in %s", total_roi)
+    step_name = 'solve_' + str(parameters_id)
+    if check_function_all_blocks(step_name, db_name, db_host):
+        logger.info("Step %s is already completed. Exiting" % step_name)
+        return True
 
-    daisy.run_blockwise(
+    success = daisy.run_blockwise(
         total_roi,
         block_read_roi,
         block_write_roi,
@@ -84,13 +89,18 @@ def solve_blockwise(
             parameters_id),
         check_function=lambda b: check_function(
             b,
-            'solve_' + str(parameters_id),
+            step_name,
             db_name,
             db_host),
         num_workers=num_workers,
         fit='shrink')
-
+    if success:
+        write_done_all_blocks(
+            step_name,
+            db_name,
+            db_host)
     logger.info("Finished solving, parameters id is %s", parameters_id)
+    return success
 
 
 def solve_in_block(db_host, db_name, parameters, block, parameters_id):
