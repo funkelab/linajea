@@ -37,7 +37,7 @@ def evaluate_setup(
         old_score = results_db.get_score(parameters_id, frames=frames)
         if old_score:
             logger.info("Already evaluated %d (frames: %s). Skipping" %
-                        parameters_id, frames)
+                        (parameters_id, frames))
             return old_score
 
     # get absolute paths
