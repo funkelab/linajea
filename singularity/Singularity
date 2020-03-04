@@ -24,6 +24,8 @@ maintainer funkej@janelia.hhmi.org
 
 PATH="/miniconda/bin:$PATH"
 
+pip install zarr
+
 # install gunpowder
 
 GUNPOWDER_ROOT=/src/gunpowder
@@ -41,7 +43,7 @@ PYTHONPATH=${GUNPOWDER_ROOT}:$PYTHONPATH
 
 DAISY_ROOT=/src/daisy
 DAISY_REPOSITORY=https://github.com/funkey/daisy
-DAISY_REVISION=4a92a8a9755b6c29f11469f5a3e0bb71f1bf6ae8
+DAISY_REVISION=3d7826e7e4ab5844d55debac9bbb00b4e43a998b
 
 mkdir -p ${DAISY_ROOT}
 cd ${DAISY_ROOT}
