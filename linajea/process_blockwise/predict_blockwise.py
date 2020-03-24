@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import time
+import numpy as np
 
 import daisy
 from funlib.run import run
@@ -29,7 +30,7 @@ def predict_blockwise(
     sample = config['sample']
     data_dir = config['data_dir']
     setup = config['setup']
-    solve_context = daisy.Coordinate(master_config['solve']['context'])
+    # solve_context = daisy.Coordinate(master_config['solve']['context'])
 
     # get absolute paths
     if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
@@ -48,10 +49,10 @@ def predict_blockwise(
     shape = daisy.Coordinate(attributes['shape'])
     offset = daisy.Coordinate(attributes['offset'])
     source_roi = daisy.Roi(offset, shape*voxel_size)
+    predict_roi = source_roi
 
     # limit to specific frames, if given
     if 'limit_to_roi_offset' in config or 'frames' in config:
-        target_roi = source_roi
         if 'frames' in config:
             frames = config['frames']
             logger.info("Limiting prediction to frames %s" % str(frames))
@@ -59,19 +60,18 @@ def predict_blockwise(
             frames_roi = daisy.Roi(
                     (begin, None, None, None),
                     (end - begin, None, None, None))
-            target_roi = target_roi.intersect(frames_roi)
+            predict_roi = predict_roi.intersect(frames_roi)
         if 'limit_to_roi_offset' in config:
             assert 'limit_to_roi_shape' in config,\
                     "Must specify shape and offset in config file"
             limit_to_roi = daisy.Roi(
                     daisy.Coordinate(config['limit_to_roi_offset']),
                     daisy.Coordinate(config['limit_to_roi_shape']))
-            target_roi = target_roi.intersect(limit_to_roi)
-
-        predict_roi = target_roi.grow(solve_context, solve_context)
-        predict_roi = predict_roi.intersect(source_roi)
-    else:
-        predict_roi = source_roi
+            predict_roi = predict_roi.intersect(limit_to_roi)
+        # Given frames and rois are the prediction region,
+        # not the solution region
+        # predict_roi = target_roi.grow(solve_context, solve_context)
+        # predict_roi = predict_roi.intersect(source_roi)
 
     # get context and total input and output ROI
     with open(os.path.join(setup_dir, 'test_net_config.json'), 'r') as f:
@@ -83,6 +83,30 @@ def predict_blockwise(
     context = (net_input_size - net_output_size)/2
     input_roi = predict_roi.grow(context, context)
     output_roi = predict_roi
+
+    # prepare output zarr, if necessary
+    if 'output_zarr' in config:
+        output_zarr = config['output_zarr']
+        parent_vectors_ds = 'volumes/parent_vectors'
+        cell_indicator_ds = 'volumes/cell_indicator'
+        output_path = os.path.join(setup_dir, output_zarr)
+        logger.debug("Preparing zarr at %s" % output_path)
+        daisy.prepare_ds(
+                output_path,
+                parent_vectors_ds,
+                output_roi,
+                voxel_size,
+                dtype=np.float32,
+                write_size=net_output_size,
+                num_channels=3)
+        daisy.prepare_ds(
+                output_path,
+                cell_indicator_ds,
+                output_roi,
+                voxel_size,
+                dtype=np.float32,
+                write_size=net_output_size,
+                num_channels=1)
 
     # create read and write ROI
     block_write_roi = daisy.Roi((0, 0, 0, 0), net_output_size)
@@ -142,14 +166,14 @@ def predict_worker(
                 iteration),
             queue=queue,
             num_gpus=1,
-            num_cpus=4,
+            num_cpus=5,
             singularity_image=image,
             mount_dirs=['/groups', '/nrs'],
             execute=False,
             expand=False,
             )
     logger.info("Starting predict worker...")
-
+    logger.info("Command: %s" % str(cmd))
     daisy.call(
         cmd,
         log_out='logs/predict_%s_%d_%d.out' % (setup, worker_time, worker_id),
