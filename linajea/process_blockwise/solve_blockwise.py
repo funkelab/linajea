@@ -32,7 +32,6 @@ def solve_blockwise(
                                                   os.path.dirname(sample)))
     else:
         sample_dir = os.path.abspath(os.path.join(data_dir, sample))
-
     # get ROI of source
     with open(os.path.join(sample_dir, 'attributes.json'), 'r') as f:
         attributes = json.load(f)
@@ -86,7 +85,8 @@ def solve_blockwise(
             db_name,
             parameters,
             b,
-            parameters_id),
+            parameters_id,
+            solution_roi=source_roi),
         check_function=lambda b: check_function(
             b,
             step_name,
@@ -103,9 +103,27 @@ def solve_blockwise(
     return success
 
 
-def solve_in_block(db_host, db_name, parameters, block, parameters_id):
+def solve_in_block(
+        db_host,
+        db_name,
+        parameters,
+        block,
+        parameters_id,
+        solution_roi=None):
+    # Solution_roi is the total roi that you want a solution in
+    # Limiting the block to the solution_roi allows you to solve
+    # all the way to the edge, without worrying about reading
+    # data from outside the solution roi
+    # or paying the appear or disappear costs unnecessarily
 
     logger.debug("Solving in block %s", block)
+    if solution_roi:
+        # Limit block to source_roi
+        read_roi = block.read_roi.intersect(solution_roi)
+        write_roi = block.write_roi.intersect(solution_roi)
+    else:
+        read_roi = block.read_roi
+        write_roi = block.write_roi
 
     graph_provider = CandidateDatabase(
         db_name,
@@ -114,7 +132,7 @@ def solve_in_block(db_host, db_name, parameters, block, parameters_id):
         parameters_id=parameters_id)
     start_time = time.time()
     graph = graph_provider.get_graph(
-            block.read_roi,
+            read_roi,
             edge_attrs=["prediction_distance",
                         "distance",
                         graph_provider.selected_key]
@@ -135,14 +153,14 @@ def solve_in_block(db_host, db_name, parameters, block, parameters_id):
 
     if num_edges == 0:
         logger.info("No edges in roi %s. Skipping"
-                    % block.read_roi)
+                    % read_roi)
         write_done(block, 'solve_' + str(parameters_id), db_name, db_host)
         return 0
 
     track(graph, parameters, graph_provider.selected_key)
     start_time = time.time()
     graph.update_edge_attrs(
-            block.write_roi,
+            write_roi,
             attributes=[graph_provider.selected_key])
     logger.info("Updating attribute %s for %d edges took %s seconds"
                 % (graph_provider.selected_key,
