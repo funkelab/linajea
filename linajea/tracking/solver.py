@@ -10,11 +10,16 @@ class Solver(object):
     Class for initializing and solving the ILP problem for
     creating tracks from candidate nodes and edges using pylp
     '''
-    def __init__(self, track_graph, parameters, selected_key):
+    def __init__(self, track_graph, parameters, selected_key, frames=None):
+        # frames: [start_frame, end_frame] where start_frame is inclusive
+        # and end_frame is exclusive. Defaults to track_graph.begin,
+        # track_graph.end
 
         self.graph = track_graph
         self.parameters = parameters
         self.selected_key = selected_key
+        self.start_frame = frames[0] if frames else self.graph.begin
+        self.end_frame = frames[1] if frames else self.graph.end
 
         self.node_selected = {}
         self.edge_selected = {}
@@ -80,23 +85,23 @@ class Solver(object):
         objective = pylp.LinearObjective(self.num_vars)
 
         # node appear (skip first frame)
-        for t in range(self.graph.begin + 1, self.graph.end):
+        for t in range(self.start_frame + 1, self.end_frame):
             for node in self.graph.cells_by_frame(t):
                 objective.set_coefficient(
                     self.node_appear[node],
                     self.parameters.cost_appear)
-        for node in self.graph.cells_by_frame(self.graph.begin):
+        for node in self.graph.cells_by_frame(self.start_frame):
             objective.set_coefficient(
                 self.node_appear[node],
                 0)
 
         # node disappear (skip last frame)
-        for t in range(self.graph.begin, self.graph.end - 1):
+        for t in range(self.start_frame, self.end_frame - 1):
             for node in self.graph.cells_by_frame(t):
                 objective.set_coefficient(
                     self.node_disappear[node],
                     self.parameters.cost_disappear)
-        for node in self.graph.cells_by_frame(self.graph.end - 1):
+        for node in self.graph.cells_by_frame(self.end_frame - 1):
             objective.set_coefficient(
                 self.node_disappear[node],
                 0)

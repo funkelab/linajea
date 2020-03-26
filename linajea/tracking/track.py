@@ -92,7 +92,7 @@ class TrackingParameters(object):
         self.weight_prediction_distance_cost = weight_prediction_distance_cost
 
 
-def track(graph, parameters, selected_key, frame_key='t'):
+def track(graph, parameters, selected_key, frame_key='t', frames=None):
     ''' A wrapper function that takes a daisy subgraph and input parameters,
     creates and solves the ILP to create tracks, and updates the daisy subgraph
     to reflect the selected nodes and edges.
@@ -117,6 +117,12 @@ def track(graph, parameters, selected_key, frame_key='t'):
             The name of the node attribute that corresponds to the frame of the
             node. Defaults to "t".
 
+        frames (``list`` of ``int``):
+
+            The start and end frames to solve in (in case the graph doesn't
+            have nodes in all frames). Start is inclusive, end is exclusive.
+            Defaults to graph.begin, graph.end
+
     '''
     # assuming graph is a daisy subgraph
     if graph.number_of_nodes() == 0:
@@ -128,7 +134,7 @@ def track(graph, parameters, selected_key, frame_key='t'):
                              roi=graph.roi)
 
     logger.info("Creating solver...")
-    solver = Solver(track_graph, parameters, selected_key)
+    solver = Solver(track_graph, parameters, selected_key, frames=frames)
 
     logger.info("Solving...")
     start_time = time.time()

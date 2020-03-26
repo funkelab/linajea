@@ -157,7 +157,9 @@ def solve_in_block(
         write_done(block, 'solve_' + str(parameters_id), db_name, db_host)
         return 0
 
-    track(graph, parameters, graph_provider.selected_key)
+    frames = [read_roi.get_offset()[0],
+              read_roi.get_offset()[0] + read_roi.get_shape()[0]]
+    track(graph, parameters, graph_provider.selected_key, frames=frames)
     start_time = time.time()
     graph.update_edge_attrs(
             write_roi,
