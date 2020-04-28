@@ -18,6 +18,7 @@ def solve_blockwise(
         sample,
         num_workers=8,
         frames=None,
+        limit_to_roi=None,
         from_scratch=False,
         data_dir='../01_data',
         **kwargs):
@@ -59,6 +60,10 @@ def solve_blockwise(
             (begin, None, None, None),
             (end - begin, None, None, None))
         source_roi = source_roi.intersect(crop_roi)
+    # limit to roi, if given
+    if limit_to_roi:
+        logger.info("limiting to roi %s" % str(limit_to_roi))
+        source_roi = source_roi.intersect(limit_to_roi)
 
     block_write_roi = daisy.Roi(
         (0, 0, 0, 0),
