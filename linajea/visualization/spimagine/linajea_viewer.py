@@ -44,11 +44,15 @@ class LinajeaViewer:
         self.selected_color = (0.1, 1.0, 0.1)
         self.nonselected_color = (1.0, 0.2, 0.5)
 
+        self.show_nodes = True
+        self.show_edges = True
+        self.show_data = True
         self.show_edge_attributes = []
         self.show_node_ids = False
         self.show_node_scores = True
         self.hide_non_selected = False
         self.show_track_colors = False
+        self.show_track_ids = False
 
         self.limit_to_frames = (0, 0)
         self.prev_t = -1
@@ -88,15 +92,15 @@ class LinajeaViewer:
             self,
             graph):
 
-        logger.debug("Adding %d node meshes...", graph.number_of_nodes())
+        if self.show_nodes:
+            logger.debug("Adding %d node meshes...", graph.number_of_nodes())
+            for node, data in graph.nodes(data=True):
+                self.__draw_node(node, data)
 
-        for node, data in graph.nodes(data=True):
-            self.__draw_node(node, data)
-
-        logger.debug("Adding %d edge lines...", graph.number_of_edges())
-
-        for u, v, data in graph.edges(data=True):
-            self.__draw_edge(graph, u, v, data)
+        if self.show_edges:
+            logger.debug("Adding %d edge lines...", graph.number_of_edges())
+            for u, v, data in graph.edges(data=True):
+                self.__draw_edge(graph, u, v, data)
 
     def __block_until_closed(self):
 
@@ -150,11 +154,15 @@ class LinajeaViewer:
 
         if len(raw_data.shape) == 5:
             raw_data = raw_data[self.channel]
-
-        viewer = spimagine.volshow(
-            raw_data,
-            stackUnits=self.raw.voxel_size[1:][::-1])
-        viewer.set_colormap("grays")
+        if self.show_data:
+            viewer = spimagine.volshow(
+                raw_data,
+                stackUnits=self.raw.voxel_size[1:][::-1])
+            viewer.set_colormap("grays")
+        else:
+            viewer = spimagine.volshow(
+                np.zeros(raw_data.shape),
+                stackUnits=self.raw.voxel_size[1:][::-1])
 
         viewer.glWidget.transform._transformChanged.connect(
             lambda: self.__on_transform_changed())
@@ -307,7 +315,8 @@ class LinajeaViewer:
         if self.show_node_scores:
             text.append("score: %.3f" % node_data['score'])
 
-        text.append("track: %d" % node_data['track'])
+        if 'track' in node_data and self.show_track_ids:
+            text.append("track: %d" % node_data['track'])
 
         return ", ".join(text)
 
