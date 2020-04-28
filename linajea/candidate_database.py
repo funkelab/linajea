@@ -211,6 +211,32 @@ class CandidateDatabase(MongoDbGraphProvider):
         finally:
             self._MongoDbGraphProvider__disconnect()
         return score
+    
+    def get_scores(self, frames=None):
+        '''Returns the a list of all score dictionaries or
+        None if no score available'''
+        self._MongoDbGraphProvider__connect()
+        self._MongoDbGraphProvider__open_db()
+
+        try:
+            if frames is None:
+                score_collection = self.database['scores']
+                scores = list(score_collection.find({}))
+
+            else:
+                score_collection = self.database[
+                    'scores'+"_".join(str(f) for f in frames)]
+                scores = list(score_collection.find(
+                    {'frame_start': frames[0],
+                     'frame_end': frames[1]}))
+            logger.debug("Found %d scores" % len(scores))
+            if frames is None:
+                for score in scores:
+                    score['param_id'] = score['_id']
+
+        finally:
+            self._MongoDbGraphProvider__disconnect()
+        return scores
 
     def write_score(self, parameters_id, report, frames=None):
         '''Writes the score for the given parameters_id to the
