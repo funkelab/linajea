@@ -89,7 +89,7 @@ class WriteCells(gp.BatchFilter):
                 'parent_vector': parent_vector
             })
 
-            logger.info(
+            logger.debug(
                 "ID=%d, score=%f, parent_vector=%s" % (
                     cell_id, score, parent_vector))
 
