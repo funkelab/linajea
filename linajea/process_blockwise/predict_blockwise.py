@@ -135,7 +135,8 @@ def predict_blockwise(
             config['db_host']),
         num_workers=config['num_workers'],
         read_write_conflict=False,
-        max_retries=0)
+        max_retries=0,
+        fit='overhang')
 
 
 def predict_worker(
