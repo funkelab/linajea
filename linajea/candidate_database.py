@@ -226,9 +226,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             else:
                 score_collection = self.database[
                     'scores'+"_".join(str(f) for f in frames)]
-                scores = list(score_collection.find(
-                    {'frame_start': frames[0],
-                     'frame_end': frames[1]}))
+                scores = list(score_collection.find({}))
             logger.debug("Found %d scores" % len(scores))
             if frames is None:
                 for score in scores:

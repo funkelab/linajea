@@ -17,6 +17,7 @@ def evaluate_setup(
         gt_db_name,
         matching_threshold=None,
         frames=None,
+        limit_to_roi=None,
         from_scratch=True,
         sparse=True,
         data_dir='../01_data',
@@ -63,6 +64,10 @@ def evaluate_setup(
             (begin, None, None, None),
             (end - begin, None, None, None))
         source_roi = source_roi.intersect(crop_roi)
+
+    # limit to roi, if given
+    if limit_to_roi:
+        source_roi.intersect(limit_to_roi)
 
     logger.info("Evaluating in %s", source_roi)
 
