@@ -98,7 +98,7 @@ def solve_blockwise(
             db_name,
             db_host),
         num_workers=num_workers,
-        fit='shrink')
+        fit='overhang')
     if success:
         write_done_all_blocks(
             step_name,
