@@ -319,31 +319,32 @@ class Solver(object):
         # into two daughter cells.
         for node in self.graph.cells_by_frame(t):
 
-            # I.e., each node with three edges selected (one backwards, two
-            # forwards) is a split node.
+            # I.e., each node with two forwards edges is a split node.
 
-            #  sum(edges) - split   <= 2 # sum(edges) >  2 => split == 1
-            #  sum(edges) - 3*split >= 0 # sum(edges) <= 2 => split == 0
+            # Constraint 1
+            # sum(forward edges) - split   <= 1
+            # sum(forward edges) >  1 => split == 1
+
+            # Constraint 2
+            # sum(forward edges) - 2*split >= 0
+            # sum(forward edges) <= 1 => split == 0
 
             constraint_1 = pylp.LinearConstraint()
             constraint_2 = pylp.LinearConstraint()
 
-            # sum(edges)
-            for edge in self.graph.prev_edges(node):
-                constraint_1.set_coefficient(self.edge_selected[edge], 1)
-                constraint_2.set_coefficient(self.edge_selected[edge], 1)
+            # sum(forward edges)
             for edge in self.graph.next_edges(node):
                 constraint_1.set_coefficient(self.edge_selected[edge], 1)
                 constraint_2.set_coefficient(self.edge_selected[edge], 1)
 
-            # -[3*]split
+            # -[2*]split
             constraint_1.set_coefficient(self.node_split[node], -1)
-            constraint_2.set_coefficient(self.node_split[node], -3)
+            constraint_2.set_coefficient(self.node_split[node], -2)
 
             constraint_1.set_relation(pylp.Relation.LessEqual)
             constraint_2.set_relation(pylp.Relation.GreaterEqual)
 
-            constraint_1.set_value(2)
+            constraint_1.set_value(1)
             constraint_2.set_value(0)
 
             self.constraints.add(constraint_1)
