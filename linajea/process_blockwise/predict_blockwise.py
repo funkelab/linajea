@@ -121,22 +121,35 @@ def predict_blockwise(
     logger.info("Starting block-wise processing...")
 
     # process block-wise
-    daisy.run_blockwise(
-        input_roi,
-        block_read_roi,
-        block_write_roi,
-        process_function=lambda: predict_worker(
-            config_file,
-            iteration),
-        check_function=lambda b: check_function(
-            b,
-            'predict',
-            config['db_name'],
-            config['db_host']),
-        num_workers=config['num_workers'],
-        read_write_conflict=False,
-        max_retries=0,
-        fit='overhang')
+    if 'db_name' in config:
+        daisy.run_blockwise(
+            input_roi,
+            block_read_roi,
+            block_write_roi,
+            process_function=lambda: predict_worker(
+                config_file,
+                iteration),
+            check_function=lambda b: check_function(
+                b,
+                'predict',
+                config['db_name'],
+                config['db_host']),
+            num_workers=config['num_workers'],
+            read_write_conflict=False,
+            max_retries=0,
+            fit='overhang')
+    else:
+        daisy.run_blockwise(
+            input_roi,
+            block_read_roi,
+            block_write_roi,
+            process_function=lambda: predict_worker(
+                config_file,
+                iteration),
+            num_workers=config['num_workers'],
+            read_write_conflict=False,
+            max_retries=0,
+            fit='overhang')
 
 
 def predict_worker(
