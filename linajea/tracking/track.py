@@ -3,6 +3,7 @@ from .solver import Solver
 from .track_graph import TrackGraph
 import logging
 import time
+import networkx as nx
 
 logger = logging.getLogger(__name__)
 
@@ -146,3 +147,70 @@ def track(graph, parameters, selected_key, frame_key='t', frames=None):
     for u, v, data in graph.edges(data=True):
         if (u, v) in track_graph.edges:
             data[selected_key] = track_graph.edges[(u, v)][selected_key]
+
+
+def greedy_track(
+        graph,
+        selected_key,
+        metric='prediction_distance',
+        frame_key='t',
+        frames=None,
+        node_threshold=None):
+    ''' A wrapper function that takes a daisy subgraph and input parameters
+    (only matching distance,
+    creates and solves the ILP to create tracks, and updates the daisy subgraph
+    to reflect the selected nodes and edges.
+
+    Args:
+
+        graph (``daisy.SharedSubgraph``):
+            The candidate graph to extract tracks from
+
+        selected_key (``string``)
+            The key used to store the `true` or `false` selection status of
+            each edge in graph.
+
+        metric (``string``)
+            Type of distance to use when finding "shortest" edges
+
+        frame_key (``string``, optional):
+
+            The name of the node attribute that corresponds to the frame of the
+            node. Defaults to "t".
+
+        frames (``list`` of ``int``):
+            The start and end frames to solve in (in case the graph doesn't
+            have nodes in all frames). Start is inclusive, end is exclusive.
+            Defaults to graph.begin, graph.end
+
+        node_threshold (``float``):
+            Don't use nodes with score below this values. Defaults to None.
+    '''
+    # assuming graph is a daisy subgraph
+    if graph.number_of_nodes() == 0:
+        return
+
+    selected = nx.DiGraph()
+    unselected = nx.DiGraph()
+    unselected.add_nodes_from(graph.nodes(data=True))
+    unselected.add_edges_from(graph.edges(data=True))
+    nx.set_edge_attributes(graph, False, selected_key)
+
+    if node_threshold:
+        logger.info("Removing nodes below threshold")
+        for node, data in list(unselected.nodes(data=True)):
+            if data['score'] < node_threshold:
+                unselected.remove_node(node)
+
+    logger.info("Sorting edges")
+    sorted_edges = sorted(list(graph.edges(data=True)),
+                          key=lambda e: e[2][metric])
+
+    logger.info("Selecting shortest edges")
+    for u, v, data in sorted_edges:
+        if unselected.has_edge(u, v):
+            graph.edges[(u, v)][selected_key] = True
+            selected.add_edge(u, v)
+            unselected.remove_edges_from(list(graph.out_edges(u)))
+            if selected.in_degree(v) > 1:
+                unselected.remove_edges_from(list(unselected.in_edges(v)))
