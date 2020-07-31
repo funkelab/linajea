@@ -173,31 +173,14 @@ class Solver(object):
 
         # simple linear costs based on the score of an edge (negative if above
         # threshold_edge_score, positive otherwise)
+        score_costs = 0
 
-        if self.parameters.model_type == 'default':
+        prediction_distance_costs = (
+            (self.graph.edges[edge]['prediction_distance'] -
+             self.parameters.threshold_edge_score) *
+            self.parameters.weight_prediction_distance_cost)
 
-            score_costs = (
-                self.parameters.threshold_edge_score -
-                self.graph.edges[edge]['score'])
-
-            prediction_distance_costs = 0
-
-        elif self.parameters.model_type == 'nms':
-
-            score_costs = 0
-
-            prediction_distance_costs = (
-                (self.graph.edges[edge]['prediction_distance'] -
-                 self.parameters.threshold_edge_score) *
-                self.parameters.weight_prediction_distance_cost)
-
-        # plus costs for the distance between the linked nodes
-
-        move_costs = (
-            self.graph.edges[edge]['distance'] *
-            self.parameters.weight_distance_cost)
-
-        return score_costs + prediction_distance_costs + move_costs
+        return score_costs + prediction_distance_costs
 
     def _add_constraints(self):
 

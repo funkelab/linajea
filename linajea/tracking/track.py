@@ -12,7 +12,6 @@ class TrackingParameters(object):
 
     def __init__(
             self,
-            model_type='default',
             block_size=None,
             context=None,
             cost_appear=None,
@@ -22,18 +21,11 @@ class TrackingParameters(object):
             threshold_node_score=None,
             weight_node_score=None,
             threshold_edge_score=None,
-            weight_distance_cost=None,
             weight_prediction_distance_cost=None,
+            version=None,
             **kwargs):
 
-        # "default" for the models that predict parent vectors only
-        # "nms" for the non-max suppression models
-        assert model_type in ['default', 'nms']
-        self.model_type = model_type
-
-        # ALL MODEL TYPES:
         # block size and context
-
         assert block_size is not None, "Failed to specify block_size"
         self.block_size = block_size
         assert context is not None, "Failed to specify context"
@@ -74,23 +66,13 @@ class TrackingParameters(object):
             "Failed to specify threshold_edge_score"
         self.threshold_edge_score = threshold_edge_score
 
-        # ONLY DEFAULT MODEL:
-
-        # how to weigh the Euclidean distance between cells for the costs of an
-        # edge
-        if model_type == 'default':
-            assert weight_distance_cost is not None,\
-                "Failed to specify weight_distance_cost"
-        self.weight_distance_cost = weight_distance_cost
-
-        # ONLY NMS MODEL:
-
         # how to weigh the Euclidean distance between the predicted position
         # and the actual position of cells for the costs of an edge
-        if model_type == 'nms':
-            assert weight_prediction_distance_cost is not None,\
-                "Failed to specify weight_prediction_distance_cost"
+        assert weight_prediction_distance_cost is not None,\
+            "Failed to specify weight_prediction_distance_cost"
         self.weight_prediction_distance_cost = weight_prediction_distance_cost
+        # version control
+        self.version = version
 
 
 def track(graph, parameters, selected_key, frame_key='t', frames=None):
@@ -156,10 +138,9 @@ def greedy_track(
         frame_key='t',
         frames=None,
         node_threshold=None):
-    ''' A wrapper function that takes a daisy subgraph and input parameters
-    (only matching distance,
-    creates and solves the ILP to create tracks, and updates the daisy subgraph
-    to reflect the selected nodes and edges.
+    ''' A wrapper function that takes a daisy subgraph and input parameters,
+    greedily chooses edges to create tracks, and updates the daisy subgraph to
+    reflect the selected nodes and edges.
 
     Args:
 
@@ -171,7 +152,8 @@ def greedy_track(
             each edge in graph.
 
         metric (``string``)
-            Type of distance to use when finding "shortest" edges
+            Type of distance to use when finding "shortest" edges. Options are
+            'prediction_distance' (default) and 'distance'
 
         frame_key (``string``, optional):
 
