@@ -2,44 +2,57 @@ import math
 import numpy as np
 import networkx as nx
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
 
 def track_distance(track1, track2):
-    start1, end1 = get_node_attr_range(track1, 't')
-    start2, end2 = get_node_attr_range(track2, 't')
-    if start1 is None:
-        return end2 - start2
-    if start2 is None:
-        return end1 - start1
-    if start1 > end2 or start2 > end1:
-        # No frame overlap -> length of two tracks
-        return (end1 - start1) + (end2 - start2)
+    # Sort nodes by frame (assumed 1 per frame)
+    nodes1 = [d for n, d in track1.nodes(data=True)]
+    nodes2 = [d for n, d in track2.nodes(data=True)]
+    nodes1 = sorted(nodes1, key=lambda n: n['t'])
+    nodes2 = sorted(nodes2, key=lambda n: n['t'])
+
+    # Handle empty track edge case
+    if len(nodes1) == 0 or len(nodes2) == 0:
+        return len(nodes1) + len(nodes2)
+
+    # ensure nodes1 starts earlier in time
+    if nodes2[0]['t'] < nodes1[0]['t']:
+        tmp = nodes2
+        nodes2 = nodes1
+        nodes1 = tmp
+
     dist = 0.
-    if start1 != start2:
-        dist += abs(start1 - start2)
-        logger.debug("starts don't align. Distance: %f" % dist)
-    start_frame = max(start1, start2)
-    if end1 != end2:
-        dist += abs(end1 - end2)
-        logger.debug("ends don't align. Distance: %f" % dist)
-    end_frame = min(end1, end2)
-    for node1, data1 in track1.nodes(data=True):
-        frame = data1['t']
-        if frame < start_frame or frame >= end_frame:
-            continue
-        for node2, data2 in track2.nodes(data=True):
-            if data2['t'] == frame:
-                logger.debug("Match in frame %d" % frame)
-                node_dist = np.linalg.norm(node_loc(data1) -
-                                           node_loc(data2))
-                logger.debug("Euclidean distance: %f" % node_dist)
-                logger.debug("normalized distance: %f" %
-                             norm_distance(node_dist))
-                dist += norm_distance(node_dist)
-                break
-    logger.debug("Final distance: %f" % dist)
+    i1 = 0
+    i2 = 0
+    while i1 < len(nodes1) and i2 < len(nodes2):
+        t1 = nodes1[i1]['t']
+        t2 = nodes2[i2]['t']
+        if t1 == t2:
+            logger.debug("Match in frame %d", t1)
+            node_dist = np.linalg.norm(node_loc(nodes1[i1]) -
+                                       node_loc(nodes2[i2]))
+            logger.debug("Euclidean distance: %f", node_dist)
+            logger.debug("normalized distance: %f",
+                         norm_distance(node_dist))
+            dist += norm_distance(node_dist)
+            i1 += 1
+            i2 += 1
+        else:
+            # assumed t1 < t2
+            logger.debug("No match in frame %d", t1)
+            dist += 1
+            i1 += 1
+
+    if i1 < len(nodes1):
+        logger.debug("No match from frame %d to %d", i1, len(nodes1) - 1)
+        dist += (len(nodes1) - i1)
+    if i2 < len(nodes2):
+        logger.debug("No match from frame %d to %d", i2, len(nodes2) - 1)
+        dist += (len(nodes2) - i2)
+    logger.debug("Final distance: %f", dist)
     return dist
 
 
@@ -97,11 +110,21 @@ def split_into_tracks(lineages):
         min_id = 0
         for edge in in_edges:
             min_id = replace_target(edge, lineages, i=min_id)
-
-    conn_components = [lineages.subgraph(c).copy()
-                       for c in nx.weakly_connected_components(lineages)]
-    logger.debug("Number of connected components: %d" % len(conn_components))
+    conn_components = get_connected_components(lineages)
+    logger.info("Number of connected components: %d" % len(conn_components))
     return conn_components
+
+
+def get_connected_components(graph):
+    subgraphs = []
+    node_set_generator = nx.weakly_connected_components(graph)
+    for node_set in node_set_generator:
+        edge_set = graph.edges(node_set, data=True)
+        g = nx.DiGraph()
+        g.add_nodes_from([(node, graph.nodes[node]) for node in node_set])
+        g.add_edges_from(edge_set)
+        subgraphs.append(g)
+    return subgraphs
 
 
 def replace_target(edge, graph, i=0):
@@ -145,6 +168,8 @@ def validation_score(gt_lineages, rec_lineages):
     # Filtering by frame and/or xyz region would increase efficiency
 
     total_score = 0
+    processed = 0
+    start_time = time.time()
     for gt_track in gt_tracks:
         track_score = None
         for rec_track in rec_tracks:
@@ -152,4 +177,8 @@ def validation_score(gt_lineages, rec_lineages):
             if track_score is None or s < track_score:
                 track_score = s
         total_score += track_score
+        processed += 1
+        if processed % 25 == 0:
+            logging.info("Processed %d gt tracks in %d seconds"
+                         % (processed, time.time() - start_time))
     return total_score
