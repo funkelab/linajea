@@ -9,13 +9,17 @@ logging.basicConfig(level=logging.INFO)
 
 
 class TestValidationMetric(unittest.TestCase):
+    tolerance_places = 4
+
     # One GT, one rec track
     def test_perfect(self):
         length = 8
         seed = 1
         gt_track = self.create_track(length, seed=seed)
         rec_track = self.create_track(length, seed=seed)
-        self.assertAlmostEqual(track_distance(gt_track, rec_track), 0)
+        self.assertAlmostEqual(
+                track_distance(gt_track, rec_track), 0,
+                places=self.tolerance_places)
 
     def test_empty_reconstruction(self):
         length = 8
@@ -31,8 +35,10 @@ class TestValidationMetric(unittest.TestCase):
         rec_track = self.create_track(length, seed=seed)
         for node_id in range(length):
             rec_track.nodes[node_id]['x'] += 1
-        self.assertAlmostEqual(track_distance(gt_track, rec_track),
-                               length * norm_distance(1))
+        self.assertAlmostEqual(
+                track_distance(gt_track, rec_track),
+                length * norm_distance(1),
+                places=self.tolerance_places)
 
     def test_far_away(self):
         length = 8
@@ -40,9 +46,11 @@ class TestValidationMetric(unittest.TestCase):
         gt_track = self.create_track(length, seed=seed)
         rec_track = self.create_track(length, seed=seed)
         for node_id in range(length):
-            rec_track.nodes[node_id]['x'] += 50
-        self.assertAlmostEqual(track_distance(gt_track, rec_track),
-                               length)
+            rec_track.nodes[node_id]['x'] += 200
+        self.assertAlmostEqual(
+                track_distance(gt_track, rec_track),
+                length,
+                places=self.tolerance_places)
 
     def test_missing_first_edge(self):
         length = 8
@@ -50,16 +58,20 @@ class TestValidationMetric(unittest.TestCase):
         gt_track = self.create_track(length, seed=seed)
         rec_track = self.create_track(length, seed=seed)
         rec_track.remove_node(0)
-        self.assertAlmostEqual(track_distance(gt_track, rec_track),
-                               1)
+        self.assertAlmostEqual(
+                track_distance(gt_track, rec_track),
+                1,
+                places=self.tolerance_places)
 
     def test_extra_edge(self):
         length = 8
         seed = 1
         gt_track = self.create_track(length, seed=seed)
         rec_track = self.create_track(length + 1, seed=seed)
-        self.assertAlmostEqual(track_distance(gt_track, rec_track),
-                               1)
+        self.assertAlmostEqual(
+                track_distance(gt_track, rec_track),
+                1,
+                places=self.tolerance_places)
 
     # One GT, Multiple Rec
     def test_missing_middle_edge(self):
@@ -71,7 +83,8 @@ class TestValidationMetric(unittest.TestCase):
         self.assertAlmostEqual(
                 validation_score(gt_track, rec_track),
                 min([len(track) for track in
-                     nx.weakly_connected_components(rec_track)]))
+                     nx.weakly_connected_components(rec_track)]),
+                places=self.tolerance_places)
 
     def test_fp_div(self):
         length = 8
@@ -80,7 +93,9 @@ class TestValidationMetric(unittest.TestCase):
         rec_track = self.create_track(length, seed=seed)
         rec_track.add_node(length, t=4, x=0, y=0, z=0)
         rec_track.add_edge(length, 3)
-        self.assertAlmostEqual(validation_score(gt_track, rec_track), 3)
+        self.assertAlmostEqual(
+                validation_score(gt_track, rec_track), 3,
+                places=self.tolerance_places)
 
     def test_choosing_closer(self):
         length = 8
@@ -92,8 +107,10 @@ class TestValidationMetric(unittest.TestCase):
         second_rec_track = self.create_track(length, seed=seed, min_id=length)
         for node_id in range(length, length*2):
             second_rec_track.nodes[node_id]['x'] += 5
-        self.assertAlmostEqual(validation_score(gt_track, rec_track),
-                               length * norm_distance(1))
+        self.assertAlmostEqual(
+                validation_score(gt_track, rec_track),
+                length * norm_distance(1),
+                places=self.tolerance_places)
 
     def test_choosing_continuous(self):
         length = 8
@@ -107,9 +124,11 @@ class TestValidationMetric(unittest.TestCase):
         rec_track = nx.union(rec_track, second_rec_track)
         shorter_segment_len = min([len(track) for track in
                                    nx.weakly_connected_components(rec_track)])
-        self.assertAlmostEqual(validation_score(gt_track, rec_track),
-                               min(shorter_segment_len,
-                                   length * norm_distance(10)))
+        self.assertAlmostEqual(
+                validation_score(gt_track, rec_track),
+                min(shorter_segment_len,
+                    length * norm_distance(10)),
+                places=self.tolerance_places)
 
     # Multiple GT, One Rec
 
@@ -122,8 +141,10 @@ class TestValidationMetric(unittest.TestCase):
         gt_track.add_node(length, t=4,
                           x=loc['x'], y=loc['y'], z=loc['z'])
         gt_track.add_edge(length, 3)
-        self.assertAlmostEqual(validation_score(gt_track, rec_track),
-                               length*2 - 3)
+        self.assertAlmostEqual(
+                validation_score(gt_track, rec_track),
+                length*2 - 3,
+                places=self.tolerance_places)
 
     def test_reusing_rec(self):
         length = 8
@@ -134,8 +155,10 @@ class TestValidationMetric(unittest.TestCase):
         for node_id in range(length, length*2):
             second_gt_track.nodes[node_id]['x'] += 10
         gt_track = nx.union(gt_track, second_gt_track)
-        self.assertAlmostEqual(validation_score(gt_track, rec_track),
-                               length * norm_distance(10))
+        self.assertAlmostEqual(
+                validation_score(gt_track, rec_track),
+                length * norm_distance(10),
+                places=self.tolerance_places)
 
     # track creation helper
     def create_track(self, length, seed=None, min_id=0):

@@ -75,9 +75,10 @@ def get_node_attr_range(graph, attr):
     return [low, high + 1]
 
 
-def norm_distance(dist, inflect_point=20, slope=1.):
+def norm_distance(dist, inflect_point=50):
     ''' Normalize the distance to between 0 and 1 using the logistic
-    function.
+    function. The function will be adjusted so that the value at distance zero
+    is 10^-6. Due to symmetry, the value at 2*inflect_point will be 1-10^-6.
 
     Args:
         dist (float)
@@ -87,11 +88,10 @@ def norm_distance(dist, inflect_point=20, slope=1.):
             related to the matching distance penalty - a higher inflect_point
             will penalize the node matching distance less
 
-        slope (float):
-            Controls the 'slope' or growth rate of the logistic function.
-            Lowering this will flatten and stretch out the curve, making the
-            distance from inflect_point required to saturate at 0 or 1 larger.
     '''
+    val_at_zero = 0.000001
+    slope = math.log(1/val_at_zero - 1) / inflect_point
+    logger.debug("Calculated slope: %f" % slope)
     return 1. / (1 + math.pow(math.e, -1*slope*(dist - inflect_point)))
 
 
