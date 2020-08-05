@@ -110,6 +110,8 @@ def split_into_tracks(lineages):
         min_id = 0
         for edge in in_edges:
             min_id = replace_target(edge, lineages, i=min_id)
+        if len(lineages.out_edges(edge[1])) == 0:
+            lineages.remove_node(edge[1])
     conn_components = get_connected_components(lineages)
     logger.info("Number of connected components: %d" % len(conn_components))
     return conn_components
