@@ -1,8 +1,12 @@
+import csv
+
 from gunpowder import (Point, Coordinate, Batch, BatchProvider,
                        Roi, PointsSpec, Points)
 from gunpowder.profiling import Timing
 import numpy as np
 import logging
+
+from linajea import (parse_csv_ndims, parse_csv_fields)
 
 logger = logging.getLogger(__name__)
 
@@ -52,17 +56,19 @@ class TracksSource(BatchProvider):
             positions to convert them to world units.
     '''
 
-    def __init__(self, filename, points, points_spec=None, scale=None,
-                 read_dims=-3):
+    def __init__(self, filename, points, points_spec=None, scale=1.0,
+                 read_dims=None, csv_fields=None):
 
         self.filename = filename
         self.points = points
         self.points_spec = points_spec
         self.scale = scale
         self.read_dims = read_dims
-        self.ndims = None
         self.locations = None
         self.track_info = None
+        if csv_fields == "header":
+            csv_fields = None
+        self.csv_fields = csv_fields
 
     def setup(self):
 
@@ -93,7 +99,7 @@ class TracksSource(BatchProvider):
             request[self.points].roi)
 
         point_filter = np.ones((self.locations.shape[0],), dtype=np.bool)
-        for d in range(self.ndims):
+        for d in range(self.locations.shape[1]):
             point_filter = np.logical_and(point_filter,
                                           self.locations[:, d] >= min_bb[d])
             point_filter = np.logical_and(point_filter,
@@ -130,33 +136,9 @@ class TracksSource(BatchProvider):
         }
 
     def _read_points(self):
-        self.locations, self.track_info, self.ndims = \
-            self._parse_csv(ndims=self.read_dims)
-
-    def _parse_csv(self, ndims=0):
-        '''Read one point per line. If ``ndims`` is 0, all values in one line
-        are considered as the location of the point. If positive, only the
-        first ``ndims`` are used. If negative, all but the last ``-ndims`` are
-        used.
-        '''
-        with open(self.filename, 'r') as f:
-            tokens = [[t.strip(',') for t in line.split()]
-                      for line in f]
-        locations = np.array(
-            [
-                [float(d) for d in line[:ndims]]
-                for line in tokens
-            ], dtype=np.float32)
-
-        track_info = np.array(
-            [
-                [int(i.split(".")[0]) for i in line[ndims:]]
-                for line in tokens
-            ], dtype=np.int32)
-
-        ndims = locations.shape[1]
-
-        if self.scale is not None:
-            locations *= self.scale
-
-        return locations, track_info, ndims
+        if self.read_dims is not None:
+            self.locations, self.track_info = \
+                parse_csv_ndims(self.filename, self.read_dims, self.scale)
+        else:
+            self.locations, self.track_info = \
+                parse_csv_fields(self.filename, self.csv_fields, self.scale)
