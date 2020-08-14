@@ -1,12 +1,12 @@
 import daisy
 
-def adjust_postprocess_roi(roi, **kwargs):
+def adjust_postprocess_roi(roi, use_context=False, **kwargs):
     if 'limit_to_roi_offset' in kwargs['postprocessing'] or \
-       'frames' in kwargs['data']:
-        if 'frames' in kwargs['data']:
-            frames = kwargs['data']['frames']
+       'frames' in kwargs['postprocessing']:
+        if 'frames' in kwargs['postprocessing']:
+            frames = kwargs['postprocessing']['frames']
             begin, end = frames
-            if 'frame_context' in kwargs['extract_edges']:
+            if use_context and 'frame_context' in kwargs['extract_edges']:
                 begin -= kwargs['extract_edges']['frame_context']
                 end += kwargs['extract_edges']['frame_context']
             frames_roi = daisy.Roi(
