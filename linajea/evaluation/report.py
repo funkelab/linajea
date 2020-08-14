@@ -170,10 +170,11 @@ class Report:
         assert fp is not None, "Need fp edges for fscore calc"
         assert fn is not None, "Need fn edges for fscore calc"
 
-        self.precision = tp / (tp + fp)
-        self.recall = tp / (tp + fn)
+        self.precision = 0 if tp + fp == 0 else tp / (tp + fp)
+        self.recall = 0 if tp + fn == 0 else tp / (tp + fn)
 
-        self.f_score = 2 * self.precision * self.recall / (
+        self.f_score = 0.0 if self.precision + self.recall == 0 else \
+            2 * self.precision * self.recall / (
                 self.precision + self.recall)
 
     def set_aeftl_and_erl(self, aeftl, erl):
