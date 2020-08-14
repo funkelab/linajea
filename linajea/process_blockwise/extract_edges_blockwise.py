@@ -11,9 +11,9 @@ from scipy.spatial import KDTree
 import daisy
 from .daisy_check_functions import write_done, check_function
 import linajea
-from linajea import (load_config,
+from linajea import (adjust_postprocess_roi,
                      checkOrCreateDB,
-                     construct_zarr_filename)
+                     load_config)
 
 logger = logging.getLogger(__name__)
 
@@ -40,17 +40,9 @@ def extract_edges_blockwise_sample(**kwargs):
     offset = daisy.Coordinate(data_config['general']['offset'])
     source_roi = daisy.Roi(offset, shape*voxel_size)
 
-    # limit to specific frames, if given
-    if 'frames' in kwargs['data']:
-        frames = kwargs['data']['frames']
-        logger.info("Limiting extract edges to frames %s" % str(frames))
-        begin, end = frames
-        begin -= kwargs['extract_edges']['frame_context']
-        end += kwargs['extract_edges']['frame_context']
-        frames_roi = daisy.Roi(
-            (begin, None, None, None),
-            (end - begin, None, None, None))
-        source_roi = source_roi.intersect(frames_roi)
+    # limit to specific frames/roi, if given
+    source_roi = adjust_postprocess_roi(source_roi, **kwargs)
+    logger.info("Limiting extract edges to roi {}".format(source_roi))
 
     # shapes in voxels
     block_write_roi = daisy.Roi(
@@ -90,7 +82,7 @@ def extract_edges_blockwise_sample(**kwargs):
             'extract_edges',
             kwargs['general']['db_name'],
             kwargs['general']['db_host']),
-        num_workers=kwargs['prediction']['num_workers'],
+        num_workers=kwargs['extract_edges']['num_workers'],
         processes=True,
         read_write_conflict=False,
         fit='overhang')

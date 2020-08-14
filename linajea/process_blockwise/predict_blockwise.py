@@ -12,9 +12,10 @@ import daisy
 from .daisy_check_functions import check_function
 from funlib.run import run
 
-from linajea import (load_config,
+from linajea import (adjust_postprocess_roi,
                      checkOrCreateDB,
-                     construct_zarr_filename)
+                     construct_zarr_filename,
+                     load_config)
 
 logger = logging.getLogger(__name__)
 
@@ -42,31 +43,9 @@ def predict_blockwise_sample(**kwargs):
     source_roi = daisy.Roi(offset, shape*voxel_size)
     predict_roi = source_roi
 
-    # limit to specific frames, if given
-    if 'limit_to_roi_offset' in kwargs['prediction'] or \
-       'frames' in kwargs['data']:
-        if 'frames' in kwargs['data']:
-            frames = kwargs['data']['frames']
-            logger.info("Limiting prediction to frames %s" % str(frames))
-            begin, end = frames
-            frames_roi = daisy.Roi(
-                    (begin, None, None, None),
-                    (end - begin, None, None, None))
-            predict_roi = predict_roi.intersect(frames_roi)
-        if 'limit_to_roi_offset' in kwargs['prediction']:
-            assert 'limit_to_roi_shape' in kwargs['prediction'],\
-                    "Must specify shape and offset in config file"
-            limit_to_roi = daisy.Roi(
-                daisy.Coordinate(kwargs['prediction']['limit_to_roi_offset']),
-                daisy.Coordinate(kwargs['prediction']['limit_to_roi_shape']))
-            predict_roi = predict_roi.intersect(limit_to_roi)
-
-        if 'limit_to_roi_hard' not in kwargs['prediction'] or \
-           not kwargs['prediction']['limit_to_roi_hard']:
-            predict_roi = predict_roi.grow(
-                daisy.Coordinate(kwargs['ilp']['solve_context']),
-                daisy.Coordinate(kwargs['ilp']['solve_context']))
-        # predict_roi = target_roi.intersect(source_roi)
+    # limit to specific frames/roi, if given
+    predict_roi = adjust_postprocess_roi(predict_roi, **kwargs)
+    logger.info("Limiting prediction to roi {}".format(predict_roi))
 
     # get context and total input and output ROI
     net_config = load_config(os.path.join(kwargs['general']['setup_dir'],
