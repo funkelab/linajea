@@ -41,7 +41,7 @@ def extract_edges_blockwise_sample(**kwargs):
     source_roi = daisy.Roi(offset, shape*voxel_size)
 
     # limit to specific frames/roi, if given
-    source_roi = adjust_postprocess_roi(source_roi, **kwargs)
+    source_roi = adjust_postprocess_roi(source_roi, use_context=True,**kwargs)
     logger.info("Limiting extract edges to roi {}".format(source_roi))
 
     # shapes in voxels
