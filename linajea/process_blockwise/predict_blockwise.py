@@ -1,81 +1,115 @@
 from __future__ import absolute_import
+from copy import deepcopy
+import datetime
 import json
 import logging
 import os
 import time
 import numpy as np
 
-import daisy
-from funlib.run import run
+import pymongo
 
+import daisy
 from .daisy_check_functions import check_function
-from linajea import load_config
+from funlib.run import run
+import gunpowder as gp
+
+from linajea import (load_config,
+                     construct_zarr_filename)
 
 logger = logging.getLogger(__name__)
 
 
-def predict_blockwise(
-        config_file,
-        iteration
-        ):
-    config = {
-            "solve_context": daisy.Coordinate((2, 100, 100, 100)),
-            "num_workers": 16,
-            "data_dir": '../01_data',
-            "setups_dir": '../02_setups',
-        }
-    master_config = load_config(config_file)
-    config.update(master_config['general'])
-    config.update(master_config['predict'])
-    sample = config['sample']
-    data_dir = config['data_dir']
-    setup = config['setup']
-    # solve_context = daisy.Coordinate(master_config['solve']['context'])
+def checkOrCreateDB(**kwargs):
+    db_host = kwargs['general']['db_host']
 
-    # get absolute paths
-    if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
-        sample_dir = os.path.abspath(os.path.join(data_dir,
-                                                  os.path.dirname(sample)))
+    info = {}
+    info["setup_dir"] = os.path.basename(kwargs['general']['setup_dir'])
+    info["iteration"] = kwargs['prediction']['iteration']
+    info["cell_score_threshold"] = kwargs['prediction']['cell_score_threshold']
+    info["sample"] = os.path.basename(kwargs['sample'])
+
+    client = pymongo.MongoClient(host=db_host)
+    for db_name in client.list_database_names():
+        if not db_name.startswith("linajea_celegans_"):
+            continue
+
+        db = client[db_name]
+        if "db_meta_info" not in db.list_collection_names():
+            continue
+
+        query_result = db["db_meta_info"].count_documents({})
+        if query_result == 0:
+            raise RuntimeError("invalid db_meta_info in db %s: no entry", db_name)
+        elif query_result > 1:
+            raise RuntimeError("invalid db_meta_info in db %s: more than one entry (%d)", db_name, query_result)
+        else:
+            assert query_result == 1
+            query_result = db["db_meta_info"].find_one()
+            del query_result["_id"]
+            if query_result == info:
+                break
     else:
-        sample_dir = os.path.abspath(os.path.join(data_dir, sample))
+        db_name = "linajea_celegans_{}".format(
+            datetime.datetime.now(tz=datetime.timezone.utc).strftime(
+                '%Y%m%d_%H%M%S'))
+        client[db_name]["db_meta_info"].insert_one(info)
 
-    setup_dir = os.path.abspath(
-            os.path.join(config['setups_dir'], setup))
+    return db_name
+
+
+def predict_blockwise(**kwargs):
+    if kwargs.get('validation'):
+        samples = kwargs['data']['val_data_dirs']
+    else:
+        samples = kwargs['data']['test_data_dirs']
+
+    for sample in samples:
+        sample_kwargs = deepcopy(kwargs)
+        predict_blockwise_sample(sample=sample, **sample_kwargs)
+
+def predict_blockwise_sample(**kwargs):
+    if 'db_name' not in kwargs['general']:
+        kwargs['general']['db_name'] = checkOrCreateDB(**kwargs)
+
     # get ROI of source
-    with open(os.path.join(sample_dir, 'attributes.json'), 'r') as f:
-        attributes = json.load(f)
-
-    voxel_size = daisy.Coordinate(attributes['resolution'])
-    shape = daisy.Coordinate(attributes['shape'])
-    offset = daisy.Coordinate(attributes['offset'])
+    data_config = load_config(os.path.join(kwargs['sample'],
+                                           "data_config.toml"))
+    voxel_size = gp.Coordinate(kwargs['data']['voxel_size'])
+    shape = daisy.Coordinate(data_config['general']['shape'])
+    offset = daisy.Coordinate(data_config['general']['offset'])
     source_roi = daisy.Roi(offset, shape*voxel_size)
     predict_roi = source_roi
 
     # limit to specific frames, if given
-    if 'limit_to_roi_offset' in config or 'frames' in config:
-        if 'frames' in config:
-            frames = config['frames']
+    if 'limit_to_roi_offset' in kwargs['prediction'] or \
+       'frames' in kwargs['data']:
+        if 'frames' in kwargs['data']:
+            frames = kwargs['data']['frames']
             logger.info("Limiting prediction to frames %s" % str(frames))
             begin, end = frames
             frames_roi = daisy.Roi(
                     (begin, None, None, None),
                     (end - begin, None, None, None))
             predict_roi = predict_roi.intersect(frames_roi)
-        if 'limit_to_roi_offset' in config:
-            assert 'limit_to_roi_shape' in config,\
+        if 'limit_to_roi_offset' in kwargs['prediction']:
+            assert 'limit_to_roi_shape' in kwargs['prediction'],\
                     "Must specify shape and offset in config file"
             limit_to_roi = daisy.Roi(
-                    daisy.Coordinate(config['limit_to_roi_offset']),
-                    daisy.Coordinate(config['limit_to_roi_shape']))
+                daisy.Coordinate(kwargs['prediction']['limit_to_roi_offset']),
+                daisy.Coordinate(kwargs['prediction']['limit_to_roi_shape']))
             predict_roi = predict_roi.intersect(limit_to_roi)
-        # Given frames and rois are the prediction region,
-        # not the solution region
-        # predict_roi = target_roi.grow(solve_context, solve_context)
-        # predict_roi = predict_roi.intersect(source_roi)
+
+        if 'limit_to_roi_hard' not in kwargs['prediction'] or \
+           not kwargs['prediction']['limit_to_roi_hard']:
+            predict_roi = predict_roi.grow(
+                daisy.Coordinate(kwargs['ilp']['solve_context']),
+                daisy.Coordinate(kwargs['ilp']['solve_context']))
+        # predict_roi = target_roi.intersect(source_roi)
 
     # get context and total input and output ROI
-    with open(os.path.join(setup_dir, 'test_net_config.json'), 'r') as f:
-        net_config = json.load(f)
+    net_config = load_config(os.path.join(kwargs['general']['setup_dir'],
+                                          'test_net_config.json'))
     net_input_size = net_config['input_shape']
     net_output_size = net_config['output_shape_2']
     net_input_size = daisy.Coordinate(net_input_size)*voxel_size
@@ -84,17 +118,21 @@ def predict_blockwise(
     input_roi = predict_roi.grow(context, context)
     output_roi = predict_roi
 
-    # prepare output zarr, if necessary
-    if 'output_zarr' in config:
-        output_zarr = config['output_zarr']
+    assert kwargs['prediction']['write_zarr'] or kwargs['prediction']['write_cells_db'], \
+        "results not written! (neither zarr nor db)"
+
+    # # prepare output zarr, if necessary
+    output_path = construct_zarr_filename(**kwargs)
+    if kwargs['prediction']['write_zarr']:
         parent_vectors_ds = 'volumes/parent_vectors'
         cell_indicator_ds = 'volumes/cell_indicator'
-        output_path = os.path.join(setup_dir, output_zarr)
-        logger.debug("Preparing zarr at %s" % output_path)
+        maxima_ds = 'volumes/maxima'
+        logger.debug("Preparing zarr at %s", output_path)
+
         daisy.prepare_ds(
                 output_path,
                 parent_vectors_ds,
-                output_roi,
+                source_roi,
                 voxel_size,
                 dtype=np.float32,
                 write_size=net_output_size,
@@ -102,15 +140,32 @@ def predict_blockwise(
         daisy.prepare_ds(
                 output_path,
                 cell_indicator_ds,
-                output_roi,
+                source_roi,
                 voxel_size,
                 dtype=np.float32,
+                write_size=net_output_size,
+                num_channels=1)
+        daisy.prepare_ds(
+                output_path,
+                maxima_ds,
+                source_roi,
+                voxel_size,
+                dtype=np.uint8,
                 write_size=net_output_size,
                 num_channels=1)
 
     # create read and write ROI
     block_write_roi = daisy.Roi((0, 0, 0, 0), net_output_size)
     block_read_roi = block_write_roi.grow(context, context)
+
+    if not kwargs['prediction']['write_zarr'] and \
+       kwargs['prediction']['write_cells_db'] and \
+       os.path.exists(construct_zarr_filename(**kwargs)):
+        output_roi = predict_roi.intersect(source_roi)
+        input_roi = output_roi
+        block_write_roi = block_write_roi.intersect(source_roi)
+        block_read_roi = block_write_roi
+
 
     logger.info("Following ROIs in world units:")
     logger.info("Input ROI       = %s" % input_roi)
@@ -119,68 +174,66 @@ def predict_blockwise(
     logger.info("Output ROI      = %s" % output_roi)
 
     logger.info("Starting block-wise processing...")
+    logger.info("database: %s", kwargs['general']['db_name'])
+    logger.info("sample: %s", kwargs['sample'])
+
+    cf = []
+    if kwargs['prediction']['write_zarr']:
+        cf.append(lambda b: check_function(
+            b,
+            'predict_zarr',
+            kwargs['general']['db_name'],
+            kwargs['general']['db_host']))
+    if kwargs['prediction']['write_cells_db']:
+        cf.append(lambda b: check_function(
+            b,
+            'predict_cells',
+            kwargs['general']['db_name'],
+            kwargs['general']['db_host']))
 
     # process block-wise
-    if 'db_name' in config:
-        daisy.run_blockwise(
-            input_roi,
-            block_read_roi,
-            block_write_roi,
-            process_function=lambda: predict_worker(
-                config_file,
-                iteration),
-            check_function=lambda b: check_function(
-                b,
-                'predict',
-                config['db_name'],
-                config['db_host']),
-            num_workers=config['num_workers'],
-            read_write_conflict=False,
-            max_retries=0,
-            fit='overhang')
-    else:
-        daisy.run_blockwise(
-            input_roi,
-            block_read_roi,
-            block_write_roi,
-            process_function=lambda: predict_worker(
-                config_file,
-                iteration),
-            num_workers=config['num_workers'],
-            read_write_conflict=False,
-            max_retries=0,
-            fit='overhang')
+    daisy.run_blockwise(
+        input_roi,
+        block_read_roi,
+        block_write_roi,
+        process_function=lambda: predict_worker(**kwargs),
+        check_function=lambda b: all([f(b) for f in cf]),
+        num_workers=kwargs['prediction']['num_workers'],
+        read_write_conflict=False,
+        max_retries=0,
+        fit='overhang')
 
 
-def predict_worker(
-        config_file,
-        iteration):
-    config = {
-            "singularity_image": 'linajea/linajea:v1.1',
-            "queue": 'slowpoke',
-            'setups_dir': '../02_setups'
-        }
-    master_config = load_config(config_file)
-    config.update(master_config['general'])
-    config.update(master_config['predict'])
-    singularity_image = config['singularity_image']
-    queue = config['queue']
-    setups_dir = config['setups_dir']
-    setup = config['setup']
-
+def predict_worker(**kwargs):
     worker_id = daisy.Context.from_env().worker_id
     worker_time = time.time()
-    image_path = '/nrs/funke/singularity/'
-    image = image_path + singularity_image + '.img'
-    logger.debug("Using singularity image %s" % image)
+
+    if 'singularity_image' in kwargs['general']:
+        singularity_image = kwargs['general']['singularity_image']
+        image_path = '/nrs/funke/singularity/'
+        image = os.path.join(image_path, singularity_image + '.img')
+        logger.debug("Using singularity image %s" % image)
+    else:
+        image = None
+        logger.debug("Not using singularity image")
+
+    script_name = 'predict_celegans.py'
+    if not kwargs['prediction']['write_zarr'] and \
+       kwargs['prediction']['write_cells_db'] and \
+       os.path.exists(construct_zarr_filename(**kwargs)):
+        script_name = 'write_cells_celegans.py'
     cmd = run(
-            command='python -u %s --config %s --iteration %d' % (
-                os.path.join(setups_dir, 'predict.py'),
-                config_file,
-                iteration),
-            queue=queue,
+            command='python %s --config %s --sample %s --iteration %d --setup_dir %s --db %s' % (
+                os.path.join(kwargs['source_dir'], script_name),
+                kwargs['config_file'],
+                kwargs['sample'],
+                kwargs['prediction']['iteration'],
+                kwargs['general']['setup_dir'],
+                kwargs['general']['db_name']),
+            queue=kwargs['general']['queue'],
+            host=kwargs['general'].get("host"),
             num_gpus=1,
-            num_cpus=5,
+            num_cpus=4,
             singularity_image=image,
             mount_dirs=['/groups', '/nrs'],
             execute=False,
@@ -190,7 +243,11 @@ def predict_worker(
     logger.info("Command: %s" % str(cmd))
     daisy.call(
         cmd,
-        log_out='logs/predict_%s_%d_%d.out' % (setup, worker_time, worker_id),
-        log_err='logs/predict_%s_%d_%d.err' % (setup, worker_time, worker_id))
+        log_out='logs/predict_%s_%d_%d.out' % (
+            os.path.basename(os.path.dirname(kwargs['general']['setup_dir'])),
+            worker_time, worker_id),
+        log_err='logs/predict_%s_%d_%d.err' % (
+            os.path.basename(os.path.dirname(kwargs['general']['setup_dir'])),
+            worker_time, worker_id))
 
     logger.info("Predict worker finished")
