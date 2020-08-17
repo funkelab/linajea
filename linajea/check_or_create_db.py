@@ -3,7 +3,7 @@ import os
 
 import pymongo
 
-def checkOrCreateDB(**kwargs):
+def checkOrCreateDB(create_if_not_found=True, **kwargs):
     db_host = kwargs['general']['db_host']
 
     info = {}
@@ -33,6 +33,8 @@ def checkOrCreateDB(**kwargs):
             if query_result == info:
                 break
     else:
+        if not create_if_not_found:
+            return None
         db_name = "linajea_celegans_{}".format(
             datetime.datetime.now(tz=datetime.timezone.utc).strftime(
                 '%Y%m%d_%H%M%S'))

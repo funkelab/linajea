@@ -1,5 +1,7 @@
 import daisy
 
+from linajea import parse_limit_roi
+
 def adjust_postprocess_roi(roi, use_context=False, **kwargs):
     if 'limit_to_roi_offset' in kwargs['postprocessing'] or \
        'frames' in kwargs['postprocessing']:
@@ -13,12 +15,8 @@ def adjust_postprocess_roi(roi, use_context=False, **kwargs):
                     (begin, None, None, None),
                     (end - begin, None, None, None))
             roi = roi.intersect(frames_roi)
-        if 'limit_to_roi_offset' in kwargs['postprocessing']:
-            assert 'limit_to_roi_shape' in kwargs['postprocessing'],\
-                    "Must specify shape and offset in config file"
-            limit_to_roi = daisy.Roi(
-                daisy.Coordinate(kwargs['postprocessing']['limit_to_roi_offset']),
-                daisy.Coordinate(kwargs['postprocessing']['limit_to_roi_shape']))
+        limit_to_roi = parse_limit_roi(**kwargs['postprocessing'])
+        if limit_to_roi is not None:
             roi = roi.intersect(limit_to_roi)
 
         if 'limit_to_roi_hard' not in kwargs['postprocessing'] or \

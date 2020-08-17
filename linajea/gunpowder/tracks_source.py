@@ -6,7 +6,7 @@ from gunpowder.profiling import Timing
 import numpy as np
 import logging
 
-from linajea import (parse_csv_ndims, parse_csv_fields)
+from linajea import parse_tracks_file
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,18 @@ class TracksSource(BatchProvider):
             An optional scaling to apply to the coordinates of the points read
             from the CSV file. This is useful if the points refer to voxel
             positions to convert them to world units.
+
+        read_dims (``int``, optional):
+
+            If provided, if ``read_dims`` is 0, all values in one line are
+            considered as the location of the point. If positive, only the
+            first ``ndims`` are used. If negative, all but the last
+            ``-ndims`` are used.
+
+        csv_fields (``list`` of ``string``, optional):
+
+            Alternative to read_dims, don't set read_dims and provide
+            a list of column names or a file with a header line
     '''
 
     def __init__(self, filename, points, points_spec=None, scale=1.0,
@@ -66,8 +78,6 @@ class TracksSource(BatchProvider):
         self.read_dims = read_dims
         self.locations = None
         self.track_info = None
-        if csv_fields == "header":
-            csv_fields = None
         self.csv_fields = csv_fields
 
     def setup(self):
@@ -136,9 +146,6 @@ class TracksSource(BatchProvider):
         }
 
     def _read_points(self):
-        if self.read_dims is not None:
-            self.locations, self.track_info = \
-                parse_csv_ndims(self.filename, self.read_dims, self.scale)
-        else:
-            self.locations, self.track_info = \
-                parse_csv_fields(self.filename, self.csv_fields, self.scale)
+        parse_tracks_file(self.filename, read_dims=self.read_dims,
+                          csv_fields=self.csv_fields, scale=self.scale,
+                          limit_to_roi=self.points_spec.roi)
