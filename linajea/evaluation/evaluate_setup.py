@@ -16,6 +16,33 @@ from .evaluate import evaluate
 logger = logging.getLogger(__name__)
 
 
+def get_eval_params_dict(config):
+    assert 'matching_threshold' in config['evaluation'], \
+        "No matching threshold for evaluation, check config"
+    eval_params = {
+        'matching_threshold': config['evaluation']['matching_threshold']}
+    if 'frames' in config['postprocessing']:
+        eval_params['frame_start'] = config['postprocessing']['frames'][0]
+        eval_params['frame_end'] = config['postprocessing']['frames'][1]
+    else:
+        eval_params['frame_start'] = False
+        eval_params['frame_end'] = False
+
+    if 'limit_to_roi_offset' in config['postprocessing']:
+        assert 'limit_to_roi_shape' in config['postprocessing'],\
+            "Must specify shape and offset in config file"
+        eval_params['limit_to_roi_offset'] = \
+            config['postprocessing']['limit_to_roi_offset']
+        eval_params['limit_to_roi_shape'] = \
+            config['postprocessing']['limit_to_roi_shape']
+    else:
+        eval_params['limit_to_roi_offset'] = False
+        eval_params['limit_to_roi_shape'] = False
+
+    eval_params['sparse'] = config['evaluation']['sparse']
+    return eval_params
+
+
 def evaluate_setup(config, validation=False):
     if validation:
         samples = config['data']['val_data_dirs']
@@ -30,10 +57,9 @@ def evaluate_setup_sample(config, sample):
     if 'db_name' not in config['general']:
         config['general']['db_name'] = checkOrCreateDB(config, sample)
 
-    parameters = linajea.tracking.TrackingParameters(**config['solve'])
-    assert 'matching_threshold' in config['evaluation'], \
-        "No matching threshold for evaluation, check config"
+    eval_params = get_eval_params_dict(config)
 
+    parameters = linajea.tracking.TrackingParameters(**config['solve'])
     # determine parameters id from database
     results_db = linajea.CandidateDatabase(
         config['general']['db_name'],
@@ -42,12 +68,11 @@ def evaluate_setup_sample(config, sample):
 
     logger.info("from scratch %s", config['evaluation']['from_scratch'])
     if not config['evaluation']['from_scratch']:
-        old_score = results_db.get_score(
-            parameters_id, frames=config['postprocessing']['frames'],
-            matching_threshold=config['evaluation']['matching_threshold'])
+        old_score = results_db.get_score(parameters_id,
+                                         eval_params=eval_params)
         if old_score:
-            logger.info("Already evaluated %d (frames: %s). Skipping",
-                        parameters_id, config['postprocessing']['frames'])
+            logger.info("Already evaluated %d (eval_params: %s). Skipping",
+                        parameters_id, eval_params)
             return old_score
 
     # get ROI of source
@@ -105,6 +130,4 @@ def evaluate_setup_sample(config, sample):
 
     logger.info("Done evaluating results for %d. Saving results to mongo.",
                 parameters_id)
-    results_db.write_score(
-        parameters_id, report, frames=config['postprocessing']['frames'],
-        matching_threshold=config['evaluation']['matching_threshold'])
+    results_db.write_score(parameters_id, report, eval_params=eval_params)
