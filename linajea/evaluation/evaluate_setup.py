@@ -68,7 +68,8 @@ def evaluate_setup_sample(**kwargs):
 
     logger.info("from scratch %s", kwargs['evaluation']['from_scratch'])
     if not kwargs['evaluation']['from_scratch']:
-        old_score = results_db.get_score(parameters_id, eval_params)
+        old_score = results_db.get_score(parameters_id,
+                                         eval_params=eval_params)
         if old_score:
             logger.info("Already evaluated %d (eval_params: %s). Skipping",
                         parameters_id, eval_params)
@@ -130,4 +131,4 @@ def evaluate_setup_sample(**kwargs):
 
     logger.info("Done evaluating results for %d. Saving results to mongo.",
                 parameters_id)
-    results_db.write_score(parameters_id, report, eval_params)
+    results_db.write_score(parameters_id, report, eval_params=eval_params)
