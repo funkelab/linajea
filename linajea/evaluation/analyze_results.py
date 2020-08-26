@@ -94,7 +94,8 @@ def get_results(
         db_host,
         sample=None,
         iteration='400000',
-        frames=None):
+        frames=None,
+        filter_params=None):
     ''' Gets the scores, statistics, and parameters for all
     grid search configurations run for the given setup and region.
     Returns a pandas dataframe with one row per configuration.'''
@@ -102,7 +103,7 @@ def get_results(
         sample = get_sample_from_setup(setup)
     db_name = '_'.join(['linajea', sample, setup, region, iteration])
     candidate_db = CandidateDatabase(db_name, db_host, 'r')
-    scores = candidate_db.get_scores(frames=frames)
+    scores = candidate_db.get_scores(frames=frames, filters=filter_params)
     dataframe = pandas.DataFrame(scores)
     logger.debug("data types of dataframe columns: %s"
                  % str(dataframe.dtypes))
@@ -115,6 +116,7 @@ def get_best_result(setup, region, db_host,
                     sample=None,
                     iteration='400000',
                     frames=None,
+                    filter_params=None,
                     score_columns=None,
                     score_weights=None):
     ''' Gets the best result for the given setup and region according to
@@ -128,7 +130,8 @@ def get_best_result(setup, region, db_host,
         score_weights = [1.]*len(score_columns)
     results_df = get_results(setup, region, db_host,
                              frames=frames,
-                             sample=sample, iteration=iteration)
+                             sample=sample, iteration=iteration,
+                             filter_params=filter_params)
     results_df['sum_errors'] = sum([results_df[col]*weight for col, weight
                                    in zip(score_columns, score_weights)])
     results_df.sort_values('sum_errors', inplace=True)
@@ -144,6 +147,7 @@ def get_best_result(setup, region, db_host,
 
 def get_best_result_per_setup(setups, region, db_host,
                               frames=None, sample=None, iteration='400000',
+                              filter_params=None,
                               score_columns=None, score_weights=None):
     ''' Returns the best result for each setup in setups
     according to the sum of errors in score_columns, with optional weighting,
@@ -153,6 +157,7 @@ def get_best_result_per_setup(setups, region, db_host,
         best = get_best_result(setup, region, db_host,
                                frames=frames,
                                sample=sample, iteration=iteration,
+                               filter_params=filter_params,
                                score_columns=score_columns,
                                score_weights=score_weights)
         best_results.append(best)
