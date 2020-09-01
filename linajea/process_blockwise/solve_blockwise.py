@@ -1,6 +1,7 @@
 import daisy
 import json
-from linajea import CandidateDatabase
+from linajea import (CandidateDatabase, load_config,
+                     tracking_params_from_config)
 from .daisy_check_functions import (
         check_function, write_done,
         check_function_all_blocks, write_done_all_blocks)
@@ -21,11 +22,24 @@ def solve_blockwise(
         limit_to_roi=None,
         from_scratch=False,
         data_dir='../01_data',
+        parameters_dir=None,
         **kwargs):
+    if not parameters_dir:
+        parameters = [TrackingParameters(**kwargs)]
+    else:
+        # generate list of parameters from directory of configs
+        parameters = [tracking_params_from_config(load_config(
+                        os.path.join(parameters_dir, f)))
+                      for f in os.listdir(parameters_dir)]
 
-    parameters = TrackingParameters(**kwargs)
-    block_size = daisy.Coordinate(parameters.block_size)
-    context = daisy.Coordinate(parameters.context)
+    block_size = daisy.Coordinate(parameters[0].block_size)
+    context = daisy.Coordinate(parameters[0].context)
+    # block size and context must be the same for all parameters!
+    for i in range(len(parameters)):
+        assert list(block_size) == parameters[i].block_size,\
+                "%s not equal to %s" %\
+                (block_size, parameters[i].block_size)
+        assert list(context) == parameters[i].context
 
     # get absolute paths
     if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
@@ -46,11 +60,12 @@ def solve_blockwise(
     graph_provider = CandidateDatabase(
         db_name,
         db_host)
-    parameters_id = graph_provider.get_parameters_id(parameters)
+    parameters_id = [graph_provider.get_parameters_id(p) for p in parameters]
 
     if from_scratch:
-        graph_provider.set_parameters_id(parameters_id)
-        graph_provider.reset_selection()
+        for pid in parameters_id:
+            graph_provider.set_parameters_id(pid)
+            graph_provider.reset_selection()
 
     # limit to specific frames, if given
     if frames:
@@ -76,7 +91,10 @@ def solve_blockwise(
         context)
 
     logger.info("Solving in %s", total_roi)
-    step_name = 'solve_' + str(parameters_id)
+    if len(parameters_id) == 1:
+        step_name = 'solve_' + str(parameters_id[0])
+    else:
+        step_name = 'solve_all'
     if check_function_all_blocks(step_name, db_name, db_host):
         logger.info("Step %s is already completed. Exiting" % step_name)
         return True
@@ -104,7 +122,7 @@ def solve_blockwise(
             step_name,
             db_name,
             db_host)
-    logger.info("Finished solving, parameters id is %s", parameters_id)
+    logger.info("Finished solving")
     return success
 
 
@@ -121,26 +139,35 @@ def solve_in_block(
     # data from outside the solution roi
     # or paying the appear or disappear costs unnecessarily
 
+    if len(parameters_id) == 1:
+        step_name = 'solve_' + str(parameters_id[0])
+    else:
+        step_name = 'solve_all'
     logger.debug("Solving in block %s", block)
+
     if solution_roi:
         # Limit block to source_roi
+        logger.debug("Block write roi: %s", block.write_roi)
+        logger.debug("Solution roi: %s", solution_roi)
         read_roi = block.read_roi.intersect(solution_roi)
         write_roi = block.write_roi.intersect(solution_roi)
     else:
         read_roi = block.read_roi
         write_roi = block.write_roi
 
+    logger.debug("Write roi: %s", str(write_roi))
+
     graph_provider = CandidateDatabase(
         db_name,
         db_host,
-        mode='r+',
-        parameters_id=parameters_id)
+        mode='r+')
     start_time = time.time()
+    selected_keys = ['selected_' + str(pid) for pid in parameters_id]
+    edge_attrs = selected_keys.copy()
+    edge_attrs.extend(["prediction_distance", "distance"])
     graph = graph_provider.get_graph(
             read_roi,
-            edge_attrs=["prediction_distance",
-                        "distance",
-                        graph_provider.selected_key]
+            edge_attrs=edge_attrs
             )
 
     # remove dangling nodes and edges
@@ -159,19 +186,19 @@ def solve_in_block(
     if num_edges == 0:
         logger.info("No edges in roi %s. Skipping"
                     % read_roi)
-        write_done(block, 'solve_' + str(parameters_id), db_name, db_host)
+        write_done(block, step_name, db_name, db_host)
         return 0
 
     frames = [read_roi.get_offset()[0],
               read_roi.get_offset()[0] + read_roi.get_shape()[0]]
-    track(graph, parameters, graph_provider.selected_key, frames=frames)
+    track(graph, parameters, selected_keys, frames=frames)
     start_time = time.time()
     graph.update_edge_attrs(
             write_roi,
-            attributes=[graph_provider.selected_key])
-    logger.info("Updating attribute %s for %d edges took %s seconds"
-                % (graph_provider.selected_key,
+            attributes=selected_keys)
+    logger.info("Updating %d keys for %d edges took %s seconds"
+                % (len(selected_keys),
                    num_edges,
                    time.time() - start_time))
-    write_done(block, 'solve_' + str(parameters_id), db_name, db_host)
+    write_done(block, step_name, db_name, db_host)
     return 0
