@@ -1,11 +1,10 @@
 import daisy
 import json
-from linajea import (CandidateDatabase, load_config,
-                     tracking_params_from_config)
+from linajea import CandidateDatabase
 from .daisy_check_functions import (
         check_function, write_done,
         check_function_all_blocks, write_done_all_blocks)
-from linajea.tracking import TrackingParameters, track
+from linajea.tracking import track
 import logging
 import os
 import time
@@ -17,20 +16,13 @@ def solve_blockwise(
         db_host,
         db_name,
         sample,
+        parameters,  # list of TrackingParameters
         num_workers=8,
         frames=None,
         limit_to_roi=None,
         from_scratch=False,
         data_dir='../01_data',
-        parameters_dir=None,
         **kwargs):
-    if not parameters_dir:
-        parameters = [TrackingParameters(**kwargs)]
-    else:
-        # generate list of parameters from directory of configs
-        parameters = [tracking_params_from_config(load_config(
-                        os.path.join(parameters_dir, f)))
-                      for f in os.listdir(parameters_dir)]
 
     block_size = daisy.Coordinate(parameters[0].block_size)
     context = daisy.Coordinate(parameters[0].context)
@@ -94,7 +86,8 @@ def solve_blockwise(
     if len(parameters_id) == 1:
         step_name = 'solve_' + str(parameters_id[0])
     else:
-        step_name = 'solve_all'
+        step_name = 'solve_' + str(hash(frozenset(parameters_id)))
+
     if check_function_all_blocks(step_name, db_name, db_host):
         logger.info("Step %s is already completed. Exiting" % step_name)
         return True
@@ -142,7 +135,8 @@ def solve_in_block(
     if len(parameters_id) == 1:
         step_name = 'solve_' + str(parameters_id[0])
     else:
-        step_name = 'solve_all'
+        _id = hash(frozenset(parameters_id))
+        step_name = 'solve_' + str(_id)
     logger.debug("Solving in block %s", block)
 
     if solution_roi:
