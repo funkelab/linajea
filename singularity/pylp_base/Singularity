@@ -75,7 +75,7 @@ mkdir -p /.cython/inline
 PYTHONPATH=${WATERZ_ROOT}:$PYTHONPATH
 
 # install pylp and gurobi
-
+conda install boost=1.67.0
 conda install -c funkey pylp
 
 # install python wrapper for KLB reader
