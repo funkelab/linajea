@@ -10,6 +10,7 @@ import os
 import time
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 def solve_blockwise(
@@ -83,13 +84,31 @@ def solve_blockwise(
         context)
 
     logger.info("Solving in %s", total_roi)
-    if len(parameters_id) == 1:
-        step_name = 'solve_' + str(parameters_id[0])
-    else:
-        step_name = 'solve_' + str(hash(frozenset(parameters_id)))
 
-    if check_function_all_blocks(step_name, db_name, db_host):
-        logger.info("Step %s is already completed. Exiting" % step_name)
+    param_names = ['solve_' + str(_id) for _id in parameters_id]
+    if len(parameters_id) > 1:
+        # check if set of parameters is already done
+        step_name = 'solve_' + str(hash(frozenset(parameters_id)))
+        if check_function_all_blocks(step_name, db_name, db_host):
+            logger.info("Param set with name %s already completed. Exiting",
+                        step_name)
+            return True
+    else:
+        step_name = 'solve_' + str(parameters_id[0])
+    # Check each individual parameter to see if it is done
+    # if it is, remove it from the list
+    done_indices = []
+    for _id, name in zip(parameters_id, param_names):
+        if check_function_all_blocks(name, db_name, db_host):
+            logger.info("Params with id %d already completed. Removing", _id)
+            done_indices.append(parameters_id.index(_id))
+    for index in done_indices[::-1]:
+        del parameters_id[index]
+        del parameters[index]
+        del param_names[index]
+    logger.debug(parameters_id)
+    if len(parameters_id) == 0:
+        logger.info("All parameters in set already completed. Exiting")
         return True
 
     success = daisy.run_blockwise(
@@ -103,6 +122,9 @@ def solve_blockwise(
             b,
             parameters_id,
             solution_roi=source_roi),
+        # Note: in the case of a set of parameters,
+        # we are assuming that none of the individual parameters are
+        # half done and only checking the hash for each block
         check_function=lambda b: check_function(
             b,
             step_name,
@@ -111,10 +133,16 @@ def solve_blockwise(
         num_workers=num_workers,
         fit='overhang')
     if success:
+        # write all done to individual parameters and set
         write_done_all_blocks(
             step_name,
             db_name,
             db_host)
+        for name in param_names:
+            write_done_all_blocks(
+                name,
+                db_name,
+                db_host)
     logger.info("Finished solving")
     return success
 
