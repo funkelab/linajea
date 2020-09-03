@@ -1,6 +1,7 @@
 from daisy.persistence import MongoDbGraphProvider
 import logging
 import pymongo
+from daisy import Coordinate, Roi
 
 logger = logging.getLogger(__name__)
 
@@ -276,3 +277,25 @@ class CandidateDatabase(MongoDbGraphProvider):
                                              upsert=True)
         finally:
             self._MongoDbGraphProvider__disconnect()
+
+
+    def get_nodes_roi(self):
+        start = []
+        end = []
+        try:
+            self._MongoDbGraphProvider__connect()
+            self._MongoDbGraphProvider__open_db()
+            self._MongoDbGraphProvider__open_collections()
+            for dim in self.position_attribute:
+                smallest_entry = self.nodes.find().sort([(dim, 1)]).limit(1)[0]
+                start.append(smallest_entry[dim])
+                largest_entry = self.nodes.find().sort([(dim, -1)]).limit(1)[0]
+                end.append(largest_entry[dim] + 1)
+
+            offset = Coordinate(start)
+            end = Coordinate(end)
+            size = end - offset
+            nodes_roi = Roi(offset, size)
+        finally:
+            self._MongoDbGraphProvider__disconnect()
+        return nodes_roi

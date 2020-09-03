@@ -31,22 +31,29 @@ class Solver(object):
         self.num_vars = None
         self.objective = None
         self.constraints = None
-
-    def solve(self):
+        self.solver = None
 
         self._create_indicators()
         self._set_objective()
         self._add_constraints()
+        self._create_solver()
 
-        solver = pylp.create_linear_solver(pylp.Preference.Gurobi)
-        solver.initialize(self.num_vars, pylp.VariableType.Binary)
+    def update_objective(self, parameters, selected_key):
+        self.parameters = parameters
+        self._set_objective()
+        self.solver.set_objective(self.objective)
+        self.selected_key = selected_key
 
-        solver.set_objective(self.objective)
-        solver.set_constraints(self.constraints)
+    def _create_solver(self):
+        self.solver = pylp.create_linear_solver(pylp.Preference.Gurobi)
+        self.solver.initialize(self.num_vars, pylp.VariableType.Binary)
+        self.solver.set_objective(self.objective)
+        self.solver.set_constraints(self.constraints)
+        self.solver.set_num_threads(1)
+        self.solver.set_timeout(120)
 
-        solver.set_num_threads(1)
-        solver.set_timeout(120)
-        solution, message = solver.solve()
+    def solve(self):
+        solution, message = self.solver.solve()
         logger.info(message)
         logger.info("costs of solution: %f", solution.get_value())
 

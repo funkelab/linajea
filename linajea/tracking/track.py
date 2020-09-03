@@ -88,12 +88,14 @@ def track(graph, parameters, selected_key, frame_key='t', frames=None):
 
         parameters (``TrackingParameters``)
 
-            The parameters to use when optimizing the tracking ILP
+            The parameters to use when optimizing the tracking ILP.
+            Can also be a list of parameters.
 
         selected_key (``string``)
 
             The key used to store the `true` or `false` selection status of
-            each node and edge in graph.
+            each node and edge in graph. Can also be a list of keys
+            corresponding to the list of parameters.
 
         frame_key (``string``, optional):
 
@@ -111,24 +113,40 @@ def track(graph, parameters, selected_key, frame_key='t', frames=None):
     if graph.number_of_nodes() == 0:
         return
 
+    if not isinstance(parameters, list):
+        parameters = [parameters]
+        selected_key = [selected_key]
+
+    assert len(parameters) == len(selected_key),\
+        "%d parameter sets and %d selected keys" %\
+        (len(parameters), len(selected_key))
+
     logger.info("Creating track graph...")
     track_graph = TrackGraph(graph_data=graph,
                              frame_key=frame_key,
                              roi=graph.roi)
 
     logger.info("Creating solver...")
-    solver = Solver(track_graph, parameters, selected_key, frames=frames)
+    solver = None
+    total_solve_time = 0
+    for parameter, key in zip(parameters, selected_key):
+        if not solver:
+            solver = Solver(track_graph, parameter, key, frames=frames)
+        else:
+            solver.update_objective(parameter, key)
 
-    logger.info("Solving...")
-    start_time = time.time()
-    solver.solve()
-    logger.info("Solving ILP took %s seconds" % (time.time() - start_time))
+        logger.info("Solving for key %s", str(key))
+        start_time = time.time()
+        solver.solve()
+        end_time = time.time()
+        total_solve_time += end_time - start_time
+        logger.info("Solving ILP took %s seconds", str(end_time - start_time))
 
-    for cell, data in graph.nodes(data=True):
-        data[selected_key] = track_graph.nodes[cell][selected_key]
-    for u, v, data in graph.edges(data=True):
-        if (u, v) in track_graph.edges:
-            data[selected_key] = track_graph.edges[(u, v)][selected_key]
+        for u, v, data in graph.edges(data=True):
+            if (u, v) in track_graph.edges:
+                data[key] = track_graph.edges[(u, v)][key]
+    logger.info("Solving ILP for all parameters took %s seconds",
+                str(total_solve_time))
 
 
 def greedy_track(

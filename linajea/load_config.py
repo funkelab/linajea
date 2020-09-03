@@ -1,6 +1,10 @@
 import json
 import toml
 import os.path
+import logging
+from linajea.tracking import TrackingParameters
+
+logger = logging.getLogger(__name__)
 
 
 def load_config(config_file):
@@ -23,3 +27,16 @@ def load_config(config_file):
             raise ValueError("Only json and toml config files supported,"
                              " not %s" % ext)
     return config
+
+
+def tracking_params_from_config(config):
+    solve_config = config['general']
+    solve_config.update(config['solve'])
+    if 'version' not in solve_config:
+        version = solve_config['singularity_image'].split(':')[-1]
+        solve_config['version'] = version
+    logger.debug("Version: %s" % solve_config['version'])
+    solve_config.update({
+        'max_cell_move': config['extract_edges']['edge_move_threshold']})
+
+    return TrackingParameters(**solve_config)
