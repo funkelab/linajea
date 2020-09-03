@@ -120,6 +120,29 @@ class DatabaseTestCase(TestCase):
         self.assertEqual(unselected_graph.number_of_nodes(), 0)
         self.assertEqual(unselected_graph.number_of_edges(), 0)
 
+    def test_get_node_roi(self):
+        db_name = 'test_linajea_db_node_roi'
+        db_host = 'localhost'
+        roi = Roi((0, 0, 0, 0), (5, 10, 10, 10))
+        db = linajea.CandidateDatabase(
+                db_name,
+                db_host,
+                mode='w')
+        sub_graph = db[roi]
+        points = [
+                (1, {'t': 0, 'z': 1, 'y': 3, 'x': 2}),
+                (2, {'t': 1, 'z': 1, 'y': 1, 'x': 0}),
+                (3, {'t': 2, 'z': 1, 'y': 9, 'x': 3}),
+                (4, {'t': 3, 'z': 1, 'y': 3, 'x': 8}),
+                (5, {'t': 2, 'z': 5, 'y': 2, 'x': 3}),
+                (6, {'t': 3, 'z': 5, 'y': 2, 'x': 1}),
+                ]
+        sub_graph.add_nodes_from(points)
+        sub_graph.write_nodes()
+        nodes_roi = db.get_nodes_roi()
+        expected_roi = Roi((0, 1, 1, 0), (4, 5, 9, 9))
+        self.assertEqual(nodes_roi, expected_roi)
+
     def test_write_and_get_score(self):
         db_name = 'test_linajea_database'
         db_host = 'localhost'
@@ -127,7 +150,7 @@ class DatabaseTestCase(TestCase):
                 "cost_appear": 2.0,
                 "cost_disappear": 2.0,
                 "cost_split": 0,
-                "weight_distance_cost": 0.1,
+                "weight_prediction_distance_cost": 0.1,
                 "weight_node_score": 1.0,
                 "threshold_node_score": 0.0,
                 "threshold_edge_score": 0.0,
@@ -166,7 +189,7 @@ class TestParameterIds(TestCase):
                 "cost_appear": 1.0,
                 "cost_disappear": 1.0,
                 "cost_split": 0,
-                "weight_distance_cost": 0.1,
+                "weight_prediction_distance_cost": 0.1,
                 "weight_node_score": 1.0,
                 "threshold_node_score": 0.0,
                 "threshold_edge_score": 0.0,
