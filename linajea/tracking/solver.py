@@ -30,7 +30,8 @@ class Solver(object):
 
         self.num_vars = None
         self.objective = None
-        self.constraints = None
+        self.main_constraints = []  # list of LinearConstraint objects
+        self.pin_constraints = []  # list of LinearConstraint objects
         self.solver = None
 
         self._create_indicators()
@@ -40,15 +41,27 @@ class Solver(object):
 
     def update_objective(self, parameters, selected_key):
         self.parameters = parameters
+        self.selected_key = selected_key
+
         self._set_objective()
         self.solver.set_objective(self.objective)
-        self.selected_key = selected_key
+
+        self.pinned_edges = []
+        self.pin_constraints = []
+        self._add_pin_constraints()
+        all_constraints = pylp.LinearConstraints()
+        for c in self.main_constraints + self.pin_constraints:
+            all_constraints.add(c)
+        self.solver.set_constraints(all_constraints)
 
     def _create_solver(self):
         self.solver = pylp.create_linear_solver(pylp.Preference.Gurobi)
         self.solver.initialize(self.num_vars, pylp.VariableType.Binary)
         self.solver.set_objective(self.objective)
-        self.solver.set_constraints(self.constraints)
+        all_constraints = pylp.LinearConstraints()
+        for c in self.main_constraints + self.pin_constraints:
+            all_constraints.add(c)
+        self.solver.set_constraints(all_constraints)
         self.solver.set_num_threads(1)
         self.solver.set_timeout(120)
 
@@ -191,7 +204,8 @@ class Solver(object):
 
     def _add_constraints(self):
 
-        self.constraints = pylp.LinearConstraints()
+        self.main_constraints = []
+        self.pin_constraints = []
 
         self._add_pin_constraints()
         self._add_edge_constraints()
@@ -213,7 +227,7 @@ class Solver(object):
                 constraint.set_coefficient(ind_e, 1)
                 constraint.set_relation(pylp.Relation.Equal)
                 constraint.set_value(1 if selected else 0)
-                self.constraints.add(constraint)
+                self.pin_constraints.append(constraint)
 
     def _add_edge_constraints(self):
 
@@ -233,7 +247,7 @@ class Solver(object):
             constraint.set_coefficient(ind_v, -1)
             constraint.set_relation(pylp.Relation.LessEqual)
             constraint.set_value(0)
-            self.constraints.add(constraint)
+            self.main_constraints.append(constraint)
 
             logger.debug("set edge constraint %s", constraint)
 
@@ -297,9 +311,9 @@ class Solver(object):
             constraint_next_1.set_value(0)
             constraint_next_2.set_value(0)
 
-            self.constraints.add(constraint_prev)
-            self.constraints.add(constraint_next_1)
-            self.constraints.add(constraint_next_2)
+            self.main_constraints.append(constraint_prev)
+            self.main_constraints.append(constraint_next_1)
+            self.main_constraints.append(constraint_next_2)
 
             logger.debug(
                 "set inter-frame constraints:\t%s\n\t%s\n\t%s",
@@ -337,8 +351,8 @@ class Solver(object):
             constraint_1.set_value(1)
             constraint_2.set_value(0)
 
-            self.constraints.add(constraint_1)
-            self.constraints.add(constraint_2)
+            self.main_constraints.append(constraint_1)
+            self.main_constraints.append(constraint_2)
 
             logger.debug(
                 "set split-indicator constraints:\n\t%s\n\t%s",
