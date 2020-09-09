@@ -1,6 +1,8 @@
 from daisy.persistence import MongoDbGraphProvider
 import logging
 import pymongo
+import time
+import numpy as np
 from daisy import Coordinate, Roi
 
 logger = logging.getLogger(__name__)
@@ -86,24 +88,39 @@ class CandidateDatabase(MongoDbGraphProvider):
         subgraph.remove_nodes_from(unattached_nodes)
         return subgraph
 
-    def reset_selection(self):
+    def reset_selection(self, roi=None, parameter_ids=None):
         ''' Removes all selections for self.parameters_id from mongodb
         edges collection
         '''
-        if self.parameters_id is None:
-            logger.warn("No parameters id: cannot reset selection")
+        if self.parameters_id is None and parameter_ids is None:
+            logger.warn("No parameters id stored or provided: cannot reset selection")
             return
 
-        logger.info("Resetting solution for parameters_id %s"
-                    % self.parameters_id)
+        if roi:
+            nodes = self.read_nodes(roi)
+            node_ids = list([int(np.int64(n['id'])) for n in nodes])
+            query = {self.endpoint_names[0]: {'$in': node_ids}}
+        else:
+            query={}
+
+        if not parameter_ids:
+            parameter_ids=[self.parameters_id]
+        logger.info("Resetting solution for parameter ids %s",
+                    parameter_ids)
+        start_time = time.time()
         self._MongoDbGraphProvider__connect()
         self._MongoDbGraphProvider__open_db()
         edge_coll = self.database['edges']
-        edge_coll.update_many({}, {'$unset': {self.selected_key: ""}})
-        daisy_coll_name = 'solve_' + str(self.parameters_id) + '_daisy'
-        self.database.drop_collection(daisy_coll_name)
-        logger.info("Done resetting solution for parameters_id %s"
-                    % self.parameters_id)
+        update = {}
+        for _id in parameter_ids:
+            update['selected_' + str(_id)] = ""
+        edge_coll.update_many(query, {'$unset': update})
+        if roi is None:
+            for _id in parameter_ids:
+                daisy_coll_name = 'solve_' + str(_id) + '_daisy'
+                self.database.drop_collection(daisy_coll_name)
+        logger.info("Resetting soln for parameter_ids %s in roi %s took %d seconds",
+                    parameter_ids, roi, time.time() - start_time)
 
     def get_parameters_id(
             self,
