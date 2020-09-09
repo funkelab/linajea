@@ -46,7 +46,7 @@ class Solver(object):
         self._set_objective()
         self.solver.set_objective(self.objective)
 
-        self.pinned_edges = []
+        self.pinned_edges = {}
         self.pin_constraints = []
         self._add_pin_constraints()
         all_constraints = pylp.LinearConstraints()
