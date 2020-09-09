@@ -3,6 +3,7 @@ from .evaluate import evaluate
 from .match import match_edges
 from .evaluate_setup import evaluate_setup
 from .report import Report
+from .validation_metric import validation_score
 from .analyze_results import (
         get_result, get_results, get_best_result,
         get_best_result_per_setup,
