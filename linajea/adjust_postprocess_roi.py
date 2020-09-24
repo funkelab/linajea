@@ -2,7 +2,7 @@ import daisy
 
 from linajea import parse_limit_roi
 
-def adjust_postprocess_roi(roi, config, use_context=False):
+def adjust_postprocess_roi(config, roi, use_context=False):
     if 'limit_to_roi_offset' in config['postprocessing'] or \
        'frames' in config['postprocessing']:
         if 'frames' in config['postprocessing']:
@@ -15,7 +15,7 @@ def adjust_postprocess_roi(roi, config, use_context=False):
                     (begin, None, None, None),
                     (end - begin, None, None, None))
             roi = roi.intersect(frames_roi)
-        limit_to_roi = parse_limit_roi(**config['postprocessing'])
+        limit_to_roi = parse_limit_roi(config['postprocessing'])
         if limit_to_roi is not None:
             roi = roi.intersect(limit_to_roi)
 
