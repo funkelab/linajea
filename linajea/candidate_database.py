@@ -212,21 +212,26 @@ class CandidateDatabase(MongoDbGraphProvider):
             self._MongoDbGraphProvider__disconnect()
         return score
     
-    def get_scores(self, frames=None):
+    def get_scores(self, frames=None, filters=None):
         '''Returns the a list of all score dictionaries or
         None if no score available'''
         self._MongoDbGraphProvider__connect()
         self._MongoDbGraphProvider__open_db()
 
         try:
+            if filters is not None:
+                query = filters
+            else:
+                query = {}
+
             if frames is None:
                 score_collection = self.database['scores']
-                scores = list(score_collection.find({}))
+                scores = list(score_collection.find(query))
 
             else:
                 score_collection = self.database[
                     'scores'+"_".join(str(f) for f in frames)]
-                scores = list(score_collection.find({}))
+                scores = list(score_collection.find(query))
             logger.debug("Found %d scores" % len(scores))
             if frames is None:
                 for score in scores:
