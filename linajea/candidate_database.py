@@ -118,11 +118,14 @@ class CandidateDatabase(MongoDbGraphProvider):
         try:
             params_collection = self.database['parameters']
             params_dict = tracking_parameters.__dict__
-            find_result = params_collection.find_one(params_dict)
-            if fail_if_not_exists:
+            cnt = params_collection.count_documents(params_dict)
+            if cnt == 0 and fail_if_not_exists:
                 assert find_result, "Did not find id for parameters %s"\
                     " and fail_if_not_exists set to True" % params_dict
-            if find_result:
+            if cnt > 1:
+                raise RuntimeError("multiple documents found in db for these parameters: %s", params_dict)
+            elif cnt == 1:
+                find_result = params_collection.find_one(params_dict)
                 logger.info("Parameters %s already in collection with id %d"
                             % (params_dict, find_result['_id']))
                 params_id = find_result['_id']
