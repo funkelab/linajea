@@ -167,6 +167,8 @@ class AddParentVectors(BatchFilter):
             len(points.data))
 
         empty = True
+        cnt = 0
+        total = 0
         for point_id, point in points.data.items():
 
             # get the voxel coordinate, 'Coordinate' ensures integer
@@ -178,6 +180,7 @@ class AddParentVectors(BatchFilter):
                     v)
                 continue
 
+            total += 1
             if point.parent_id is None:
                 logger.warning("Skipping point without parent")
                 continue
@@ -207,6 +210,7 @@ class AddParentVectors(BatchFilter):
                 voxel_size,
                 in_place=True)
 
+            cnt += 1
             parent = points.data[point.parent_id]
 
             parent_vectors[0][point_mask] = (parent.location[1]
@@ -221,5 +225,6 @@ class AddParentVectors(BatchFilter):
         if empty:
             logger.warning("No parent vectors written for points %s"
                            % points.data)
+        logger.info("written {}/{}".format(cnt, total))
 
         return parent_vectors, mask.astype(np.float32)
