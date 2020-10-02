@@ -30,7 +30,7 @@ class MamutMongoReader(MamutReader):
             edges = db.read_edges(roi, nodes=nodes)
         else:
             edges = db.read_edges(
-                    roi, nodes=nodes, attr_filter={'selected': True})
+                    roi, nodes=nodes, attr_filter={'selected_'+str(key): True})
             logger.debug("Filtering cells")
             filtered_cell_ids = set([edge['source'] for edge in edges] +
                                     [edge['target'] for edge in edges])
@@ -46,6 +46,7 @@ class MamutMongoReader(MamutReader):
         diff = actual_min_id - target_min_id
         logger.debug("Subtracting {} from all cell ids".format(diff))
         for node in nodes:
+            node['name'] = node['id']
             node['id'] -= diff
 
         for edge in edges:
@@ -81,7 +82,8 @@ class MamutMongoReader(MamutReader):
                 score = node['score'] if 'score' in node else 0
             else:
                 score = group
-            cells.append(self.create_cell(position, score, node['id']))
+            cells.append(self.create_cell(position, score, node['id'],
+                                          name=node['name']))
         tracks = []
         if not edges:
             logger.info("No edges in database. Skipping track formation.")

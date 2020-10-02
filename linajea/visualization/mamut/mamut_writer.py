@@ -123,10 +123,15 @@ class MamutWriter:
                 _, z, y, x = cell['position']
                 score = cell['score'] if 'score' in cell else 0
                 _id = cell['id']
+                if 'name' in cell:
+                    name = cell['name']
+                else:
+                    # backwards compatible
+                    name = _id + " SPOT_" + _id
                 output.write(
                     spot_template.format(
                         id=_id,
-                        name=_id,
+                        name=name,
                         frame=t,
                         quality=score,
                         z=z,
