@@ -118,6 +118,9 @@ class CandidateDatabase(MongoDbGraphProvider):
         try:
             params_collection = self.database['parameters']
             params_dict = tracking_parameters.__dict__
+            params_dict = {key:val
+                           for key, val in params_dict.items()
+                           if val is not None}
             cnt = params_collection.count_documents(params_dict)
             if cnt == 0 and fail_if_not_exists:
                 assert find_result, "Did not find id for parameters %s"\
