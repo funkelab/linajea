@@ -32,7 +32,8 @@ def solve_blockwise_sample(config, sample):
     if 'db_name' not in config['general']:
         config['general']['db_name'] = checkOrCreateDB(config, sample)
 
-    parameters = TrackingParameters(**config['solve'])
+    parameters = TrackingParameters(**config['solve'],
+                                    **config['postprocessing'])
     block_size = daisy.Coordinate(parameters.block_size)
     context = daisy.Coordinate(parameters.context)
 
