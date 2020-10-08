@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 import pylp
 import logging
+import time
+
 import numpy as np
 import scipy.sparse
 import scipy.spatial
@@ -106,6 +108,8 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
             edge_fps_in_frame = len(y_edges_in_range) -\
                 len(edge_matches_in_frame)
             edge_fps += edge_fps_in_frame
+            logger.info("Done matching frame %d, found %d matches and %d edge fps"
+                % (t, len(edge_matches_in_frame), edge_fps_in_frame))
     logger.info("Done matching, found %d matches and %d edge fps"
                 % (len(edge_matches), edge_fps))
     return edges_x, edges_y, edge_matches, edge_fps
@@ -224,8 +228,15 @@ def match(costs, no_match_cost):
     solver.set_num_threads(1)
     solver.set_timeout(240)
 
+    logger.info("start solving (num vars %d, num constr. %d, num costs %d)",
+                num_variables, len(constraints), len(costs))
+    start = time.time()
     solution, message = solver.solve()
+    end = time.time()
+    logger.info("solving took %f seconds", end-start)
+    logger.info("solver message: %s", message)
     sol_cost = solution.get_value()
+    logger.info("solution cost: %s", sol_cost)
 
     matches = []
     for i, id_x in enumerate(edge_ids_x):
