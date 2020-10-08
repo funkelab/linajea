@@ -52,7 +52,7 @@ begin_template = '''<?xml version="1.0" encoding="UTF-8"?>
 # Templates for spots.
 allspots_template =     '    <AllSpots nspots="{nspots}">\n'
 inframe_template =      '     <SpotsInFrame frame="{frame}">\n'
-spot_template =         '        <Spot ID="{id}" name="{name} SPOT_{id}" VISIBILITY="1" RADIUS="10.0" QUALITY="{quality}" SOURCE_ID="0" POSITION_T="{frame}.0" POSITION_X="{x}" POSITION_Y="{y}" FRAME="{frame}" POSITION_Z="{z}"/>\n'
+spot_template =         '        <Spot ID="{id}" name="{name}" VISIBILITY="1" RADIUS="10.0" QUALITY="{quality}" SOURCE_ID="0" POSITION_T="{frame}.0" POSITION_X="{x}" POSITION_Y="{y}" FRAME="{frame}" POSITION_Z="{z}"/>\n'
 inframe_end_template =  '     </SpotsInFrame>\n'
 allspots_end_template = '    </AllSpots>\n'
 inframe_empty_template = '     <SpotsInFrame frame="{frame}" />\n'
