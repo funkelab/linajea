@@ -29,7 +29,7 @@ class Clip(gp.BatchFilter):
         array.data = np.clip(array.data, self.mn, self.mx)
 
 
-class NormalizeMinMax(gp.BatchFilter):
+class NormalizeMinMax(gp.Normalize):
 
     def __init__(
             self,
@@ -50,13 +50,14 @@ class NormalizeMinMax(gp.BatchFilter):
             return
 
         array = batch.arrays[self.array]
+        array.spec.dtype = self.dtype
         array.data = array.data.astype(self.dtype)
         if self.clip:
             array.data = np.clip(array.data, self.mn, self.mx)
         array.data = (array.data - self.mn) / (self.mx - self.mn)
         array.data = array.data.astype(self.dtype)
 
-class NormalizeMeanStd(gp.BatchFilter):
+class NormalizeMeanStd(gp.Normalize):
 
     def __init__(
             self,
@@ -75,11 +76,12 @@ class NormalizeMeanStd(gp.BatchFilter):
             return
 
         array = batch.arrays[self.array]
+        array.spec.dtype = self.dtype
         array.data = array.data.astype(self.dtype)
         array.data = (array.data - self.mean) / self.std
         array.data = array.data.astype(self.dtype)
 
-class NormalizeMedianMad(gp.BatchFilter):
+class NormalizeMedianMad(gp.Normalize):
 
     def __init__(
             self,
@@ -98,6 +100,7 @@ class NormalizeMedianMad(gp.BatchFilter):
             return
 
         array = batch.arrays[self.array]
+        array.spec.dtype = self.dtype
         array.data = array.data.astype(self.dtype)
         array.data = (array.data - self.median) / self.mad
         array.data = array.data.astype(self.dtype)
