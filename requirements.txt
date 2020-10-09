@@ -4,5 +4,6 @@ networkx
 pymongo
 pylp
 toml
+scipy
 -e git+https://github.com/funkelab/funlib.math#egg=funlib.math
 -e git+https://github.com/funkelab/funlib.run#egg=funlib.run
