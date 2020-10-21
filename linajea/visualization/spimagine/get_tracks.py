@@ -3,6 +3,7 @@ import linajea.tracking
 import linajea
 import pymongo
 
+
 def get_gt_tracks_for_roi(gt_db_name, mongo_url, roi):
     graph_provider = linajea.CandidateDatabase(gt_db_name, mongo_url)
     subgraph = graph_provider[roi]
@@ -16,7 +17,8 @@ def get_gt_tracks_for_roi(gt_db_name, mongo_url, roi):
             current_cell = end_cell
             while current_cell is not None:
                 current_data = track.nodes[current_cell]
-                cell_positions.append([current_data[dim] for dim in ['t', 'z', 'y', 'x']])
+                cell_positions.append([current_data[dim]
+                                       for dim in ['t', 'z', 'y', 'x']])
                 parent_edges = track.prev_edges(current_cell)
                 if len(parent_edges) == 1:
                     current_cell = parent_edges[0][1]
@@ -59,7 +61,8 @@ def get_track_from_node(
                 current_data = track.nodes[current_cell]
                 if 't' not in current_data:
                     break
-                cell_positions.append([current_data[dim] for dim in ['t', 'z', 'y', 'x']])
+                cell_positions.append([current_data[dim]
+                                       for dim in ['t', 'z', 'y', 'x']])
                 parent_edges = list(track.prev_edges(current_cell))
                 if len(parent_edges) == 1:
                     current_cell = parent_edges[0][1]

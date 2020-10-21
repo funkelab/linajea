@@ -20,7 +20,6 @@ class Clip(gp.BatchFilter):
 
         array = batch.arrays[self.array]
 
-
         if self.mn is None:
             self.mn = np.min(array.data)
         if self.mx is None:
@@ -57,6 +56,7 @@ class NormalizeMinMax(gp.Normalize):
         array.data = (array.data - self.mn) / (self.mx - self.mn)
         array.data = array.data.astype(self.dtype)
 
+
 class NormalizeMeanStd(gp.Normalize):
 
     def __init__(
@@ -80,6 +80,7 @@ class NormalizeMeanStd(gp.Normalize):
         array.data = array.data.astype(self.dtype)
         array.data = (array.data - self.mean) / self.std
         array.data = array.data.astype(self.dtype)
+
 
 class NormalizeMedianMad(gp.Normalize):
 

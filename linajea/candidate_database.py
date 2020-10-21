@@ -118,15 +118,16 @@ class CandidateDatabase(MongoDbGraphProvider):
         try:
             params_collection = self.database['parameters']
             params_dict = tracking_parameters.__dict__
-            params_dict = {key:val
+            params_dict = {key: val
                            for key, val in params_dict.items()
                            if val is not None}
             cnt = params_collection.count_documents(params_dict)
-            if cnt == 0 and fail_if_not_exists:
-                assert find_result, "Did not find id for parameters %s"\
+            if fail_if_not_exists:
+                assert cnt > 0, "Did not find id for parameters %s"\
                     " and fail_if_not_exists set to True" % params_dict
             if cnt > 1:
-                raise RuntimeError("multiple documents found in db for these parameters: %s", params_dict)
+                raise RuntimeError("multiple documents found in db"
+                                   " for these parameters: %s", params_dict)
             elif cnt == 1:
                 find_result = params_collection.find_one(params_dict)
                 logger.info("Parameters %s already in collection with id %d"
@@ -135,8 +136,9 @@ class CandidateDatabase(MongoDbGraphProvider):
             else:
                 params_id = self.insert_with_next_id(params_dict,
                                                      params_collection)
-                logger.info("Parameters %s not yet in collection, adding with id %d"
-                            % (params_dict, params_id))
+                logger.info("Parameters %s not yet in collection,"
+                            " adding with id %d",
+                            params_dict, params_id)
         finally:
             self._MongoDbGraphProvider__disconnect()
 
@@ -217,7 +219,7 @@ class CandidateDatabase(MongoDbGraphProvider):
         finally:
             self._MongoDbGraphProvider__disconnect()
         return score
-    
+
     def get_scores(self, frames=None, filters=None):
         '''Returns the a list of all score dictionaries or
         None if no score available'''
@@ -275,7 +277,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             else:
                 eval_dict.update({'frame_start': frames[0],
                                   'frame_end': frames[1]})
-                res = score_collection.replace_one({'param_id': parameters_id,
+                score_collection.replace_one({'param_id': parameters_id,
                                               'frame_start': frames[0],
                                               'frame_end': frames[1]},
                                              eval_dict,

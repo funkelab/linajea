@@ -2,6 +2,7 @@ import daisy
 import json
 import os
 
+
 def get_source_roi(data_dir, sample):
 
     sample_path = os.path.join(data_dir, sample)
@@ -37,4 +38,3 @@ def get_source_roi(data_dir, sample):
         raise RuntimeError(
             "Can't find attributes.json or timelapse.zarr in %s" %
             sample_dir)
-

@@ -1,5 +1,6 @@
 import os
 
+
 def construct_zarr_filename(config, sample):
     return os.path.join(
         config['general']['output_zarr_prefix'],
