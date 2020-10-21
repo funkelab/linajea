@@ -68,7 +68,7 @@ def _parse_csv_ndims(filename, scale=1.0, limit_to_roi=None, read_dims=4):
 
 def _parse_csv_fields(filename, scale=1.0, limit_to_roi=None):
     '''Read one point per line. Assumes a header with the following required
-    fields: 
+    fields:
         t
         z
         y
