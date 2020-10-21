@@ -1,21 +1,22 @@
-from linajea.gunpowder import TracksSource, AddParentVectors
 import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+logging.getLogger('linajea').setLevel(logging.DEBUG)
+from linajea.gunpowder import TracksSource, AddParentVectors
 import os
 import gunpowder as gp
 import unittest
 import numpy as np
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
-# logging.basicConfig(level=logging.DEBUG)
 
 TEST_FILE = 'testdata.txt'
+TEST_FILE_WITH_HEADER = 'testdata_with_header.txt'
 
 
 class TracksSourceTestCase(unittest.TestCase):
 
     def setUp(self):
-        # t z y x id parent_id track_id
+        h = 't z y x cell_id parent_id track_id\n'
         p1 = "0.0 0.0 0.0 0.0 1 -1 0\n"
         p2 = "1.0 0.0 0.0 0.0 2 1 0\n"
         p3 = "1.0 1.0 2.0 3.0 3 1 0\n"
@@ -27,9 +28,17 @@ class TracksSourceTestCase(unittest.TestCase):
             f.write(p3)
             f.write(p4)
             f.write(p5)
+        with open(TEST_FILE_WITH_HEADER, 'w') as f:
+            f.write(h)
+            f.write(p1)
+            f.write(p2)
+            f.write(p3)
+            f.write(p4)
+            f.write(p5)
 
     def tearDown(self):
         os.remove(TEST_FILE)
+        os.remove(TEST_FILE_WITH_HEADER)
 
     def test_parent_location(self):
         points = gp.PointsKey("POINTS")
@@ -44,6 +53,29 @@ class TracksSourceTestCase(unittest.TestCase):
 
         ts.setup()
         b = ts.provide(request)
+        points = b[points].data
+        self.assertListEqual([0.0, 0.0, 0.0, 0.0],
+                             list(points[1].location))
+        self.assertListEqual([1.0, 0.0, 0.0, 0.0],
+                             list(points[2].location))
+        self.assertListEqual([1.0, 1.0, 2.0, 3.0],
+                             list(points[3].location))
+        self.assertListEqual([2.0, 2.0, 2.0, 2.0],
+                             list(points[4].location))
+
+    def test_csv_header(self):
+        points = gp.PointsKey("POINTS")
+        tswh = TracksSource(
+                TEST_FILE_WITH_HEADER,
+                points)
+
+        request = gp.BatchRequest()
+        request.add(
+                points,
+                gp.Coordinate((5, 5, 5, 5)))
+
+        tswh.setup()
+        b = tswh.provide(request)
         points = b[points].data
         self.assertListEqual([0.0, 0.0, 0.0, 0.0],
                              list(points[1].location))
