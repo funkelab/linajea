@@ -34,11 +34,11 @@ class TestSolver(unittest.TestCase):
         ]
 
         edges = [
-            {'source': 1, 'target': 0, 'score': 1.0, 'distance': 0.0},
-            {'source': 2, 'target': 1, 'score': 1.0, 'distance': 1.0},
-            {'source': 3, 'target': 1, 'score': 1.0, 'distance': 1.0},
-            {'source': 4, 'target': 1, 'score': 1.0, 'distance': 2.0},
-            {'source': 5, 'target': 3, 'score': 1.0, 'distance': 0.0},
+            {'source': 1, 'target': 0, 'score': 1.0, 'prediction_distance': 0.0},
+            {'source': 2, 'target': 1, 'score': 1.0, 'prediction_distance': 1.0},
+            {'source': 3, 'target': 1, 'score': 1.0, 'prediction_distance': 1.0},
+            {'source': 4, 'target': 1, 'score': 1.0, 'prediction_distance': 2.0},
+            {'source': 5, 'target': 3, 'score': 1.0, 'prediction_distance': 0.0},
         ]
         db_name = 'linajea_test_solver'
         db_host = 'localhost'
@@ -51,11 +51,11 @@ class TestSolver(unittest.TestCase):
                 "cost_appear": 2.0,
                 "cost_disappear": 2.0,
                 "cost_split": 0,
-                "weight_distance_cost": 0.1,
+                "weight_prediction_distance_cost": 0.1,
                 "weight_node_score": 1.0,
                 "threshold_node_score": 0.0,
-                "threshold_edge_score": 0.0,
-                "max_cell_move": 1.0,
+                "threshold_edge_score": 2.0,
+                "max_cell_move": 0.0,
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
             }
@@ -101,10 +101,10 @@ class TestSolver(unittest.TestCase):
         ]
 
         edges = [
-            {'source': 1, 'target': 0, 'score': 1.0, 'distance': 0.0},
-            {'source': 2, 'target': 1, 'score': 1.0, 'distance': 1.0},
-            {'source': 3, 'target': 1, 'score': 1.0, 'distance': 1.0},
-            {'source': 4, 'target': 1, 'score': 1.0, 'distance': 2.0},
+            {'source': 1, 'target': 0, 'score': 1.0, 'prediction_distance': 0.0},
+            {'source': 2, 'target': 1, 'score': 1.0, 'prediction_distance': 1.0},
+            {'source': 3, 'target': 1, 'score': 1.0, 'prediction_distance': 1.0},
+            {'source': 4, 'target': 1, 'score': 1.0, 'prediction_distance': 2.0},
         ]
         db_name = 'linajea_test_solver'
         db_host = 'localhost'
@@ -117,7 +117,7 @@ class TestSolver(unittest.TestCase):
                 "cost_appear": 1.0,
                 "cost_disappear": 1.0,
                 "cost_split": 0,
-                "weight_distance_cost": 0.1,
+                "weight_prediction_distance_cost": 0.1,
                 "weight_node_score": 1.0,
                 "threshold_node_score": 0.0,
                 "threshold_edge_score": 0.0,
