@@ -1,4 +1,4 @@
-TAG="pylp_base:v1.2-dev"
+TAG="pylp_base:v1.2"
 
 TMP_FILE:=$(shell mktemp).img
 
