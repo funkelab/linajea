@@ -4,8 +4,6 @@ from ..datasets import get_source_roi
 import logging
 import daisy
 import time
-import os
-import json
 import sys
 
 logger = logging.getLogger(__name__)
@@ -18,8 +16,10 @@ def evaluate_setup(
         gt_db_name,
         matching_threshold=None,
         frames=None,
+        limit_to_roi=None,
         from_scratch=True,
         sparse=True,
+        data_dir='../01_data',
         **kwargs):
 
     parameters = linajea.tracking.TrackingParameters(**kwargs)
@@ -34,19 +34,11 @@ def evaluate_setup(
     parameters_id = results_db.get_parameters_id(parameters)
 
     if not from_scratch:
-        old_score = results_db.get_score(parameters_id)
+        old_score = results_db.get_score(parameters_id, frames=frames)
         if old_score:
-            logger.info("Already evaluated %d. Skipping" % parameters_id)
+            logger.info("Already evaluated %d (frames: %s). Skipping" %
+                        (parameters_id, frames))
             return old_score
-
-    data_dir = '../01_data'
-
-    # get absolute paths
-    if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
-        sample_dir = os.path.abspath(os.path.join(data_dir,
-                                                  os.path.dirname(sample)))
-    else:
-        sample_dir = os.path.abspath(os.path.join(data_dir, sample))
 
     voxel_size, source_roi = get_source_roi(data_dir, sample)
 
@@ -54,9 +46,12 @@ def evaluate_setup(
     if frames:
         begin, end = frames
         crop_roi = daisy.Roi(
-            (begin, None, None, None),
             (end - begin, None, None, None))
         source_roi = source_roi.intersect(crop_roi)
+
+    # limit to roi, if given
+    if limit_to_roi:
+        source_roi.intersect(limit_to_roi)
 
     logger.info("Evaluating in %s", source_roi)
 
@@ -103,4 +98,4 @@ def evaluate_setup(
     logger.info(report.__dict__)
     logger.info("Done evaluating results for %d. Saving results to mongo."
                 % parameters_id)
-    results_db.write_score(parameters_id, report)
+    results_db.write_score(parameters_id, report, frames=frames)

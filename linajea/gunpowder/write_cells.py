@@ -17,7 +17,8 @@ class WriteCells(gp.BatchFilter):
             score_threshold,
             db_host,
             db_name,
-            edge_length=1):
+            edge_length=1,
+            volume_shape=None):
         '''Edge length indicates the length of the edge of the cube
         from which parent vectors will be read. The cube will be centered
         around the maxima, and predictions within the cube of voxels
@@ -33,6 +34,7 @@ class WriteCells(gp.BatchFilter):
         self.client = None
         assert edge_length % 2 == 1, "Edge length should be odd"
         self.edge_length = edge_length
+        self.volume_shape = volume_shape
 
     def process(self, batch, request):
 
@@ -44,8 +46,8 @@ class WriteCells(gp.BatchFilter):
             if create_indices:
                 self.cells.create_index(
                     [
-                        (l, pymongo.ASCENDING)
-                        for l in ['t', 'z', 'y', 'x']
+                        (loc, pymongo.ASCENDING)
+                        for loc in ['t', 'z', 'y', 'x']
                     ],
                     name='position')
                 self.cells.create_index(
@@ -75,6 +77,11 @@ class WriteCells(gp.BatchFilter):
                 parent_vector = WriteCells.get_avg_pv(
                         parent_vectors, index, self.edge_length)
             position = roi.get_begin() + voxel_size*index
+            if self.volume_shape is not None and \
+               np.any(np.greater_equal(
+                   position,
+                   gp.Coordinate(self.volume_shape) * voxel_size)):
+                continue
 
             cell_id = int(math.cantor_number(
                 roi.get_begin()/voxel_size + index))
@@ -89,7 +96,7 @@ class WriteCells(gp.BatchFilter):
                 'parent_vector': parent_vector
             })
 
-            logger.info(
+            logger.debug(
                 "ID=%d, score=%f, parent_vector=%s" % (
                     cell_id, score, parent_vector))
 

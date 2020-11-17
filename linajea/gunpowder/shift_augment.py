@@ -126,14 +126,32 @@ class ShiftAugment(BatchFilter):
                     self.shift_array,
                     self.shift_axis,
                     self.lcm_voxel_size)
-            array.data = self.shift_and_crop(
-                    array.data,
-                    request[array_key].roi.get_shape(),
-                    sub_shift_array,
-                    array.spec.voxel_size)
+            input_data = array.data
+            ndims = array.spec.roi.dims()
+            logger.debug("Data has shape: %s" % str(input_data.shape))
+            if input_data.ndim > ndims:
+                logger.debug("Multichannel data (%d channels)"
+                             % input_data.shape[0])
+                channels = []
+                assert input_data.ndim - ndims == 1,\
+                    "Expected a single extra dimension for channels"
+                for channel_arr in input_data:
+                    channels.append(self.shift_and_crop(
+                        channel_arr,
+                        request[array_key].roi.get_shape(),
+                        sub_shift_array,
+                        array.spec.voxel_size))
+                array.data = np.stack(channels, axis=0)
+            else:
+                array.data = self.shift_and_crop(
+                        array.data,
+                        request[array_key].roi.get_shape(),
+                        sub_shift_array,
+                        array.spec.voxel_size)
             array.spec.roi = request[array_key].roi
             assert (request[array_key].roi.get_shape() ==
-                    Coordinate(array.data.shape) * self.lcm_voxel_size), \
+                    Coordinate(array.data.shape[-ndims:])
+                    * self.lcm_voxel_size), \
                    ("request roi shape {} is not the same as "
                     "generated array shape {}").format(
                     request[array_key].roi.get_shape(), array.data.shape)
@@ -166,7 +184,6 @@ class ShiftAugment(BatchFilter):
         :return: an array of shape roi_shape that contains the array
             to be passed downstream
         """
-
         array_shift_axis_len = arr.shape[self.shift_axis]
         sub_shift_array_len = len(sub_shift_array)
         assert array_shift_axis_len % sub_shift_array_len == 0, \

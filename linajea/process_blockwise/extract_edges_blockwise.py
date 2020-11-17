@@ -1,13 +1,11 @@
 from __future__ import absolute_import
 from scipy.spatial import cKDTree
 import daisy
-import json
 import linajea
 from .daisy_check_functions import write_done, check_function
 from ..datasets import get_source_roi
 import logging
 import numpy as np
-import os
 import time
 
 logger = logging.getLogger(__name__)
@@ -22,6 +20,7 @@ def extract_edges_blockwise(
         num_workers,
         frames=None,
         frame_context=1,
+        data_dir='../01_data',
         **kwargs):
 
     data_dir = '../01_data'
@@ -112,23 +111,18 @@ def extract_edges_in_block(
     t_begin = block.write_roi.get_begin()[0]
     t_end = block.write_roi.get_end()[0]
 
-    try:
-        cells_by_t = {
-            t: [
-                (
-                    cell,
-                    np.array([data[d] for d in ['z', 'y', 'x']]),
-                    np.array(data['parent_vector'])
-                )
-                for cell, data in graph.nodes(data=True)
-                if 't' in data and data['t'] == t
-            ]
-            for t in range(t_begin - 1, t_end)
-        }
-    except:
-        for cell, data in graph.nodes(data=True):
-            print(cell, data)
-        raise
+    cells_by_t = {
+        t: [
+            (
+                cell,
+                np.array([data[d] for d in ['z', 'y', 'x']]),
+                np.array(data['parent_vector'])
+            )
+            for cell, data in graph.nodes(data=True)
+            if 't' in data and data['t'] == t
+        ]
+        for t in range(t_begin - 1, t_end)
+    }
 
     for t in range(t_begin, t_end):
 

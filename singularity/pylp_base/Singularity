@@ -92,8 +92,6 @@ python setup.py bdist_wheel
 pip install .
 cp build/lib/libklb.so /lib
 
-pip install zarr
-
 %environment
 export GRB_LICENSE_FILE=/opt/gurobi.lic
 export GUROBI_ROOT_DIR=/opt/gurobi810/linux64

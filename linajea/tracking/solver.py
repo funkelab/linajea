@@ -10,11 +10,16 @@ class Solver(object):
     Class for initializing and solving the ILP problem for
     creating tracks from candidate nodes and edges using pylp
     '''
-    def __init__(self, track_graph, parameters, selected_key):
+    def __init__(self, track_graph, parameters, selected_key, frames=None):
+        # frames: [start_frame, end_frame] where start_frame is inclusive
+        # and end_frame is exclusive. Defaults to track_graph.begin,
+        # track_graph.end
 
         self.graph = track_graph
         self.parameters = parameters
         self.selected_key = selected_key
+        self.start_frame = frames[0] if frames else self.graph.begin
+        self.end_frame = frames[1] if frames else self.graph.end
 
         self.node_selected = {}
         self.edge_selected = {}
@@ -80,23 +85,23 @@ class Solver(object):
         objective = pylp.LinearObjective(self.num_vars)
 
         # node appear (skip first frame)
-        for t in range(self.graph.begin + 1, self.graph.end):
+        for t in range(self.start_frame + 1, self.end_frame):
             for node in self.graph.cells_by_frame(t):
                 objective.set_coefficient(
                     self.node_appear[node],
                     self.parameters.cost_appear)
-        for node in self.graph.cells_by_frame(self.graph.begin):
+        for node in self.graph.cells_by_frame(self.start_frame):
             objective.set_coefficient(
                 self.node_appear[node],
                 0)
 
         # node disappear (skip last frame)
-        for t in range(self.graph.begin, self.graph.end - 1):
+        for t in range(self.start_frame, self.end_frame - 1):
             for node in self.graph.cells_by_frame(t):
                 objective.set_coefficient(
                     self.node_disappear[node],
                     self.parameters.cost_disappear)
-        for node in self.graph.cells_by_frame(self.graph.end - 1):
+        for node in self.graph.cells_by_frame(self.end_frame - 1):
             objective.set_coefficient(
                 self.node_disappear[node],
                 0)
@@ -168,31 +173,14 @@ class Solver(object):
 
         # simple linear costs based on the score of an edge (negative if above
         # threshold_edge_score, positive otherwise)
+        score_costs = 0
 
-        if self.parameters.model_type == 'default':
+        prediction_distance_costs = (
+            (self.graph.edges[edge]['prediction_distance'] -
+             self.parameters.threshold_edge_score) *
+            self.parameters.weight_prediction_distance_cost)
 
-            score_costs = (
-                self.parameters.threshold_edge_score -
-                self.graph.edges[edge]['score'])
-
-            prediction_distance_costs = 0
-
-        elif self.parameters.model_type == 'nms':
-
-            score_costs = 0
-
-            prediction_distance_costs = (
-                (self.graph.edges[edge]['prediction_distance'] -
-                 self.parameters.threshold_edge_score) *
-                self.parameters.weight_prediction_distance_cost)
-
-        # plus costs for the distance between the linked nodes
-
-        move_costs = (
-            self.graph.edges[edge]['distance'] *
-            self.parameters.weight_distance_cost)
-
-        return score_costs + prediction_distance_costs + move_costs
+        return score_costs + prediction_distance_costs
 
     def _add_constraints(self):
 
@@ -314,31 +302,32 @@ class Solver(object):
         # into two daughter cells.
         for node in self.graph.cells_by_frame(t):
 
-            # I.e., each node with three edges selected (one backwards, two
-            # forwards) is a split node.
+            # I.e., each node with two forwards edges is a split node.
 
-            #  sum(edges) - split   <= 2 # sum(edges) >  2 => split == 1
-            #  sum(edges) - 3*split >= 0 # sum(edges) <= 2 => split == 0
+            # Constraint 1
+            # sum(forward edges) - split   <= 1
+            # sum(forward edges) >  1 => split == 1
+
+            # Constraint 2
+            # sum(forward edges) - 2*split >= 0
+            # sum(forward edges) <= 1 => split == 0
 
             constraint_1 = pylp.LinearConstraint()
             constraint_2 = pylp.LinearConstraint()
 
-            # sum(edges)
-            for edge in self.graph.prev_edges(node):
-                constraint_1.set_coefficient(self.edge_selected[edge], 1)
-                constraint_2.set_coefficient(self.edge_selected[edge], 1)
+            # sum(forward edges)
             for edge in self.graph.next_edges(node):
                 constraint_1.set_coefficient(self.edge_selected[edge], 1)
                 constraint_2.set_coefficient(self.edge_selected[edge], 1)
 
-            # -[3*]split
+            # -[2*]split
             constraint_1.set_coefficient(self.node_split[node], -1)
-            constraint_2.set_coefficient(self.node_split[node], -3)
+            constraint_2.set_coefficient(self.node_split[node], -2)
 
             constraint_1.set_relation(pylp.Relation.LessEqual)
             constraint_2.set_relation(pylp.Relation.GreaterEqual)
 
-            constraint_1.set_value(2)
+            constraint_1.set_value(1)
             constraint_2.set_value(0)
 
             self.constraints.add(constraint_1)

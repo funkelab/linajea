@@ -12,10 +12,13 @@ class MamutReader(ABC):
         # returns a tuple with (cells, edges)
         pass
 
-    def create_cell(self, position, score, _id):
-        return {'position': position,
+    def create_cell(self, position, score, _id, name=None):
+        cell = {'position': position,
                 'score': score,
                 'id': _id}
+        if name is not None:
+            cell['name'] = name
+        return cell
 
     def create_edge(self, source, target, score):
         return {'source': source,

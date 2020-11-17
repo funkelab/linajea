@@ -327,11 +327,14 @@ class Evaluator:
         rec_matched_edges = self.rec_edges_to_gt_edges.keys()
         rec_matched_graph = self.rec_track_graph.edge_subgraph(
                 rec_matched_edges).copy()
-        max_node_id = max(list(rec_matched_graph.nodes))
+        max_node_id = max(list(rec_matched_graph.nodes) + [0])
         # split at fp_divisions
         for fp_div_node in self.report.fp_div_rec_nodes:
-            prev_edges = list(rec_matched_graph.prev_edges(fp_div_node))
-            next_edges = list(rec_matched_graph.next_edges(fp_div_node))
+            if fp_div_node in rec_matched_graph:
+                prev_edges = list(rec_matched_graph.prev_edges(fp_div_node))
+                next_edges = list(rec_matched_graph.next_edges(fp_div_node))
+            else:
+                continue
             if len(prev_edges) == 0 or len(next_edges) == 0:
                 continue
             for prev_edge in prev_edges:
@@ -350,11 +353,12 @@ class Evaluator:
                            for g in segments if g.number_of_edges() > 0]
 
         logger.debug("Found segment lengths %s" % segment_lengths)
-        aeftl = float(
-            sum(segment_lengths)) / len(segment_lengths)
-        erl = sum(map(
-            lambda b: math.pow(b, 2),
-            segment_lengths
+        aeftl = 0 if not len(segment_lengths) else \
+            float(sum(segment_lengths)) / len(segment_lengths)
+        erl = 0 if not self.gt_track_graph.number_of_edges() else \
+            sum(map(
+                lambda b: math.pow(b, 2),
+                segment_lengths
             )) / self.gt_track_graph.number_of_edges()
         self.report.set_aeftl_and_erl(aeftl, erl)
 

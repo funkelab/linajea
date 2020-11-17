@@ -1,8 +1,12 @@
 import gunpowder as gp
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class RandomLocationExcludeTime(gp.RandomLocation):
-    ''' time interval is like an array slice - includes start, excludes end '''
+    ''' Provide list of time intervals to exclude.
+    time interval is like an array slice - includes start, excludes end '''
 
     def __init__(
             self,
@@ -20,10 +24,19 @@ class RandomLocationExcludeTime(gp.RandomLocation):
             p_nonempty)
 
         self.raw = raw
-        self.t_start = time_interval[0]
-        self.t_end = time_interval[1]
+        if isinstance(time_interval, list) and \
+            (isinstance(time_interval[0], list) or
+                isinstance(time_interval[0], tuple)):
+            self.time_intervals = time_interval
+        else:
+            self.time_intervals = [time_interval]
 
     def accepts(self, request):
-
-        return (request[self.raw].roi.get_begin()[0] >= self.t_end or
-                request[self.raw].roi.get_end()[0] < self.t_start)
+        for interval in self.time_intervals:
+            logger.debug("Interval: %s" % str(interval))
+            t_start = interval[0]
+            t_end = interval[1]
+            if not (request[self.raw].roi.get_begin()[0] >= t_end or
+                    request[self.raw].roi.get_end()[0] < t_start):
+                return False
+        return True
