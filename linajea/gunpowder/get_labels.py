@@ -1,3 +1,5 @@
+import numpy as np
+
 import gunpowder as gp
 
 
@@ -17,6 +19,7 @@ class GetLabels(gp.BatchFilter):
 
     def process(self, batch, request):
         batch.arrays[self.labels] = \
-            gp.Array(batch.arrays[self.raw].attrs[
+            gp.Array(np.asarray(batch.arrays[self.raw].attrs[
                 'specified_location_extra_data'],
-                     gp.ArraySpec(nonspatial=True))
+                                dtype=request[self.labels].dtype),
+                     spec=request[self.labels])

@@ -9,4 +9,4 @@ from .shuffle_channels import ShuffleChannels
 from .no_op import NoOp
 from .get_labels import GetLabels
 from .set_flag import SetFlag
-from .normalize_min_max import NormalizeMinMax
+from .normalize import Clip, NormalizeMinMax, NormalizeMeanStd, NormalizeMedianMad

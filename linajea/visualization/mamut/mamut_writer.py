@@ -66,7 +66,7 @@ class MamutWriter:
 
         self.tracks.extend(tracks)
 
-    def write(self, raw_data_xml, output_xml):
+    def write(self, raw_data_xml, output_xml, scale=1.0):
         if not self.cells_by_frame.keys():
             logger.error("No data to write. Exiting")
             exit(1)
@@ -78,7 +78,7 @@ class MamutWriter:
 
             output.write(begin_template)
 
-            self.cells_to_xml(output)
+            self.cells_to_xml(output, scale)
 
             # Begin AllTracks.
             output.write(alltracks_template)
@@ -109,7 +109,7 @@ class MamutWriter:
                     filename=filename,
                     folder=folder)))
 
-    def cells_to_xml(self, output):
+    def cells_to_xml(self, output, scale=1.0):
         num_cells = 0
         for frame in self.cells_by_frame.keys():
             num_cells += len(self.cells_by_frame[frame])
@@ -123,15 +123,20 @@ class MamutWriter:
                 _, z, y, x = cell['position']
                 score = cell['score'] if 'score' in cell else 0
                 _id = cell['id']
+                if 'name' in cell:
+                    name = cell['name']
+                else:
+                    # backwards compatible
+                    name = _id + " SPOT_" + _id
                 output.write(
                     spot_template.format(
                         id=_id,
-                        name=_id,
+                        name=name,
                         frame=t,
                         quality=score,
-                        z=z,
-                        y=y,
-                        x=x))
+                        z=z*scale,
+                        y=y*scale,
+                        x=x*scale))
 
             output.write(inframe_end_template)
 

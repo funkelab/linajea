@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
         name='linajea',
-        version='1.3-dev',
+        version='1.2',
         description='Lineage Tracking in 4D Microscopy Volumes.',
         url='https://github.com/funkelab/linajea',
         author='Jan Funke',

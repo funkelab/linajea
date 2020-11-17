@@ -4,6 +4,8 @@ from gunpowder.profiling import Timing
 import numpy as np
 import logging
 
+from linajea import parse_tracks_file
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,10 +24,26 @@ class TrackPoint(Point):
 
 
 class TracksSource(BatchProvider):
-    '''Read tracks of points from a comma-separated-values text file. Each line
-    in the file represents one point as::
+    '''Read tracks of points from a comma-separated-values text file.
 
-        [coordinates], point_id, parent_id, track_id
+    If possible, this node uses the header of the file to determine values.
+    If present, a header must have the following required fields:
+        t
+        z
+        y
+        x
+        cell_id
+        parent_id
+        track_id
+    And these optional fields:
+        radius
+        name
+        div_state
+
+    If there is no header, it is assumed that the points are represented
+    with values in the following order:
+
+        t, z, y, x, point_id, parent_id, track_id, <radius>, <other values>
 
     where ``parent_id`` can be -1 to indicate no parent.
 
@@ -52,21 +70,19 @@ class TracksSource(BatchProvider):
             positions to convert them to world units.
     '''
 
-    def __init__(self, filename, points, points_spec=None, scale=None,
-                 read_dims=-3):
+    def __init__(self, filename, points, points_spec=None, scale=1.0):
 
         self.filename = filename
         self.points = points
         self.points_spec = points_spec
         self.scale = scale
-        self.read_dims = read_dims
-        self.ndims = None
         self.locations = None
         self.track_info = None
 
     def setup(self):
 
         self._read_points()
+        logger.debug("Locations: %s", self.locations)
 
         if self.points_spec is not None:
 
@@ -93,13 +109,15 @@ class TracksSource(BatchProvider):
             request[self.points].roi)
 
         point_filter = np.ones((self.locations.shape[0],), dtype=np.bool)
-        for d in range(self.ndims):
+        for d in range(self.locations.shape[1]):
             point_filter = np.logical_and(point_filter,
                                           self.locations[:, d] >= min_bb[d])
             point_filter = np.logical_and(point_filter,
                                           self.locations[:, d] < max_bb[d])
 
         points_data = self._get_points(point_filter)
+        logger.debug("Points data: %s", points_data)
+        logger.debug("Type of point: %s", type(list(points_data.values())[0]))
         points_spec = PointsSpec(roi=request[self.points].roi.copy())
 
         batch = Batch()
@@ -130,33 +148,8 @@ class TracksSource(BatchProvider):
         }
 
     def _read_points(self):
-        self.locations, self.track_info, self.ndims = \
-            self._parse_csv(ndims=self.read_dims)
-
-    def _parse_csv(self, ndims=0):
-        '''Read one point per line. If ``ndims`` is 0, all values in one line
-        are considered as the location of the point. If positive, only the
-        first ``ndims`` are used. If negative, all but the last ``-ndims`` are
-        used.
-        '''
-        with open(self.filename, 'r') as f:
-            tokens = [[t.strip(',') for t in line.split()]
-                      for line in f]
-        locations = np.array(
-            [
-                [float(d) for d in line[:ndims]]
-                for line in tokens
-            ], dtype=np.float32)
-
-        track_info = np.array(
-            [
-                [int(i.split(".")[0]) for i in line[ndims:]]
-                for line in tokens
-            ], dtype=np.int32)
-
-        ndims = locations.shape[1]
-
-        if self.scale is not None:
-            locations *= self.scale
-
-        return locations, track_info, ndims
+        roi = self.points_spec.roi if self.points_spec is not None else None
+        self.locations, self.track_info = parse_tracks_file(
+            self.filename,
+            scale=self.scale,
+            limit_to_roi=roi)

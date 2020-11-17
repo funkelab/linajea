@@ -10,6 +10,7 @@ from funlib.run import run
 
 from .daisy_check_functions import check_function
 from linajea import load_config
+from ..datasets import get_source_roi
 
 logger = logging.getLogger(__name__)
 
@@ -31,24 +32,9 @@ def predict_blockwise(
     data_dir = config['data_dir']
     setup = config['setup']
     # solve_context = daisy.Coordinate(master_config['solve']['context'])
-
-    # get absolute paths
-    if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
-        sample_dir = os.path.abspath(os.path.join(data_dir,
-                                                  os.path.dirname(sample)))
-    else:
-        sample_dir = os.path.abspath(os.path.join(data_dir, sample))
-
     setup_dir = os.path.abspath(
             os.path.join(config['setups_dir'], setup))
-    # get ROI of source
-    with open(os.path.join(sample_dir, 'attributes.json'), 'r') as f:
-        attributes = json.load(f)
-
-    voxel_size = daisy.Coordinate(attributes['resolution'])
-    shape = daisy.Coordinate(attributes['shape'])
-    offset = daisy.Coordinate(attributes['offset'])
-    source_roi = daisy.Roi(offset, shape*voxel_size)
+    voxel_size, source_roi = get_source_roi(data_dir, sample)
     predict_roi = source_roi
 
     # limit to specific frames, if given
@@ -170,9 +156,12 @@ def predict_worker(
 
     worker_id = daisy.Context.from_env().worker_id
     worker_time = time.time()
-    image_path = '/nrs/funke/singularity/'
-    image = image_path + singularity_image + '.img'
-    logger.debug("Using singularity image %s" % image)
+    if singularity_image is not None:
+        image_path = '/nrs/funke/singularity/'
+        image = image_path + singularity_image + '.img'
+        logger.debug("Using singularity image %s" % image)
+    else:
+        image = None
     cmd = run(
             command='python -u %s --config %s --iteration %d' % (
                 os.path.join(setups_dir, 'predict.py'),

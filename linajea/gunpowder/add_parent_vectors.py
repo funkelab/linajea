@@ -15,7 +15,7 @@ class AddParentVectors(BatchFilter):
 
     def __init__(
             self, points, array, mask, radius,
-            move_radius=0, array_spec=None):
+            move_radius=0, array_spec=None, dense=False):
 
         self.points = points
         self.array = array
@@ -26,6 +26,8 @@ class AddParentVectors(BatchFilter):
             self.array_spec = ArraySpec()
         else:
             self.array_spec = array_spec
+
+        self.dense = dense
 
     def setup(self):
 
@@ -167,6 +169,8 @@ class AddParentVectors(BatchFilter):
             len(points.data))
 
         empty = True
+        cnt = 0
+        total = 0
         for point_id, point in points.data.items():
 
             # get the voxel coordinate, 'Coordinate' ensures integer
@@ -178,6 +182,7 @@ class AddParentVectors(BatchFilter):
                     v)
                 continue
 
+            total += 1
             if point.parent_id is None:
                 logger.warning("Skipping point without parent")
                 continue
@@ -188,7 +193,8 @@ class AddParentVectors(BatchFilter):
                     point.parent_id,
                     point_id, self.points)
                 logger.debug("request roi: %s" % data_roi)
-                continue
+                if not self.dense:
+                    continue
             empty = False
             # get the voxel coordinate relative to output array start
             v -= data_roi.get_begin()
@@ -207,6 +213,11 @@ class AddParentVectors(BatchFilter):
                 voxel_size,
                 in_place=True)
 
+            mask = np.logical_or(mask, point_mask)
+            if point.parent_id not in points.data and self.dense:
+                continue
+
+            cnt += 1
             parent = points.data[point.parent_id]
 
             parent_vectors[0][point_mask] = (parent.location[1]
@@ -216,10 +227,9 @@ class AddParentVectors(BatchFilter):
             parent_vectors[2][point_mask] = (parent.location[3]
                                              - coords[2][point_mask])
 
-            mask = np.logical_or(mask, point_mask)
-
         if empty:
             logger.warning("No parent vectors written for points %s"
                            % points.data)
+        logger.info("written {}/{}".format(cnt, total))
 
         return parent_vectors, mask.astype(np.float32)

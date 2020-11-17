@@ -18,19 +18,18 @@ class MamutMongoReader(MamutReader):
             db_name,
             frames=None,
             key=None):
-        db = linajea.CandidateDatabase(
-                db_name, self.mongo_url, parameters_id=key)
+        db = linajea.CandidateDatabase(db_name, self.mongo_url)
         if frames is None:
-            frames = [0, 1000]
+            frames = [0, 1e10]
         roi = daisy.Roi((frames[0], 0, 0, 0),
-                        (frames[1] - frames[0], 10000, 10000, 10000))
+                        (frames[1] - frames[0], 1e10, 1e10, 1e10))
         nodes = db.read_nodes(roi)
         node_ids = [node['id'] for node in nodes]
         if key is None:
             edges = db.read_edges(roi, nodes=nodes)
         else:
             edges = db.read_edges(
-                    roi, nodes=nodes, attr_filter={'selected': True})
+                    roi, nodes=nodes, attr_filter={key: True})
             logger.debug("Filtering cells")
             filtered_cell_ids = set([edge['source'] for edge in edges] +
                                     [edge['target'] for edge in edges])
@@ -46,6 +45,7 @@ class MamutMongoReader(MamutReader):
         diff = actual_min_id - target_min_id
         logger.debug("Subtracting {} from all cell ids".format(diff))
         for node in nodes:
+            node['name'] = node['id']
             node['id'] -= diff
 
         for edge in edges:
@@ -58,14 +58,16 @@ class MamutMongoReader(MamutReader):
 
         db_name = data['db_name']
         group = data['group'] if 'group' in data else None
-        parameters_id = data['parameters_id']\
-            if 'parameters_id' in data else None
+        if 'parameters_id' in data:
+            selected_key = 'selected_' + str(data['parameters_id'])
+        else:
+            selected_key = None
         frames = data['frames'] if 'frames' in data else None
 
         nodes, edges = self.read_nodes_and_edges(
                 db_name,
                 frames=frames,
-                key=parameters_id)
+                key=selected_key)
 
         if not nodes:
             logger.error("No nodes found in database {}".format(db_name))
@@ -81,7 +83,8 @@ class MamutMongoReader(MamutReader):
                 score = node['score'] if 'score' in node else 0
             else:
                 score = group
-            cells.append(self.create_cell(position, score, node['id']))
+            cells.append(self.create_cell(position, score, node['id'],
+                                          name=node['name']))
         tracks = []
         if not edges:
             logger.info("No edges in database. Skipping track formation.")
