@@ -3,6 +3,7 @@ import os
 
 import pymongo
 
+
 def checkOrCreateDB(config, sample, create_if_not_found=True):
     db_host = config['general']['db_host']
 
@@ -23,9 +24,12 @@ def checkOrCreateDB(config, sample, create_if_not_found=True):
 
         query_result = db["db_meta_info"].count_documents({})
         if query_result == 0:
-            raise RuntimeError("invalid db_meta_info in db %s: no entry", db_name)
+            raise RuntimeError("invalid db_meta_info in db %s: no entry",
+                               db_name)
         elif query_result > 1:
-            raise RuntimeError("invalid db_meta_info in db %s: more than one entry (%d)", db_name, query_result)
+            raise RuntimeError(
+                    "invalid db_meta_info in db %s: more than one entry (%d)",
+                    db_name, query_result)
         else:
             assert query_result == 1
             query_result = db["db_meta_info"].find_one()

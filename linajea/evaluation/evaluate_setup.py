@@ -4,8 +4,6 @@ from ..datasets import get_source_roi
 import logging
 import daisy
 import time
-import os
-import json
 import sys
 
 logger = logging.getLogger(__name__)
@@ -42,20 +40,12 @@ def evaluate_setup(
                         (parameters_id, frames))
             return old_score
 
-    # get absolute paths
-    if os.path.isfile(sample) or sample.endswith((".zarr", ".n5")):
-        sample_dir = os.path.abspath(os.path.join(data_dir,
-                                                  os.path.dirname(sample)))
-    else:
-        sample_dir = os.path.abspath(os.path.join(data_dir, sample))
-
     voxel_size, source_roi = get_source_roi(data_dir, sample)
 
     # limit to specific frames, if given
     if frames:
         begin, end = frames
         crop_roi = daisy.Roi(
-            (begin, None, None, None),
             (end - begin, None, None, None))
         source_roi = source_roi.intersect(crop_roi)
 

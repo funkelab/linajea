@@ -1,5 +1,4 @@
 import daisy
-import json
 from linajea import CandidateDatabase
 from .daisy_check_functions import (
         check_function, write_done,
@@ -7,7 +6,6 @@ from .daisy_check_functions import (
 from ..datasets import get_source_roi
 from linajea.tracking import TrackingParameters, track
 import logging
-import os
 import time
 
 logger = logging.getLogger(__name__)

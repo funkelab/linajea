@@ -46,8 +46,8 @@ class WriteCells(gp.BatchFilter):
             if create_indices:
                 self.cells.create_index(
                     [
-                        (l, pymongo.ASCENDING)
-                        for l in ['t', 'z', 'y', 'x']
+                        (loc, pymongo.ASCENDING)
+                        for loc in ['t', 'z', 'y', 'x']
                     ],
                     name='position')
                 self.cells.create_index(
@@ -82,7 +82,6 @@ class WriteCells(gp.BatchFilter):
                    position,
                    gp.Coordinate(self.volume_shape) * voxel_size)):
                 continue
-
 
             cell_id = int(math.cantor_number(
                 roi.get_begin()/voxel_size + index))

@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_sample_from_setup(setup):
-    sample_int = int(re.search('\d*', setup).group())
+    sample_int = int(re.search(re.compile(r"\d*"), setup).group())
     if sample_int < 100:
         return '140521'
     elif sample_int < 200:
@@ -139,7 +139,7 @@ def get_best_result(setup, region, db_host,
     for key, value in best_result.items():
         try:
             best_result[key] = value.item()
-        except:
+        except AttributeError:
             pass
     best_result['setup'] = setup
     return best_result

@@ -108,8 +108,9 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
             edge_fps_in_frame = len(y_edges_in_range) -\
                 len(edge_matches_in_frame)
             edge_fps += edge_fps_in_frame
-            logger.info("Done matching frame %d, found %d matches and %d edge fps"
-                % (t, len(edge_matches_in_frame), edge_fps_in_frame))
+            logger.info(
+                    "Done matching frame %d, found %d matches and %d edge fps",
+                    t, len(edge_matches_in_frame), edge_fps_in_frame)
     logger.info("Done matching, found %d matches and %d edge fps"
                 % (len(edge_matches), edge_fps))
     return edges_x, edges_y, edge_matches, edge_fps
