@@ -24,10 +24,26 @@ class TrackPoint(Point):
 
 
 class TracksSource(BatchProvider):
-    '''Read tracks of points from a comma-separated-values text file. Each line
-    in the file represents one point as::
+    '''Read tracks of points from a comma-separated-values text file.
 
-        [coordinates], point_id, parent_id, track_id
+    If possible, this node uses the header of the file to determine values.
+    If present, a header must have the following required fields:
+        t
+        z
+        y
+        x
+        cell_id
+        parent_id
+        track_id
+    And these optional fields:
+        radius
+        name
+        div_state
+
+    If there is no header, it is assumed that the points are represented
+    with values in the following order:
+
+        t, z, y, x, point_id, parent_id, track_id, <radius>, <other values>
 
     where ``parent_id`` can be -1 to indicate no parent.
 
@@ -52,35 +68,21 @@ class TracksSource(BatchProvider):
             An optional scaling to apply to the coordinates of the points read
             from the CSV file. This is useful if the points refer to voxel
             positions to convert them to world units.
-
-        read_dims (``int``, optional):
-
-            If provided, if ``read_dims`` is 0, all values in one line are
-            considered as the location of the point. If positive, only the
-            first ``ndims`` are used. If negative, all but the last
-            ``-ndims`` are used.
-
-        csv_fields (``list`` of ``string``, optional):
-
-            Alternative to read_dims, don't set read_dims and provide
-            a list of column names or a file with a header line
     '''
 
-    def __init__(self, filename, points, points_spec=None, scale=1.0,
-                 read_dims=None, csv_fields=None):
+    def __init__(self, filename, points, points_spec=None, scale=1.0):
 
         self.filename = filename
         self.points = points
         self.points_spec = points_spec
         self.scale = scale
-        self.read_dims = read_dims
         self.locations = None
         self.track_info = None
-        self.csv_fields = csv_fields
 
     def setup(self):
 
         self._read_points()
+        logger.debug("Locations: %s", self.locations)
 
         if self.points_spec is not None:
 
@@ -114,6 +116,8 @@ class TracksSource(BatchProvider):
                                           self.locations[:, d] < max_bb[d])
 
         points_data = self._get_points(point_filter)
+        logger.debug("Points data: %s", points_data)
+        logger.debug("Type of point: %s", type(list(points_data.values())[0]))
         points_spec = PointsSpec(roi=request[self.points].roi.copy())
 
         batch = Batch()
@@ -144,7 +148,8 @@ class TracksSource(BatchProvider):
         }
 
     def _read_points(self):
+        roi = self.points_spec.roi if self.points_spec is not None else None
         self.locations, self.track_info = parse_tracks_file(
-            self.filename, read_dims=self.read_dims,
-            csv_fields=self.csv_fields, scale=self.scale,
-            limit_to_roi=self.points_spec.roi)
+            self.filename,
+            scale=self.scale,
+            limit_to_roi=roi)
