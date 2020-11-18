@@ -60,19 +60,6 @@ class DatabaseTestCase(TestCase):
         self.assertCountEqual(compare_sub_graph.edges, edges)
         self.delete_db(db_name, db_host)
 
-    def test_read_existing_database(self):
-        db_name = 'linajea_setup08_400000'
-        mongo_url = 'mongodb://funkeAdmin:KAlSi3O8O@mongodb4.'\
-                    'int.janelia.org:27023/admin?replicaSet=rsFunke'
-        candidate_db = CandidateDatabase(
-                db_name,
-                mongo_url,
-                mode='r')
-        roi = Roi((200, 1000, 1000, 1000), (3, 1000, 1000, 1000))
-        subgraph = candidate_db[roi]
-        self.assertTrue(subgraph.number_of_nodes() > 0)
-        self.assertTrue(subgraph.number_of_edges() > 0)
-
     def test_get_selected_graph_and_reset_selection(self):
         db_name = 'test_linajea_database'
         db_host = 'localhost'

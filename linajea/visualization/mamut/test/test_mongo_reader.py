@@ -1,6 +1,7 @@
 from linajea.mamut_visualization import MamutWriter, MamutMongoReader
 import logging
 import pymongo as mongo
+import sys
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -50,8 +51,7 @@ def remove_test_data(mongo_url, db_name):
 
 
 if __name__ == "__main__":
-    mongo_url = 'mongodb://funkeAdmin:KAlSi3O8O@mongodb4.int.janelia.org'\
-                    ':27023/admin?replicaSet=rsFunke'
+    mongo_url = sys.argv[1]
     test_data_db_name = 'linajea_mamut_test'
     write_test_data(mongo_url, test_data_db_name)
     data = {'db_name': test_data_db_name,
