@@ -23,8 +23,6 @@ def extract_edges_blockwise(
         data_dir='../01_data',
         **kwargs):
 
-    data_dir = '../01_data'
-
     voxel_size, source_roi = get_source_roi(data_dir, sample)
 
     # limit to specific frames, if given
