@@ -153,6 +153,7 @@ def predict_worker(
     queue = config['queue']
     setups_dir = config['setups_dir']
     setup = config['setup']
+    chargeback = config['lab']
 
     worker_id = daisy.Context.from_env().worker_id
     worker_time = time.time()
@@ -174,6 +175,7 @@ def predict_worker(
             mount_dirs=['/groups', '/nrs'],
             execute=False,
             expand=False,
+            flags=['-P ' + chargeback]
             )
     logger.info("Starting predict worker...")
     logger.info("Command: %s" % str(cmd))
