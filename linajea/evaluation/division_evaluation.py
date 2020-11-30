@@ -214,7 +214,7 @@ def calculate_report(
 
 
 def save_results_to_file(reports, filename):
-    header = "frames, TP, FP, FN, Prec, Rec, F1\n"
+    header = "frames, gt_total, rec_total, FP, FN, Prec, Rec, F1\n"
     with open(filename, 'w') as f:
         f.write(header)
         for frames, report in enumerate(reports):
