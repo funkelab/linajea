@@ -127,7 +127,7 @@ class MamutWriter:
                     name = cell['name']
                 else:
                     # backwards compatible
-                    name = _id + " SPOT_" + _id
+                    name = str(_id) + " SPOT_" + str(_id)
                 output.write(
                     spot_template.format(
                         id=_id,
