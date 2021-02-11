@@ -30,3 +30,8 @@ block_size = [5, 500, 500, 500]
 [extract.job]
 num_workers = 16
 queue = 'local'
+
+[evaluate]
+gt_db_name = 'linajea_120828_gt_side_1'
+matching_threshold = 15
+from_scratch = true
