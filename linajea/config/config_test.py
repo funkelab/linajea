@@ -5,6 +5,7 @@ from linajea.config import (
         JobConfig,
         PredictConfig,
         ExtractConfig,
+        EvaluateConfig,
         )
 
 if __name__ == "__main__":
@@ -19,3 +20,5 @@ if __name__ == "__main__":
     print(predict_config)
     extract_config = ExtractConfig(**config_dict['extract'])
     print(extract_config)
+    evaluate_config = EvaluateConfig(**config_dict['evaluate'])
+    print(evaluate_config)
