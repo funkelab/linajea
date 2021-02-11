@@ -31,6 +31,21 @@ block_size = [5, 500, 500, 500]
 num_workers = 16
 queue = 'local'
 
+[solve]
+cost_appear = 10000000000.0
+cost_disappear = 100000.0
+cost_split = 0
+threshold_node_score = 0.5
+weight_node_score = 100
+threshold_edge_score = 5
+weight_prediction_distance_cost = 1
+block_size = [ 5, 500, 500, 500,]
+context = [ 2, 100, 100, 100,]
+from_scratch = false
+[solve.job]
+num_workers = 8
+queue = 'cpu'
+
 [evaluate]
 gt_db_name = 'linajea_120828_gt_side_1'
 matching_threshold = 15

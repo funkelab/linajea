@@ -5,6 +5,7 @@ from linajea.config import (
         JobConfig,
         PredictConfig,
         ExtractConfig,
+        SolveConfig,
         EvaluateConfig,
         )
 
@@ -20,5 +21,7 @@ if __name__ == "__main__":
     print(predict_config)
     extract_config = ExtractConfig(**config_dict['extract'])
     print(extract_config)
+    solve_config = SolveConfig(**config_dict['solve'])
+    print(solve_config)
     evaluate_config = EvaluateConfig(**config_dict['evaluate'])
     print(evaluate_config)
