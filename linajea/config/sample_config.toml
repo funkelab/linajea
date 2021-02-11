@@ -1,0 +1,32 @@
+[general]
+setup = "setup211_simple_train_side_2"
+db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin"
+db_name = "linajea_120828_setup211_simple_eval_side_1_400000"
+sample = "120828"
+setups_dir = "../unet_setups"
+
+
+[data]
+filename = "/nrs/funke/malinmayorc/120828/120828.n5"
+group='raw'
+
+[job]
+num_workers = 16
+queue = 'gpu_rtx'
+
+[predict]
+iteration = 100000
+cell_score_threshold = 0.4
+[predict.data]
+filename = "/nrs/funke/malinmayorc/120828/120828.n5"
+group='raw'
+[predict.job]
+num_workers = 16
+queue = 'gpu_rtx'
+
+[extract]
+edge_move_threshold = 1
+block_size = [5, 500, 500, 500]
+[extract.job]
+num_workers = 16
+queue = 'local'
