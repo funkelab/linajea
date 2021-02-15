@@ -1,7 +1,7 @@
 import attr
 
 
-@attr.s
+@attr.s(kw_only=True)
 class GeneralConfig:
     setup = attr.ib(type=str)
     setups_dir = attr.ib(type=str)
@@ -10,3 +10,5 @@ class GeneralConfig:
     db_name = attr.ib(type=str, default=None)
     singularity_image = attr.ib(type=str, default=None)
     sparse = attr.ib(type=bool, default=True)
+    seed = attr.ib(type=int)
+    logging = attr.ib(type=int)
