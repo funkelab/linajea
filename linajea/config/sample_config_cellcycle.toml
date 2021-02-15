@@ -1,24 +1,25 @@
 [general]
+logging = 20
 setup = "setup211_simple_train_side_2"
 db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin"
 db_name = "linajea_120828_setup211_simple_eval_side_1_400000"
 sample = "120828"
 setups_dir = "../unet_setups"
-
+seed = 42
 
 [model]
 net_name = "class_net"
-network_type = 'efficientnet'
+network_type = 'vgg'
 input_shape = [ 3, 8, 64, 64,]
 pad_raw = [ 3, 30, 30, 30,]
 
-# num_fmaps = [8, 16, 32, 64]
-# fmap_inc_factors = [ 2, 2, 2, 1,]
-# downsample_factors = [ [ 2, 2, 2,], [ 2, 2, 2,], [ 2, 2, 2,], [ 1, 1, 1,],]
-# fc_size = 512
-# kernel_sizes = [ [ 3, 3,], [ 3, 3,], [ 3, 3, 3, 3,], [ 3, 3, 3, 3,],]
+num_fmaps = [8, 16, 32, 64]
+fmap_inc_factors = [ 2, 2, 2, 1,]
+downsample_factors = [ [ 2, 2, 2,], [ 2, 2, 2,], [ 2, 2, 2,], [ 1, 1, 1,],]
+fc_size = 512
+kernel_sizes = [ [ 3, 3,], [ 3, 3,], [ 3, 3, 3, 3,], [ 3, 3, 3, 3,],]
 
-efficientnet_size = "B10"
+# efficientnet_size = "B10"
 
 # resnet_size = '18'
 # num_blocks = [3, 4, 4]

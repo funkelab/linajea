@@ -4,6 +4,8 @@ db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin"
 db_name = "linajea_120828_setup211_simple_eval_side_1_400000"
 sample = "120828"
 setups_dir = "../unet_setups"
+logging = 20
+seed = 42
 
 [model]
 train_input_shape = [
