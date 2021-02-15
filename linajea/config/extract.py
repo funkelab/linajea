@@ -14,7 +14,7 @@ def edge_move_converter():
     return converter
 
 
-@attr.s
+@attr.s(kw_only=True)
 class ExtractConfig:
     edge_move_threshold = attr.ib(type=Dict[int, int],
                                   converter=edge_move_converter())
