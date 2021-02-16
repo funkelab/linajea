@@ -51,9 +51,6 @@ snapshot_stride = 250
 profiling_stride = 500
 # regularizer_weight = 0.00000001
 
-
-
-[train.augment]
 [train.augment.elastic]
 # control_point_spacing = [ 2, 10, 10,]
 control_point_spacing = [ 5, 25, 25,]
@@ -64,11 +61,9 @@ rotation_min = -10
 rotation_max = 10
 subsample = 4
 
-
 [train.augment.intensity]
 scale = [0.8, 1.2]
 shift = [-0.005, 0.005]
-
 
 [train.augment.simple]
 mirror = [2, 3]
@@ -83,24 +78,19 @@ amount = [0.001]
 [train.augment.jitter]
 jitter = [ 0, 1, 5, 5,]
 
-
-# # # if use_database = true:
-[train.database]
-db_name = "db_name_str"
-[train.database.general]
-setup_dir = "/path/to/setup"
-
-[train.database.prediction]
-iteration = 400000
-cell_score_threshold = 0.3
-
-
-[train.data]
+[train.data.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]
+[train.data.datafile]
 filename = "/nrs/funke/malinmayorc/120828/120828.n5"
 group='raw'
-roi_offset = [0, 0, 0, 0]
-roi_shape = [200, 385, 512, 712]
-
+# if use_database = true:
+[train.data.database]
+db_name = "db_name_str"
+# or
+setup_dir = "/path/to/setup"
+checkpoint = 400000
+cell_score_threshold = 0.3
 
 [train.job]
 num_workers = 16
@@ -120,17 +110,63 @@ beta2 = 0.999
 epsilon = 1e-8
 
 
-[predict]
-iteration = 100000
-cell_score_threshold = 0.4
-[predict.data]
+[test]
+use_database = false
+checkpoint = 10000
+cell_score_threshold = 0.3
+[test.data.datafile]
 filename = "/nrs/funke/malinmayorc/120828/120828.n5"
 group='raw'
+# if use_database = true:
+[test.data.database]
+db_name = "db_name_str"
+# or
+setup_dir = "/path/to/setup"
+checkpoint = 400000
+cell_score_threshold = 0.3
+[test.data.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]
+
+
+[validate]
+use_database = false
+cell_score_threshold = [ 0.1, 0.5, 0.75, 0.9, 0.99,]
+checkpoints = [ 2000, 5000, 10000]
+[validate.data.datafile]
+filename = "/nrs/funke/malinmayorc/120828/120828.n5"
+group='raw'
+# if use_database = true:
+[validate.data.database]
+db_name = "db_name_str"
+# or
+setup_dir = "/path/to/setup"
+checkpoint = 400000
+cell_score_threshold = 0.3
+[validate.data.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]
+
+
+[predict]
+batch_size = 64
 [predict.job]
 num_workers = 16
 queue = 'gpu_rtx'
 
 [evaluate]
+max_samples = 200000
+metric = "AP"
+use_database = false
+one_off = false
+# distance_limit = 11
+prob_threshold = 0.99
+dry_run = true
+find_fn = false
 gt_db_name = 'linajea_120828_gt_side_1'
 matching_threshold = 15
-from_scratch = true
+# optional, can overwrite validate/test roi
+[evaluate.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]
+

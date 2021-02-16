@@ -50,4 +50,4 @@ class TrainCellCycleConfig(TrainConfig):
     batch_size = attr.ib(type=int)
     augment = attr.ib(converter=ensure_cls(AugmentCellCycleConfig))
     use_database = attr.ib(type=bool)
-    database = attr.ib(converter=ensure_cls(DataDBConfig), default=False)
+    database = attr.ib(converter=ensure_cls(DataDBConfig), default=None)
