@@ -11,7 +11,13 @@ from .extract import ExtractConfig
 from .general import GeneralConfig
 from .job import JobConfig
 from .linajea_config import LinajeaConfig
-from .predict import PredictConfig
+from .predict import (PredictCellCycleConfig,
+                      PredictTrackingConfig)
 from .solve import SolveConfig
 from .tracking_config import TrackingConfig
-from .train import TrainConfig
+from .test import (TestConfig,
+                   TestCellCycleConfig)
+from .train import (TrainTrackingConfig,
+                    TrainCellCycleConfig)
+from .validate import (ValidateConfig,
+                       ValidateCellCycleConfig)

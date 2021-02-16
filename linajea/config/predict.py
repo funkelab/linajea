@@ -1,15 +1,20 @@
 import attr
-from .data import DataConfig
 from .job import JobConfig
 from .utils import ensure_cls
 
 
-@attr.s
+@attr.s(kw_only=True)
 class PredictConfig:
-    data = attr.ib(converter=ensure_cls(DataConfig))
     job = attr.ib(converter=ensure_cls(JobConfig))
-    iteration = attr.ib(type=int)
-    cell_score_threshold = attr.ib(type=float)
+
+
+@attr.s(kw_only=True)
+class PredictTrackingConfig(PredictConfig):
     write_to_zarr = attr.ib(type=bool, default=False)
     write_to_db = attr.ib(type=bool, default=True)
     processes_per_worker = attr.ib(type=int, default=1)
+
+
+@attr.s(kw_only=True)
+class PredictCellCycleConfig(PredictConfig):
+    batch_size = attr.ib(type=int)
