@@ -10,7 +10,7 @@ class Solver(object):
     Class for initializing and solving the ILP problem for
     creating tracks from candidate nodes and edges using pylp
     '''
-    def __init__(self, track_graph, parameters, selected_key, frames=None):
+    def __init__(self, track_graph, parameters, selected_key, vgg_key=None, frames=None):
         # frames: [start_frame, end_frame] where start_frame is inclusive
         # and end_frame is exclusive. Defaults to track_graph.begin,
         # track_graph.end
@@ -18,6 +18,7 @@ class Solver(object):
         self.graph = track_graph
         self.parameters = parameters
         self.selected_key = selected_key
+        self.vgg_key = vgg_key
         self.start_frame = frames[0] if frames else self.graph.begin
         self.end_frame = frames[1] if frames else self.graph.end
 
@@ -26,6 +27,8 @@ class Solver(object):
         self.node_appear = {}
         self.node_disappear = {}
         self.node_split = {}
+        self.node_child = {}
+        self.node_continuation = {}
         self.pinned_edges = {}
 
         self.num_vars = None
@@ -92,7 +95,9 @@ class Solver(object):
             self.node_appear[node] = self.num_vars + 1
             self.node_disappear[node] = self.num_vars + 2
             self.node_split[node] = self.num_vars + 3
-            self.num_vars += 4
+            self.node_child[node] = self.num_vars + 4
+            self.node_continuation[node] = self.num_vars + 5
+            self.num_vars += 6
 
         for edge in self.graph.edges():
             self.edge_selected[edge] = self.num_vars
@@ -104,14 +109,20 @@ class Solver(object):
 
         objective = pylp.LinearObjective(self.num_vars)
 
-        # node selection and split costs
+        # node selection and cell cycle costs
         for node in self.graph.nodes:
             objective.set_coefficient(
                 self.node_selected[node],
                 self._node_costs(node))
             objective.set_coefficient(
                 self.node_split[node],
-                1)
+                self._split_costs(node))
+            objective.set_coefficient(
+                self.node_child[node],
+                self._child_costs(node))
+            objective.set_coefficient(
+                self.node_continuation[node],
+                self._continuation_costs(node))
 
         # edge selection costs
         for edge in self.graph.edges():
@@ -170,6 +181,31 @@ class Solver(object):
                         self.parameters.weight_node_score) +
                        self.parameters.selection_constant)
         return score_costs
+
+    def _split_costs(self, node):
+        # split score times a weight plus a threshold
+        if self.vgg_key is None:
+            return 1
+        split_costs = ((self.graph.nodes[node][self.vgg_key][0] *
+                        self.parameters.weight_split) +
+                       self.parameters.division_constant)
+        return split_costs
+
+    def _child_costs(self, node):
+        # split score times a weight
+        if self.vgg_key is None:
+            return 0
+        split_costs = (self.graph.nodes[node][self.vgg_key][1] *
+                       self.parameters.weight_child)
+        return split_costs
+
+    def _continuation_costs(self, node):
+        # split score times a weight
+        if self.vgg_key is None:
+            return 0
+        continuation_costs = (self.graph.nodes[node][self.vgg_key][2] *
+                              self.parameters.weight_continuation)
+        return continuation_costs
 
     def _edge_costs(self, edge):
         # edge score times a weight
