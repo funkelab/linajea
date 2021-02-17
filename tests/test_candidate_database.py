@@ -134,13 +134,10 @@ class DatabaseTestCase(TestCase):
         db_name = 'test_linajea_database'
         db_host = 'localhost'
         ps = {
-                "cost_appear": 2.0,
-                "cost_disappear": 2.0,
-                "cost_split": 0,
-                "weight_prediction_distance_cost": 0.1,
+                "track_cost": 2.0,
+                "weight_edge_score": 0.1,
                 "weight_node_score": 1.0,
-                "threshold_node_score": 0.0,
-                "threshold_edge_score": 0.0,
+                "selection_constant": 0.0,
                 "max_cell_move": 1.0,
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
@@ -173,13 +170,10 @@ class TestParameterIds(TestCase):
 
     def get_tracking_params(self):
         return {
-                "cost_appear": 1.0,
-                "cost_disappear": 1.0,
-                "cost_split": 0,
-                "weight_prediction_distance_cost": 0.1,
+                "track_cost": 2.0,
+                "weight_edge_score": 0.1,
                 "weight_node_score": 1.0,
-                "threshold_node_score": 0.0,
-                "threshold_edge_score": 0.0,
+                "selection_constant": 0.0,
                 "max_cell_move": 1.0,
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],

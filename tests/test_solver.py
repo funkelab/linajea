@@ -16,13 +16,16 @@ class TestSolver(unittest.TestCase):
         client.drop_database(db_name)
 
     def test_solver_basic(self):
-        #   x
-        #  3|         /-4
-        #  2|        /--3---5
-        #  1|   0---1
-        #  0|        \--2
-        #    ------------------------------------ t
-        #       0   1   2   3
+        '''x
+          3|         /-4
+          2|        /--3---5
+          1|   0---1
+          0|        \--2
+            ------------------------------------ t
+               0   1   2   3
+
+        Should select 0, 1, 2, 3, 5
+        '''
 
         cells = [
                 {'id': 0, 't': 0, 'z': 1, 'y': 1, 'x': 1,  'score': 2.0},
@@ -48,13 +51,10 @@ class TestSolver(unittest.TestCase):
         roi = daisy.Roi((0, 0, 0, 0), (4, 5, 5, 5))
         graph = graph_provider[roi]
         ps = {
-                "cost_appear": 2.0,
-                "cost_disappear": 2.0,
-                "cost_split": 0,
-                "weight_prediction_distance_cost": 0.1,
-                "weight_node_score": 1.0,
-                "threshold_node_score": 0.0,
-                "threshold_edge_score": 2.0,
+                "track_cost": 4.0,
+                "weight_edge_score": 0.1,
+                "weight_node_score": -0.1,
+                "selection_constant": -1.0,
                 "max_cell_move": 0.0,
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
@@ -114,13 +114,10 @@ class TestSolver(unittest.TestCase):
         roi = daisy.Roi((0, 0, 0, 0), (5, 5, 5, 5))
         graph = graph_provider[roi]
         ps = {
-                "cost_appear": 1.0,
-                "cost_disappear": 1.0,
-                "cost_split": 0,
-                "weight_prediction_distance_cost": 0.1,
-                "weight_node_score": 1.0,
-                "threshold_node_score": 0.0,
-                "threshold_edge_score": 0.0,
+                "track_cost": 4.0,
+                "weight_edge_score": 0.1,
+                "weight_node_score": -0.1,
+                "selection_constant": -1.0,
                 "max_cell_move": 1.0,
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
@@ -140,7 +137,7 @@ class TestSolver(unittest.TestCase):
                 close = not close
             self.assertFalse(close)
         self.delete_db(db_name, db_host)
-    
+
 
     def test_solver_multiple_configs(self):
         #   x
@@ -175,25 +172,21 @@ class TestSolver(unittest.TestCase):
         roi = daisy.Roi((0, 0, 0, 0), (4, 5, 5, 5))
         graph = graph_provider[roi]
         ps1 = {
-                "cost_appear": 2.0,
-                "cost_disappear": 2.0,
-                "cost_split": 0,
-                "weight_prediction_distance_cost": 0.1,
-                "weight_node_score": 1.0,
-                "threshold_node_score": 0.0,
-                "threshold_edge_score": 2.0,
+                "track_cost": 4.0,
+                "weight_edge_score": 0.1,
+                "weight_node_score": -0.1,
+                "selection_constant": -1.0,
                 "max_cell_move": 0.0,
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
             }
         ps2 = {
-                "cost_appear": 2.0,
-                "cost_disappear": 2.0,
-                "cost_split":  10.0,
-                "weight_prediction_distance_cost": 0.1,
-                "weight_node_score": 1.0,
-                "threshold_node_score": 0.0,
-                "threshold_edge_score": 2.0,
+                # Making all the values smaller increases the
+                # relative cost of division
+                "track_cost": 1.0,
+                "weight_edge_score": 0.01,
+                "weight_node_score": -0.01,
+                "selection_constant": -0.1,
                 "max_cell_move": 0.0,
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],

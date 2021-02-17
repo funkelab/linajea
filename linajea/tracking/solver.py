@@ -104,29 +104,33 @@ class Solver(object):
 
         objective = pylp.LinearObjective(self.num_vars)
 
+        # node selection and split costs
+        for node in self.graph.nodes:
+            objective.set_coefficient(
+                self.node_selected[node],
+                self._node_costs(node))
+            objective.set_coefficient(
+                self.node_split[node],
+                1)
+
+        # edge selection costs
+        for edge in self.graph.edges():
+            objective.set_coefficient(
+                self.edge_selected[edge],
+                self._edge_costs(edge))
+
         # node appear (skip first frame)
         for t in range(self.start_frame + 1, self.end_frame):
             for node in self.graph.cells_by_frame(t):
                 objective.set_coefficient(
                     self.node_appear[node],
-                    self.parameters.cost_appear)
+                    self.parameters.track_cost)
         for node in self.graph.cells_by_frame(self.start_frame):
             objective.set_coefficient(
                 self.node_appear[node],
                 0)
 
-        # node disappear (skip last frame)
-        for t in range(self.start_frame, self.end_frame - 1):
-            for node in self.graph.cells_by_frame(t):
-                objective.set_coefficient(
-                    self.node_disappear[node],
-                    self.parameters.cost_disappear)
-        for node in self.graph.cells_by_frame(self.end_frame - 1):
-            objective.set_coefficient(
-                self.node_disappear[node],
-                0)
-
-        # remove node appear and disappear costs at edge of roi
+        # remove node appear costs at edge of roi
         for node, data in self.graph.nodes(data=True):
             if self._check_node_close_to_roi_edge(
                     node,
@@ -135,24 +139,6 @@ class Solver(object):
                 objective.set_coefficient(
                         self.node_appear[node],
                         0)
-                objective.set_coefficient(
-                        self.node_disappear[node],
-                        0)
-
-        # node selection and split costs
-        for node in self.graph.nodes:
-            objective.set_coefficient(
-                self.node_selected[node],
-                self._node_costs(node))
-            objective.set_coefficient(
-                self.node_split[node],
-                self.parameters.cost_split)
-
-        # edge selection costs
-        for edge in self.graph.edges():
-            objective.set_coefficient(
-                self.edge_selected[edge],
-                self._edge_costs(edge))
 
         self.objective = objective
 
@@ -179,28 +165,19 @@ class Solver(object):
         return False
 
     def _node_costs(self, node):
-
-        # simple linear costs based on the score of a node (negative if above
-        # threshold_node_score, positive otherwise)
-
-        score_costs = (
-            self.parameters.threshold_node_score -
-            self.graph.nodes[node]['score'])
-
-        return score_costs*self.parameters.weight_node_score
+        # node score times a weight plus a threshold
+        score_costs = ((self.graph.nodes[node]['score'] *
+                        self.parameters.weight_node_score) +
+                       self.parameters.selection_constant)
+        return score_costs
 
     def _edge_costs(self, edge):
-
-        # simple linear costs based on the score of an edge (negative if above
-        # threshold_edge_score, positive otherwise)
-        score_costs = 0
-
-        prediction_distance_costs = (
-            (self.graph.edges[edge]['prediction_distance'] -
-             self.parameters.threshold_edge_score) *
-            self.parameters.weight_prediction_distance_cost)
-
-        return score_costs + prediction_distance_costs
+        # edge score times a weight
+        # TODO: normalize node and edge scores to a specific range and
+        # ordinality?
+        edge_costs = (self.graph.edges[edge]['prediction_distance'] *
+                      self.parameters.weight_edge_score)
+        return edge_costs
 
     def _add_constraints(self):
 
