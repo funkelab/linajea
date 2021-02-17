@@ -10,6 +10,7 @@ class PredictConfig:
 
 @attr.s(kw_only=True)
 class PredictTrackingConfig(PredictConfig):
+    path_to_script = attr.ib(type=str)
     write_to_zarr = attr.ib(type=bool, default=False)
     write_to_db = attr.ib(type=bool, default=True)
     processes_per_worker = attr.ib(type=int, default=1)
