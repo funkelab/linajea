@@ -19,6 +19,10 @@ class TrackingParameters(object):
             selection_constant=None,
             weight_node_score=None,
             weight_edge_score=None,
+            division_constant=1,
+            weight_division=0,
+            weight_child=0,
+            weight_continuation=0,
             version=None,
             **kwargs):
 
@@ -51,6 +55,13 @@ class TrackingParameters(object):
         assert weight_edge_score is not None,\
             "Failed to specify weight_edge_score"
         self.weight_edge_score = weight_edge_score
+
+        # Cell cycle
+        self.division_constant = division_constant
+        self.weight_division = weight_division
+        self.weight_child = weight_child
+        self.weight_continuation = weight_continuation
+
         # version control
         self.version = version
 
