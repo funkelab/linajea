@@ -10,7 +10,8 @@ class Solver(object):
     Class for initializing and solving the ILP problem for
     creating tracks from candidate nodes and edges using pylp
     '''
-    def __init__(self, track_graph, parameters, selected_key, vgg_key=None, frames=None):
+    def __init__(self, track_graph, parameters, selected_key,
+                 vgg_key=None, frames=None):
         # frames: [start_frame, end_frame] where start_frame is inclusive
         # and end_frame is exclusive. Defaults to track_graph.begin,
         # track_graph.end
@@ -187,7 +188,7 @@ class Solver(object):
         if self.vgg_key is None:
             return 1
         split_costs = ((self.graph.nodes[node][self.vgg_key][0] *
-                        self.parameters.weight_split) +
+                        self.parameters.weight_division) +
                        self.parameters.division_constant)
         return split_costs
 
@@ -222,6 +223,7 @@ class Solver(object):
 
         self._add_pin_constraints()
         self._add_edge_constraints()
+        self._add_cell_cycle_constraints()
 
         for t in range(self.graph.begin, self.graph.end):
             self._add_inter_frame_constraints(t)
@@ -370,3 +372,49 @@ class Solver(object):
             logger.debug(
                 "set split-indicator constraints:\n\t%s\n\t%s",
                 constraint_1, constraint_2)
+
+    def _add_cell_cycle_constraints(self):
+        # If an edge is selected, the division and child indicators are
+        # linked. Let e=(u,v) be an edge linking node u at time t to v in
+        # time t+1.
+        # Constraints:
+        # child(v) + selected(e) - split(u) <= 1
+        # split(u) + selected(e) - child(v) <= 1
+
+        for e in self.graph.edges():
+
+            # if e is selected, u and v have to be selected
+            u, v = e
+            ind_e = self.edge_selected[e]
+            split_u = self.node_split[u]
+            child_v = self.node_child[v]
+
+            link_constraint_1 = pylp.LinearConstraint()
+            link_constraint_1.set_coefficient(child_v, 1)
+            link_constraint_1.set_coefficient(ind_e, 1)
+            link_constraint_1.set_coefficient(split_u, -1)
+            link_constraint_1.set_relation(pylp.Relation.LessEqual)
+            link_constraint_1.set_value(1)
+            self.main_constraints.append(link_constraint_1)
+            link_constraint_2 = pylp.LinearConstraint()
+            link_constraint_2.set_coefficient(split_u, 1)
+            link_constraint_2.set_coefficient(ind_e, 1)
+            link_constraint_2.set_coefficient(child_v, -1)
+            link_constraint_2.set_relation(pylp.Relation.LessEqual)
+            link_constraint_2.set_value(1)
+            self.main_constraints.append(link_constraint_2)
+
+        # Every selected node must be a split, child or continuation
+        # (exclusively). If a node is not selected, all the cell cycle
+        # indicators should not be set.
+        # Constraint for each node:
+        # split + child + continuation - selected = 0
+        for node in self.graph.nodes():
+            cycle_set_constraint = pylp.LinearConstraint()
+            cycle_set_constraint.set_coefficient(self.node_split[node], 1)
+            cycle_set_constraint.set_coefficient(self.node_child[node], 1)
+            cycle_set_constraint.set_coefficient(self.node_continuation[node],
+                                                 1)
+            cycle_set_constraint.set_coefficient(self.node_selected[node], -1)
+            cycle_set_constraint.set_relation(pylp.Relation.Equal)
+            cycle_set_constraint.set_value(0)

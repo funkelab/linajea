@@ -66,7 +66,8 @@ class TrackingParameters(object):
         self.version = version
 
 
-def track(graph, parameters, selected_key, frame_key='t', frames=None):
+def track(graph, parameters, selected_key,
+          frame_key='t', frames=None, cell_cycle_key=None):
     ''' A wrapper function that takes a daisy subgraph and input parameters,
     creates and solves the ILP to create tracks, and updates the daisy subgraph
     to reflect the selected nodes and edges.
@@ -99,6 +100,11 @@ def track(graph, parameters, selected_key, frame_key='t', frames=None):
             have nodes in all frames). Start is inclusive, end is exclusive.
             Defaults to graph.begin, graph.end
 
+        cell_cycle_key (``string``, optional):
+
+            The name of the node attribute that corresponds to a prediction
+            about the cell cycle state. The prediction should be a list of
+            three values [mother/division, daughter, continuation].
     '''
     # assuming graph is a daisy subgraph
     if graph.number_of_nodes() == 0:
@@ -122,7 +128,8 @@ def track(graph, parameters, selected_key, frame_key='t', frames=None):
     total_solve_time = 0
     for parameter, key in zip(parameters, selected_key):
         if not solver:
-            solver = Solver(track_graph, parameter, key, frames=frames)
+            solver = Solver(track_graph, parameter, key, frames=frames,
+                            vgg_key=cell_cycle_key)
         else:
             solver.update_objective(parameter, key)
 
