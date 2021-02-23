@@ -22,6 +22,7 @@ def solve_blockwise(
         limit_to_roi=None,
         from_scratch=False,
         data_dir='../01_data',
+        cell_cycle_key=None,
         **kwargs):
 
     block_size = daisy.Coordinate(parameters[0].block_size)
@@ -107,7 +108,8 @@ def solve_blockwise(
             parameters,
             b,
             parameters_id,
-            solution_roi=source_roi),
+            solution_roi=source_roi,
+            cell_cycle_key=cell_cycle_key),
         # Note: in the case of a set of parameters,
         # we are assuming that none of the individual parameters are
         # half done and only checking the hash for each block
@@ -120,10 +122,11 @@ def solve_blockwise(
         fit='overhang')
     if success:
         # write all done to individual parameters and set
-        write_done_all_blocks(
-            step_name,
-            db_name,
-            db_host)
+        if len(param_names) > 1:
+            write_done_all_blocks(
+                step_name,
+                db_name,
+                db_host)
         for name in param_names:
             write_done_all_blocks(
                 name,
@@ -139,7 +142,8 @@ def solve_in_block(
         parameters,
         block,
         parameters_id,
-        solution_roi=None):
+        solution_roi=None,
+        cell_cycle_key=None):
     # Solution_roi is the total roi that you want a solution in
     # Limiting the block to the solution_roi allows you to solve
     # all the way to the edge, without worrying about reading
@@ -199,7 +203,8 @@ def solve_in_block(
 
     frames = [read_roi.get_offset()[0],
               read_roi.get_offset()[0] + read_roi.get_shape()[0]]
-    track(graph, parameters, selected_keys, frames=frames)
+    track(graph, parameters, selected_keys, frames=frames,
+          cell_cycle_key=cell_cycle_key)
     start_time = time.time()
     graph.update_edge_attrs(
             write_roi,
