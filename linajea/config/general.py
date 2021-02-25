@@ -1,10 +1,12 @@
+import os
+
 import attr
 
 
 @attr.s(kw_only=True)
 class GeneralConfig:
-    setup = attr.ib(type=str)
-    # TODO: use post_init to set setup = basename(setup_dir)?
+    # set via post_init hook
+    # setup = attr.ib(type=str)
     setup_dir = attr.ib(type=str)
     db_host = attr.ib(type=str)
     sample = attr.ib(type=str)
@@ -13,3 +15,6 @@ class GeneralConfig:
     sparse = attr.ib(type=bool, default=True)
     seed = attr.ib(type=int)
     logging = attr.ib(type=int)
+
+    def __attrs_post_init__(self):
+        self.setup = os.path.basename(self.setup_dir)

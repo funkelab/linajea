@@ -1,9 +1,11 @@
 [general]
-setup = "setup211_simple_train_side_2"
 db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin"
+# TODO: remove (move to data section)
 db_name = "linajea_120828_setup211_simple_eval_side_1_400000"
+# TODO: remove (multiple samples possible)
 sample = "120828"
-setups_dir = "../unet_setups"
+# TODO: abs path?
+setup_dir = "../unet_setups/setup211_simple_train_side_2"
 logging = 20
 seed = 42
 
@@ -182,6 +184,7 @@ group='raw'
 
 
 [predict]
+path_to_script = "test"
 write_to_zarr = false
 write_to_db = true
 processes_per_worker = 4
