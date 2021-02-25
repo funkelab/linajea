@@ -5,7 +5,7 @@ from linajea.config import (
     TrackingConfig,
     CellCycleConfig,
     GeneralConfig,
-    DataConfig,
+    DataFileConfig,
     JobConfig,
     PredictTrackingConfig,
     ExtractConfig,
@@ -18,8 +18,8 @@ if __name__ == "__main__":
     config_dict = load_config("sample_config_tracking.toml")
     general_config = GeneralConfig(**config_dict['general']) # type: ignore
     print(general_config)
-    data_config = DataConfig(**config_dict['train']['data']) # type: ignore
-    print(data_config)
+    # data_config = DataFileConfig(**config_dict['train']['data']) # type: ignore
+    # print(data_config)
     job_config = JobConfig(**config_dict['train']['job']) # type: ignore
     print(job_config)
 
@@ -41,8 +41,8 @@ if __name__ == "__main__":
     tracking_config = TrackingConfig.from_file("sample_config_tracking.toml")
     print(tracking_config)
 
-    config_dict = load_config("sample_config_cellcycle.toml")
-    cell_cycle_config = CellCycleConfig(path="sample_config_cellcycle.toml", **config_dict) # type: ignore
+    # config_dict = load_config("sample_config_cellcycle.toml")
+    cell_cycle_config = CellCycleConfig.from_file("sample_config_cellcycle.toml") # type: ignore
     print(cell_cycle_config)
 
-    print(attr.asdict(cell_cycle_config))
+    # print(attr.asdict(cell_cycle_config))

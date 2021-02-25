@@ -3,8 +3,7 @@ from typing import Dict, List
 
 from .augment import (AugmentTrackingConfig,
                       AugmentCellCycleConfig)
-from .data import (DataFileConfig,
-                   DataDBConfig)
+from .train_test_validate_data import TrainDataTrackingConfig
 from .job import JobConfig
 from .utils import ensure_cls
 
@@ -20,7 +19,6 @@ def use_radius_converter():
 
 @attr.s(kw_only=True)
 class TrainConfig:
-    data = attr.ib(converter=ensure_cls(DataFileConfig))
     job = attr.ib(converter=ensure_cls(JobConfig))
     cache_size = attr.ib(type=int)
     max_iterations = attr.ib(type=int)
@@ -48,5 +46,5 @@ class TrainTrackingConfig(TrainConfig):
 class TrainCellCycleConfig(TrainConfig):
     batch_size = attr.ib(type=int)
     augment = attr.ib(converter=ensure_cls(AugmentCellCycleConfig))
-    use_database = attr.ib(type=bool)
-    database = attr.ib(converter=ensure_cls(DataDBConfig), default=None)
+    # use_database = attr.ib(type=bool)
+    # database = attr.ib(converter=ensure_cls(DataDBConfig), default=None)

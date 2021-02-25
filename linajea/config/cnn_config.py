@@ -1,7 +1,6 @@
 import attr
 from typing import List
 
-from .data import DataConfig
 from .job import JobConfig
 from .utils import (ensure_cls,
                     _check_nd_shape,
