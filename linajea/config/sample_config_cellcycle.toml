@@ -179,9 +179,11 @@ prob_threshold = 0.99
 dry_run = true
 find_fn = false
 gt_db_name = 'linajea_120828_gt_side_1'
+[evaluate.parameters]
 matching_threshold = 15
 # optional, can overwrite validate/test roi
-[evaluate.roi]
+frames = [0, 200]
+# or
+[evaluate.parameters.roi]
 offset = [0, 0, 0, 0]
 shape = [200, 385, 512, 712]
-

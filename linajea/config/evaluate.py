@@ -1,3 +1,5 @@
+from typing import List
+
 import attr
 
 from .data import DataROIConfig
@@ -6,21 +8,26 @@ from .utils import ensure_cls
 
 
 @attr.s(kw_only=True)
-class EvaluateConfig:
-    gt_db_name = attr.ib(type=str)
+class _EvaluateParametersConfig:
     matching_threshold = attr.ib(type=int)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
+    frames = attr.ib(type=List[int])
+
+
+@attr.s(kw_only=True)
+class _EvaluateConfig:
+    gt_db_name = attr.ib(type=str)
     job = attr.ib(converter=ensure_cls(JobConfig), default=None)
-    from_scratch = attr.ib(type=bool, default=False)
 
 
 @attr.s(kw_only=True)
-class EvaluateTrackingConfig(EvaluateConfig):
+class EvaluateTrackingConfig(_EvaluateConfig):
     from_scratch = attr.ib(type=bool, default=False)
+    parameters = attr.ib(converter=ensure_cls(_EvaluateParametersConfig))
 
 
 @attr.s(kw_only=True)
-class EvaluateCellCycleConfig(EvaluateConfig):
+class EvaluateCellCycleConfig(_EvaluateConfig):
     max_samples = attr.ib(type=int)
     metric = attr.ib(type=str)
     use_database = attr.ib(type=bool, default=True)
@@ -28,3 +35,4 @@ class EvaluateCellCycleConfig(EvaluateConfig):
     prob_threshold = attr.ib(type=float)
     dry_run = attr.ib(type=bool)
     find_fn = attr.ib(type=bool)
+    parameters = attr.ib(converter=ensure_cls(_EvaluateParametersConfig))

@@ -10,7 +10,7 @@ from linajea.config import (
     PredictTrackingConfig,
     ExtractConfig,
     SolveConfig,
-    EvaluateConfig,
+    EvaluateTrackingConfig,
 )
 
 if __name__ == "__main__":
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     print(extract_config)
     solve_config = SolveConfig(**config_dict['solve']) # type: ignore
     print(solve_config)
-    evaluate_config = EvaluateConfig(**config_dict['evaluate']) # type: ignore
+    evaluate_config = EvaluateTrackingConfig(**config_dict['evaluate']) # type: ignore
     print(evaluate_config)
 
 
