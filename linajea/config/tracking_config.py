@@ -7,11 +7,14 @@ from .general import GeneralConfig
 from .optimizer import OptimizerConfig
 from .predict import PredictTrackingConfig
 from .solve import SolveConfig
-from .test import TestConfig
+# from .test import TestTrackingConfig
+from .train_test_validate_data import (TestDataTrackingConfig,
+                                       TrainDataTrackingConfig,
+                                       ValidateDataTrackingConfig)
 from .train import TrainTrackingConfig
 from .unet_config import UnetConfig
 from .utils import ensure_cls
-from .validate import ValidateConfig
+# from .validate import ValidateConfig
 
 @attr.s(kw_only=True)
 class TrackingConfig:
@@ -20,8 +23,9 @@ class TrackingConfig:
     model = attr.ib(converter=ensure_cls(UnetConfig))
     optimizer = attr.ib(converter=ensure_cls(OptimizerConfig))
     train = attr.ib(converter=ensure_cls(TrainTrackingConfig))
-    test = attr.ib(converter=ensure_cls(TestConfig))
-    validate = attr.ib(converter=ensure_cls(ValidateConfig))
+    train_data = attr.ib(converter=ensure_cls(TrainDataTrackingConfig))
+    test_data = attr.ib(converter=ensure_cls(TestDataTrackingConfig))
+    validate_data = attr.ib(converter=ensure_cls(ValidateDataTrackingConfig))
     predict = attr.ib(converter=ensure_cls(PredictTrackingConfig))
     extract = attr.ib(converter=ensure_cls(ExtractConfig))
     solve = attr.ib(converter=ensure_cls(SolveConfig))

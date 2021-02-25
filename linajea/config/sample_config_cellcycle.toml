@@ -1,10 +1,10 @@
 [general]
 logging = 20
-setup = "setup211_simple_train_side_2"
+# setup = "setup211_simple_train_side_2"
 db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin"
 db_name = "linajea_120828_setup211_simple_eval_side_1_400000"
 sample = "120828"
-setups_dir = "../unet_setups"
+setup_dir = "../unet_setups/setup211_simple_train_side_2"
 seed = 42
 
 [model]
@@ -39,7 +39,6 @@ use_conv4d = true
 make_isotropic = true
 
 [train]
-use_database = false
 use_auto_mixed_precision = true
 use_tf_data = false
 val_log_step = 10
@@ -78,20 +77,6 @@ amount = [0.001]
 [train.augment.jitter]
 jitter = [ 0, 1, 5, 5,]
 
-[train.data.roi]
-offset = [0, 0, 0, 0]
-shape = [200, 385, 512, 712]
-[train.data.datafile]
-filename = "/nrs/funke/malinmayorc/120828/120828.n5"
-group='raw'
-# if use_database = true:
-[train.data.database]
-db_name = "db_name_str"
-# or
-setup_dir = "/path/to/setup"
-checkpoint = 400000
-cell_score_threshold = 0.3
-
 [train.job]
 num_workers = 16
 queue = 'gpu_rtx'
@@ -110,42 +95,72 @@ beta2 = 0.999
 epsilon = 1e-8
 
 
-[test]
+[train_data]
+use_database = false
+[train_data.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]
+# if use_database = true:
+[train_data.db_meta_info]
+setup_dir = "some_setup_name"
+checkpoint = 400000
+cell_score_threshold = 0.3
+# or data_source specific db_name
+[[train_data.data_sources]]
+# db_name = "db_name_str_A"
+[train_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/120828_a.n5"
+group='raw'
+[[train_data.data_sources]]
+# db_name = "db_name_str_B"
+[train_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/120828_B.n5"
+group='raw'
+
+
+[test_data]
 use_database = false
 checkpoint = 10000
-cell_score_threshold = 0.3
-[test.data.datafile]
-filename = "/nrs/funke/malinmayorc/120828/120828.n5"
-group='raw'
-# if use_database = true:
-[test.data.database]
-db_name = "db_name_str"
-# or
-setup_dir = "/path/to/setup"
-checkpoint = 400000
-cell_score_threshold = 0.3
-[test.data.roi]
+prob_threshold = 0.5
+[test_data.roi]
 offset = [0, 0, 0, 0]
 shape = [200, 385, 512, 712]
+# if use_database = true:
+[test_data.db_meta_info]
+checkpoint = 400000
+cell_score_threshold = 0.3
+setup_dir = "some_setup_name"
+# or data_source specific db_name
+[[test_data.data_sources]]
+# db_name = "db_name_str"
+[test_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/120828.n5"
+group='raw'
 
 
-[validate]
+[validate_data]
 use_database = false
-cell_score_threshold = [ 0.1, 0.5, 0.75, 0.9, 0.99,]
+prob_thresholds = [ 0.1, 0.5, 0.75, 0.9, 0.99,]
 checkpoints = [ 2000, 5000, 10000]
-[validate.data.datafile]
-filename = "/nrs/funke/malinmayorc/120828/120828.n5"
-group='raw'
-# if use_database = true:
-[validate.data.database]
-db_name = "db_name_str"
-# or
-setup_dir = "/path/to/setup"
-checkpoint = 400000
-cell_score_threshold = 0.3
-[validate.data.roi]
+[validate_data.roi]
 offset = [0, 0, 0, 0]
 shape = [200, 385, 512, 712]
+# if use_database = true:
+# [validate_data.db_meta_info]
+# checkpoint = 400000
+# cell_score_threshold = 0.3
+# setup = "some_setup_name"
+# or data_source specific db_name
+[[validate_data.data_sources]]
+db_name = "db_name_strA"
+[validate_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/120828_A.n5"
+group='raw'
+[[validate_data.data_sources]]
+db_name = "db_name_strB"
+[validate_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/120828_B.n5"
+group='raw'
 
 
 [predict]
