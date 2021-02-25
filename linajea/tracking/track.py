@@ -106,8 +106,22 @@ def track(graph, parameters, selected_key,
             about the cell cycle state. The prediction should be a list of
             three values [mother/division, daughter, continuation].
     '''
+    if cell_cycle_key is not None:
+        # remove nodes that don't have a cell cycle key, with warning
+        to_remove = []
+        for node, data in graph.nodes(data=True):
+            if cell_cycle_key not in data:
+                logger.warning("Node %d does not have cell cycle key %s",
+                               node, cell_cycle_key)
+                to_remove.append(node)
+
+        for node in to_remove:
+            logger.debug("Removing node %d", node)
+            graph.remove_node(node)
+
     # assuming graph is a daisy subgraph
     if graph.number_of_nodes() == 0:
+        logger.info("No nodes in graph - skipping solving step")
         return
 
     if not isinstance(parameters, list):
@@ -118,12 +132,12 @@ def track(graph, parameters, selected_key,
         "%d parameter sets and %d selected keys" %\
         (len(parameters), len(selected_key))
 
-    logger.info("Creating track graph...")
+    logger.debug("Creating track graph...")
     track_graph = TrackGraph(graph_data=graph,
                              frame_key=frame_key,
                              roi=graph.roi)
 
-    logger.info("Creating solver...")
+    logger.debug("Creating solver...")
     solver = None
     total_solve_time = 0
     for parameter, key in zip(parameters, selected_key):
@@ -133,7 +147,7 @@ def track(graph, parameters, selected_key,
         else:
             solver.update_objective(parameter, key)
 
-        logger.info("Solving for key %s", str(key))
+        logger.debug("Solving for key %s", str(key))
         start_time = time.time()
         solver.solve()
         end_time = time.time()
@@ -195,16 +209,16 @@ def greedy_track(
     nx.set_edge_attributes(graph, False, selected_key)
 
     if node_threshold:
-        logger.info("Removing nodes below threshold")
+        logger.debug("Removing nodes below threshold")
         for node, data in list(unselected.nodes(data=True)):
             if data['score'] < node_threshold:
                 unselected.remove_node(node)
 
-    logger.info("Sorting edges")
+    logger.debug("Sorting edges")
     sorted_edges = sorted(list(graph.edges(data=True)),
                           key=lambda e: e[2][metric])
 
-    logger.info("Selecting shortest edges")
+    logger.debug("Selecting shortest edges")
     for u, v, data in sorted_edges:
         if unselected.has_edge(u, v):
             graph.edges[(u, v)][selected_key] = True

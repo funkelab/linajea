@@ -72,7 +72,7 @@ class Solver(object):
     def solve(self):
         solution, message = self.solver.solve()
         logger.info(message)
-        logger.info("costs of solution: %f", solution.get_value())
+        logger.debug("costs of solution: %f", solution.get_value())
 
         for v in self.graph.nodes:
             self.graph.nodes[v][self.selected_key] = solution[

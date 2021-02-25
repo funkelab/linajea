@@ -30,7 +30,8 @@ def load_config(config_file):
 
 
 def tracking_params_from_config(config):
-    solve_config = config['general']
+    solve_config = {}
+    solve_config.update(config['general'])
     solve_config.update(config['solve'])
     if 'version' not in solve_config:
         version = solve_config['singularity_image'].split(':')[-1]
