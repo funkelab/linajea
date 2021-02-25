@@ -50,13 +50,6 @@ parent_radius = [0.1, 16.0, 8.0, 8.0]
 rasterize_radius = [0.1, 16.0, 5.0, 5.0]
 parent_vectors_loss_transition = 50000
 
-[train.data.datafile]
-filename = "/nrs/funke/malinmayorc/120828/120828.n5"
-group='raw'
-[train.data.roi]
-offset = [0, 0, 0, 0]
-shape = [200, 175, 512, 712]
-
 [train.job]
 num_workers = 5
 queue = 'gpu_rtx'
@@ -109,6 +102,22 @@ var = [0.3]
 amount = [0.001]
 
 
+[train_data]
+voxel_size = [1, 5, 1, 1]
+[train_data.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]
+[[train_data.data_sources]] # this line is necessary for the [[ ]] syntax
+[train_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/FILE_A.n5"
+group='raw'
+
+[[train_data.data_sources]]
+[train_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/FILE_B.n5"
+group='raw'
+
+
 [optimizer]
 # optimizer = "GradientDescentOptimizer"
 # optimizer = "MomentumOptimizer"
@@ -122,26 +131,54 @@ beta2 = 0.999
 epsilon = 1e-8
 
 
-[test]
+[test_data]
 checkpoint = 100000
 cell_score_threshold = 0.4
-[test.data.datafile]
-filename = "/nrs/funke/malinmayorc/120828/120828.n5"
+voxel_size = [1, 5, 1, 1]
+[test_data.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]
+
+[[test_data.data_sources]]
+voxel_size = [1, 5, 1, 1]
+db_name = "linajea_some_db_name_test_A"
+[test_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/FILE_A.n5"
 group='raw'
-[test.data.roi]
+[test_data.data_sources.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]
+
+[[test_data.data_sources]]
+voxel_size = [1, 5, 1, 1]
+db_name = "linajea_some_db_name_test_B"
+[test_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/FILE_B.n5"
+group='raw'
+[test_data.data_sources.roi]
 offset = [0, 0, 0, 0]
 shape = [200, 385, 512, 712]
 
 
-[validate]
+[validate_data]
 checkpoints = [100000, 200000, 300000, 400000]
-cell_score_threshold = 0.3
-[validate.data.datafile]
-filename = "/nrs/funke/malinmayorc/120828/120828.n5"
-group='raw'
-[validate.data.roi]
+cell_score_threshold = 0.4
+voxel_size = [1, 5, 1, 1]
+[validate_data.roi]
 offset = [0, 0, 0, 0]
 shape = [200, 385, 512, 712]
+
+[[validate_data.data_sources]]
+db_name = "linajea_some_db_name_A"
+[validate_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/FILE_A.n5"
+group='raw'
+
+[[validate_data.data_sources]]
+db_name = "linajea_some_db_name_B"
+[validate_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/FILE_B.n5"
+group='raw'
 
 
 [predict]

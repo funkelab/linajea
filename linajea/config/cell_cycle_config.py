@@ -8,10 +8,11 @@ from .evaluate import EvaluateCellCycleConfig
 from .general import GeneralConfig
 from .optimizer import OptimizerConfig
 from .predict import PredictCellCycleConfig
-from .test import TestCellCycleConfig
+from .train_test_validate_data import (TestDataCellCycleConfig,
+                                       TrainDataCellCycleConfig,
+                                       ValidateDataCellCycleConfig)
 from .train import TrainCellCycleConfig
 from .utils import ensure_cls
-from .validate import ValidateCellCycleConfig
 
 
 def model_converter():
@@ -35,8 +36,9 @@ class CellCycleConfig:
     model = attr.ib(converter=model_converter())
     optimizer = attr.ib(converter=ensure_cls(OptimizerConfig))
     train = attr.ib(converter=ensure_cls(TrainCellCycleConfig))
-    test = attr.ib(converter=ensure_cls(TestCellCycleConfig))
-    validate = attr.ib(converter=ensure_cls(ValidateCellCycleConfig))
+    train_data = attr.ib(converter=ensure_cls(TrainDataCellCycleConfig))
+    test_data = attr.ib(converter=ensure_cls(TestDataCellCycleConfig))
+    validate_data = attr.ib(converter=ensure_cls(ValidateDataCellCycleConfig))
     predict = attr.ib(converter=ensure_cls(PredictCellCycleConfig))
     evaluate = attr.ib(converter=ensure_cls(EvaluateCellCycleConfig))
 

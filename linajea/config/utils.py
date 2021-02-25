@@ -36,6 +36,21 @@ def ensure_cls(cl):
     return converter
 
 
+def ensure_cls_list(cl):
+    """If the attribute is an list of instances of cls, pass, else try constructing."""
+    def converter(vals):
+        assert isinstance(vals, list), "list of {} expected".format(cl)
+        converted = []
+        for val in vals:
+            if isinstance(val, cl) or val is None:
+                converted.append(val)
+            else:
+                converted.append(cl(**val))
+
+        return converted
+    return converter
+
+
 def _check_nd_shape(ndims):
 
     def _check_shape(self, attribute, value):
