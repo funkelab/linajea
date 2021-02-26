@@ -59,8 +59,10 @@ class Solver(object):
         self.solver.set_constraints(all_constraints)
 
     def _create_solver(self):
-        self.solver = pylp.create_linear_solver(pylp.Preference.Gurobi)
-        self.solver.initialize(self.num_vars, pylp.VariableType.Binary)
+        self.solver = pylp.LinearSolver(
+                self.num_vars,
+                pylp.VariableType.Binary,
+                preference=pylp.Preference.Gurobi)
         self.solver.set_objective(self.objective)
         all_constraints = pylp.LinearConstraints()
         for c in self.main_constraints + self.pin_constraints:
@@ -375,38 +377,38 @@ class Solver(object):
 
     def _add_cell_cycle_constraints(self):
         # If an edge is selected, the division and child indicators are
-        # linked. Let e=(u,v) be an edge linking node u at time t to v in
-        # time t+1.
+        # linked. Let e=(u,v) be an edge linking node u at time t + 1 to v in
+        # time t.
         # Constraints:
-        # child(v) + selected(e) - split(u) <= 1
-        # split(u) + selected(e) - child(v) <= 1
+        # child(u) + selected(e) - split(v) <= 1
+        # split(v) + selected(e) - child(u) <= 1
 
         for e in self.graph.edges():
 
             # if e is selected, u and v have to be selected
             u, v = e
             ind_e = self.edge_selected[e]
-            split_u = self.node_split[u]
-            child_v = self.node_child[v]
+            split_v = self.node_split[v]
+            child_u = self.node_child[u]
 
             link_constraint_1 = pylp.LinearConstraint()
-            link_constraint_1.set_coefficient(child_v, 1)
+            link_constraint_1.set_coefficient(child_u, 1)
             link_constraint_1.set_coefficient(ind_e, 1)
-            link_constraint_1.set_coefficient(split_u, -1)
+            link_constraint_1.set_coefficient(split_v, -1)
             link_constraint_1.set_relation(pylp.Relation.LessEqual)
             link_constraint_1.set_value(1)
             self.main_constraints.append(link_constraint_1)
             link_constraint_2 = pylp.LinearConstraint()
-            link_constraint_2.set_coefficient(split_u, 1)
+            link_constraint_2.set_coefficient(split_v, 1)
             link_constraint_2.set_coefficient(ind_e, 1)
-            link_constraint_2.set_coefficient(child_v, -1)
+            link_constraint_2.set_coefficient(child_u, -1)
             link_constraint_2.set_relation(pylp.Relation.LessEqual)
             link_constraint_2.set_value(1)
             self.main_constraints.append(link_constraint_2)
 
         # Every selected node must be a split, child or continuation
         # (exclusively). If a node is not selected, all the cell cycle
-        # indicators should not be set.
+        # indicators should be zero.
         # Constraint for each node:
         # split + child + continuation - selected = 0
         for node in self.graph.nodes():
@@ -418,3 +420,4 @@ class Solver(object):
             cycle_set_constraint.set_coefficient(self.node_selected[node], -1)
             cycle_set_constraint.set_relation(pylp.Relation.Equal)
             cycle_set_constraint.set_value(0)
+            self.main_constraints.append(cycle_set_constraint)
