@@ -184,10 +184,11 @@ group='raw'
 
 
 [predict]
-path_to_script = "test"
+path_to_script = "predict_celegans.py"
 write_to_zarr = false
 write_to_db = true
 processes_per_worker = 4
+output_zarr_prefix = "/nrs/funke/hirschp/linajea_experiments"
 
 [predict.job]
 num_workers = 16

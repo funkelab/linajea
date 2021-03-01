@@ -14,6 +14,7 @@ class PredictTrackingConfig(PredictConfig):
     write_to_zarr = attr.ib(type=bool, default=False)
     write_to_db = attr.ib(type=bool, default=True)
     processes_per_worker = attr.ib(type=int, default=1)
+    output_zarr_prefix = attr.ib(type=str, default=".")
 
 
 @attr.s(kw_only=True)

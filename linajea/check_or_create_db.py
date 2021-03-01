@@ -4,18 +4,26 @@ import os
 import pymongo
 
 
-def checkOrCreateDB(config, sample, create_if_not_found=True):
-    db_host = config['general']['db_host']
+def checkOrCreateDB(db_host, setup_dir, sample, checkpoint,
+                    cell_score_threshold, prefix="linajea_",
+                    create_if_not_found=True):
+    db_host = db_host
 
     info = {}
-    info["setup_dir"] = os.path.basename(config['general']['setup_dir'])
-    info["iteration"] = config['prediction']['iteration']
-    info["cell_score_threshold"] = config['prediction']['cell_score_threshold']
+    info["setup_dir"] = os.path.basename(setup_dir)
+    info["iteration"] = checkpoint
+    info["cell_score_threshold"] = cell_score_threshold
     info["sample"] = os.path.basename(sample)
 
+    return checkOrCreateDBMeta(db_host, info, prefix=prefix,
+                               create_if_not_found=create_if_not_found)
+
+
+def checkOrCreateDBMeta(db_host, db_meta_info, prefix="linajea_",
+                        create_if_not_found=True):
     client = pymongo.MongoClient(host=db_host)
     for db_name in client.list_database_names():
-        if not db_name.startswith("linajea_celegans_"):
+        if not db_name.startswith(prefix):
             continue
 
         db = client[db_name]
@@ -34,7 +42,7 @@ def checkOrCreateDB(config, sample, create_if_not_found=True):
             assert query_result == 1
             query_result = db["db_meta_info"].find_one()
             del query_result["_id"]
-            if query_result == info:
+            if query_result == db_meta_info:
                 break
     else:
         if not create_if_not_found:
@@ -42,6 +50,6 @@ def checkOrCreateDB(config, sample, create_if_not_found=True):
         db_name = "linajea_celegans_{}".format(
             datetime.datetime.now(tz=datetime.timezone.utc).strftime(
                 '%Y%m%d_%H%M%S'))
-        client[db_name]["db_meta_info"].insert_one(info)
+        client[db_name]["db_meta_info"].insert_one(db_meta_info)
 
     return db_name

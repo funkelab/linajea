@@ -1,10 +1,10 @@
 import os
 
 
-def construct_zarr_filename(config, sample):
+def construct_zarr_filename(config, sample, checkpoint):
     return os.path.join(
-        config['general']['output_zarr_prefix'],
-        os.path.basename(config['general']['setup_dir']),
+        config.predict.output_zarr_prefix,
+        config.general.setup,
         os.path.basename(sample) +
         'predictions' +
-        str(config['prediction']['iteration']) + '.zarr')
+        str(checkpoint) + '.zarr')
