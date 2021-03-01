@@ -2,7 +2,8 @@ import attr
 from typing import List
 
 from .job import JobConfig
-from .utils import ensure_cls
+from .utils import (ensure_cls,
+                    ensure_cls_list)
 
 
 @attr.s(kw_only=True)
@@ -24,4 +25,4 @@ class SolveParametersConfig:
 class SolveConfig:
     job = attr.ib(converter=ensure_cls(JobConfig))
     from_scratch = attr.ib(type=bool, default=False)
-    parameters = attr.ib(converter=ensure_cls(SolveParametersConfig))
+    parameters = attr.ib(converter=ensure_cls_list(SolveParametersConfig))
