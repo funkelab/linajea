@@ -49,13 +49,18 @@ class AugmentJitterConfig:
 
 @attr.s(kw_only=True)
 class AugmentConfig:
-    elastic = attr.ib(converter=ensure_cls(AugmentElasticConfig))
+    elastic = attr.ib(converter=ensure_cls(AugmentElasticConfig),
+                      default=None)
     shift = attr.ib(converter=ensure_cls(AugmentShiftConfig),
                     default=None)
-    intensity = attr.ib(converter=ensure_cls(AugmentIntensityConfig))
-    simple = attr.ib(converter=ensure_cls(AugmentSimpleConfig))
-    noise_gaussian = attr.ib(converter=ensure_cls(AugmentNoiseGaussianConfig))
-    noise_saltpepper = attr.ib(converter=ensure_cls(AugmentNoiseSaltPepperConfig))
+    intensity = attr.ib(converter=ensure_cls(AugmentIntensityConfig),
+                        default=None)
+    simple = attr.ib(converter=ensure_cls(AugmentSimpleConfig),
+                     default=None)
+    noise_gaussian = attr.ib(converter=ensure_cls(AugmentNoiseGaussianConfig),
+                             default=None)
+    noise_saltpepper = attr.ib(converter=ensure_cls(AugmentNoiseSaltPepperConfig),
+                               default=None)
 
 
 @attr.s(kw_only=True)
@@ -68,4 +73,5 @@ class AugmentTrackingConfig(AugmentConfig):
 
 @attr.s(kw_only=True)
 class AugmentCellCycleConfig(AugmentConfig):
-    jitter = attr.ib(converter=ensure_cls(AugmentJitterConfig))
+    jitter = attr.ib(converter=ensure_cls(AugmentJitterConfig),
+                     default=None)
