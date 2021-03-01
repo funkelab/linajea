@@ -5,6 +5,7 @@ logging = 20
 seed = 42
 
 [model]
+path_to_script = "mknet_celegans.py"
 train_input_shape = [
     7,
     40,
@@ -32,6 +33,7 @@ cell_indicator_weighted = true
 
 
 [train]
+path_to_script = "train_celegans.py"
 cache_size = 10
 checkpoint_stride = 10000
 snapshot_stride = 1000
