@@ -22,17 +22,24 @@ class DataFileConfig:
 
     def __attrs_post_init__(self):
         if os.path.splitext(self.filename)[1] in (".n5", ".zarr"):
-            # TODO: use daisy to load info from file
-            self.file_roi = DataROIConfig(offset=[0, 0, 0, 0],
-                                          shape=[250, 500, 500, 500])
-            self.file_voxel_size = [1, 5, 1, 1]
+            if "nested" in self.group:
+                store = zarr.NestedDirectoryStore(self.filename)
+            else:
+                store = self.filename
+            container = zarr.open(store)
+            attributes = zarr_container[self.group].attrs
+
+            self.file_voxel_size = attributes.voxel_size
+            self.file_roi = DataROIConfig(offset=attributes.offset,
+                                          shape=attributes.shape)  # type: ignore
         else:
             data_config = load_config(os.path.join(self.filename,
                                                    "data_config.toml"))
-            self.file_voxel_size = data_config['general']['voxel_size']
+            self.file_voxel_size = data_config['general']['resolution']
             self.file_roi = DataROIConfig(
-                offset=data_config['general']['shape'],
-                shape=data_config['general']['shape'])
+                offset=data_config['general']['offset'],
+                shape=[s*v for s,v in zip(data_config['general']['shape'],
+                                          self.file_voxel_size)])  # type: ignore
             if self.group is None:
                 self.group = data_config['general']['group']
 
@@ -45,7 +52,7 @@ class DataDBMetaConfig:
 
 
 @attr.s(kw_only=True)
-class DataConfig:
+class DataSourceConfig:
     datafile = attr.ib(converter=ensure_cls(DataFileConfig))
     db_name = attr.ib(type=str, default=None)
     voxel_size = attr.ib(type=List[int], default=None)
