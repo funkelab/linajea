@@ -19,14 +19,15 @@ def use_radius_converter():
 
 @attr.s(kw_only=True)
 class TrainConfig:
+    path_to_script = attr.ib(type=str)
     job = attr.ib(converter=ensure_cls(JobConfig))
     cache_size = attr.ib(type=int)
     max_iterations = attr.ib(type=int)
     checkpoint_stride = attr.ib(type=int)
     snapshot_stride = attr.ib(type=int)
     profiling_stride = attr.ib(type=int)
-    use_tf_data = attr.ib(type=bool)
-    use_auto_mixed_precision = attr.ib(type=bool)
+    use_tf_data = attr.ib(type=bool, default=False)
+    use_auto_mixed_precision = attr.ib(type=bool, default=False)
     val_log_step = attr.ib(type=int)
 
 

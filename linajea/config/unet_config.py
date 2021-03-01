@@ -10,6 +10,7 @@ from .utils import (ensure_cls,
 
 @attr.s(kw_only=True)
 class UnetConfig:
+    path_to_script = attr.ib(type=str)
     # shape -> voxels, size -> world units
     train_input_shape = attr.ib(type=List[int],
                                 validator=[_int_list_validator,
