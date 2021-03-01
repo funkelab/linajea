@@ -14,7 +14,8 @@ from .job import JobConfig
 # from .linajea_config import LinajeaConfig
 from .predict import (PredictCellCycleConfig,
                       PredictTrackingConfig)
-from .solve import SolveConfig
+from .solve import (SolveConfig,
+                    SolveParametersConfig)
 from .tracking_config import TrackingConfig
 # from .test import (TestTrackingConfig,
 #                    TestCellCycleConfig)

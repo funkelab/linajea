@@ -119,7 +119,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             for _id in parameter_ids:
                 daisy_coll_name = 'solve_' + str(_id) + '_daisy'
                 self.database.drop_collection(daisy_coll_name)
-        logger.info("Resetting soln for parameter_ids %s in roi %s took %d seconds",
+        logger.info("Resetting solution for parameter_ids %s in roi %s took %d seconds",
                     parameter_ids, roi, time.time() - start_time)
 
     def get_parameters_id(
