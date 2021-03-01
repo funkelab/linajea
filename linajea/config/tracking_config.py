@@ -8,7 +8,8 @@ from .optimizer import OptimizerConfig
 from .predict import PredictTrackingConfig
 from .solve import SolveConfig
 # from .test import TestTrackingConfig
-from .train_test_validate_data import (TestDataTrackingConfig,
+from .train_test_validate_data import (InferenceDataTrackingConfig,
+                                       TestDataTrackingConfig,
                                        TrainDataTrackingConfig,
                                        ValidateDataTrackingConfig)
 from .train import TrainTrackingConfig
@@ -26,6 +27,7 @@ class TrackingConfig:
     train_data = attr.ib(converter=ensure_cls(TrainDataTrackingConfig))
     test_data = attr.ib(converter=ensure_cls(TestDataTrackingConfig))
     validate_data = attr.ib(converter=ensure_cls(ValidateDataTrackingConfig))
+    inference = attr.ib(converter=ensure_cls(InferenceDataTrackingConfig), default=None)
     predict = attr.ib(converter=ensure_cls(PredictTrackingConfig))
     extract = attr.ib(converter=ensure_cls(ExtractConfig))
     solve = attr.ib(converter=ensure_cls(SolveConfig))
@@ -34,4 +36,5 @@ class TrackingConfig:
     @classmethod
     def from_file(cls, path):
         config_dict = load_config(path)
-        return cls(path=path, **config_dict) # type: ignore
+        config_dict["path"] = path
+        return cls(**config_dict) # type: ignore

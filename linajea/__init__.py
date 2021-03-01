@@ -7,3 +7,4 @@ from .parse_tracks_file import parse_tracks_file
 from .construct_zarr_filename import construct_zarr_filename
 from .check_or_create_db import checkOrCreateDB
 from .datasets import get_source_roi
+from .get_next_inference_data import getNextInferenceData
