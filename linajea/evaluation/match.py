@@ -222,8 +222,10 @@ def match(costs, no_match_cost):
         sum_to_one.set_value(1.0)
         constraints.add(sum_to_one)
 
-    solver = pylp.create_linear_solver(pylp.Preference.Gurobi)
-    solver.initialize(num_variables, pylp.VariableType.Binary)
+    solver = pylp.LinearSolver(
+            num_variables,
+            pylp.VariableType.Binary,
+            preference=pylp.Preference.Gurobi)
     solver.set_objective(objective)
     solver.set_constraints(constraints)
     solver.set_num_threads(1)

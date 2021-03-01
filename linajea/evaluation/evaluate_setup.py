@@ -46,6 +46,7 @@ def evaluate_setup(
     if frames:
         begin, end = frames
         crop_roi = daisy.Roi(
+            (begin, None, None, None),
             (end - begin, None, None, None))
         source_roi = source_roi.intersect(crop_roi)
 

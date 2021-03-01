@@ -55,8 +55,10 @@ class Solver(object):
         self.solver.set_constraints(all_constraints)
 
     def _create_solver(self):
-        self.solver = pylp.create_linear_solver(pylp.Preference.Gurobi)
-        self.solver.initialize(self.num_vars, pylp.VariableType.Binary)
+        self.solver = pylp.LinearSolver(
+                self.num_vars,
+                pylp.VariableType.Binary,
+                preference=pylp.Preference.Gurobi)
         self.solver.set_objective(self.objective)
         all_constraints = pylp.LinearConstraints()
         for c in self.main_constraints + self.pin_constraints:
