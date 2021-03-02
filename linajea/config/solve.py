@@ -26,3 +26,15 @@ class SolveConfig:
     job = attr.ib(converter=ensure_cls(JobConfig))
     from_scratch = attr.ib(type=bool, default=False)
     parameters = attr.ib(converter=ensure_cls_list(SolveParametersConfig))
+
+    def __attrs_post_init__(self):
+        # block size and context must be the same for all parameters!
+        block_size = self.parameters[0].block_size
+        context = self.parameters[0].context
+        for i in range(len(self.parameters)):
+            assert block_size == self.parameters[i].block_size, \
+                "%s not equal to %s" %\
+                (block_size, self.parameters[i].block_size)
+            assert context == self.parameters[i].context, \
+                "%s not equal to %s" %\
+                (context, self.parameters[i].context)
