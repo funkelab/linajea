@@ -101,7 +101,16 @@ class WriteCells(gp.BatchFilter):
                     cell_id, score, parent_vector))
 
         if len(cells) > 0:
-            self.cells.insert_many(cells)
+            from pymongo.errors import BulkWriteError
+            try:
+                self.cells.insert_many(cells)
+                # bulk.execute()
+            except BulkWriteError as bwe:
+                print(bwe.details)
+                #you can also take this component and do more analysis
+                #werrors = bwe.details['writeErrors']
+                raise
+
 
     def get_avg_pv(parent_vectors, index, edge_length):
         ''' Computes the average parent vector offset from the parent vectors
