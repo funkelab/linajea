@@ -33,6 +33,10 @@ class UnetConfig:
     nms_window_shape = attr.ib(type=List[int],
                                validator=[_int_list_validator,
                                           _check_nd_shape(3)])
+    nms_window_shape_test = attr.ib(
+        type=List[int], default=None,
+        validator=attr.validators.optional([_int_list_validator,
+                                            _check_nd_shape(3)]))
     average_vectors = attr.ib(type=bool, default=False)
     unet_style = attr.ib(type=str, default='split')
     num_fmaps = attr.ib(type=int)
