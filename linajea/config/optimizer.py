@@ -22,3 +22,9 @@ class OptimizerConfig:
     optimizer = attr.ib(type=str, default="AdamOptimizer")
     args = attr.ib(converter=ensure_cls(OptimizerArgsConfig))
     kwargs = attr.ib(converter=ensure_cls(OptimizerKwargsConfig))
+
+    def get_args(self):
+        return [v for v in attr.astuple(self.args) if v is not None]
+
+    def get_kwargs(self):
+        return {a:v for a,v in attr.asdict(self.kwargs).items() if v is not None}
