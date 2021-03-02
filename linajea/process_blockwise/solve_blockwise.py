@@ -13,14 +13,9 @@ logger = logging.getLogger(__name__)
 
 def solve_blockwise(linajea_config):
     parameters = linajea_config.solve.parameters
+    # block_size/context are identical for all parameters
     block_size = daisy.Coordinate(parameters[0].block_size)
     context = daisy.Coordinate(parameters[0].context)
-    # block size and context must be the same for all parameters!
-    for i in range(len(parameters)):
-        assert list(block_size) == parameters[i].block_size,\
-                "%s not equal to %s" %\
-                (block_size, parameters[i].block_size)
-        assert list(context) == parameters[i].context
 
     data = linajea_config.inference.data_source
     db_name = data.db_name
