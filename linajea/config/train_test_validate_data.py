@@ -31,6 +31,10 @@ class DataConfig():
                 if self.group is None:
                     raise ValueError("no {group} supplied for data source")
                 d.datafile.group = self.group
+        assert all(ds.voxel_size == self.data_sources[0].voxel_size
+                   for ds in self.data_sources), \
+                       "data sources with varying voxel_size not supported"
+
     voxel_size = attr.ib(type=List[int], default=None)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
     group = attr.ib(type=str, default=None)
