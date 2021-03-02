@@ -20,8 +20,8 @@ def extract_edges_blockwise(linajea_config):
                             shape=data.roi.shape)
     # allow for solve context
     extract_roi = extract_roi.grow(
-            daisy.Coordinate(linajea_config.solve.parameters.context),
-            daisy.Coordinate(linajea_config.solve.parameters.context))
+            daisy.Coordinate(linajea_config.solve.parameters[0].context),
+            daisy.Coordinate(linajea_config.solve.parameters[0].context))
     # but limit to actual file roi
     extract_roi = extract_roi.intersect(
         daisy.Roi(offset=data.datafile.file_roi.offset,

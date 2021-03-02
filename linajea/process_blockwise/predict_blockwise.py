@@ -24,8 +24,8 @@ def predict_blockwise(linajea_config):
                             shape=data.roi.shape)
     # allow for solve context
     predict_roi = predict_roi.grow(
-            daisy.Coordinate(linajea_config.solve.parameters.context),
-            daisy.Coordinate(linajea_config.solve.parameters.context))
+            daisy.Coordinate(linajea_config.solve.parameters[0].context),
+            daisy.Coordinate(linajea_config.solve.parameters[0].context))
     # but limit to actual file roi
     predict_roi = predict_roi.intersect(
         daisy.Roi(offset=data.datafile.file_roi.offset,
@@ -46,13 +46,25 @@ def predict_blockwise(linajea_config):
     input_roi = predict_roi.grow(context, context)
     output_roi = predict_roi
 
+    # create read and write ROI
+    block_write_roi = daisy.Roi((0, 0, 0, 0), net_output_size)
+    block_read_roi = block_write_roi.grow(context, context)
+
+    output_zarr = construct_zarr_filename(linajea_config,
+                                          data.datafile.filename,
+                                          linajea_config.inference.checkpoint)
+
+    if linajea_config.predict.write_db_from_zarr:
+        assert os.path.exists(output_zarr), \
+            "{} does not exist, cannot write to db from it!".format(output_zarr)
+        input_roi = output_roi
+        block_read_roi = block_write_roi
+
     # prepare output zarr, if necessary
     if linajea_config.predict.write_to_zarr:
-        output_zarr = construct_zarr_filename(linajea_config,
-                                              data.datafile.filename,
-                                              linajea_config.inference.checkpoint)
         parent_vectors_ds = 'volumes/parent_vectors'
         cell_indicator_ds = 'volumes/cell_indicator'
+        maxima_ds = 'volumes/maxima'
         output_path = os.path.join(setup_dir, output_zarr)
         logger.debug("Preparing zarr at %s" % output_path)
         daisy.prepare_ds(
@@ -71,12 +83,16 @@ def predict_blockwise(linajea_config):
                 dtype=np.float32,
                 write_size=net_output_size,
                 num_channels=1)
+        daisy.prepare_ds(
+                output_path,
+                maxima_ds,
+                output_roi,
+                voxel_size,
+                dtype=np.float32,
+                write_size=net_output_size,
+                num_channels=1)
 
-    # create read and write ROI
-    block_write_roi = daisy.Roi((0, 0, 0, 0), net_output_size)
-    block_read_roi = block_write_roi.grow(context, context)
-
-    logger.info("Following ROIs in world units:") 
+    logger.info("Following ROIs in world units:")
     logger.info("Input ROI       = %s", input_roi)
     logger.info("Block read  ROI = %s", block_read_roi)
     logger.info("Block write ROI = %s", block_write_roi)
@@ -86,34 +102,33 @@ def predict_blockwise(linajea_config):
     logger.info("Sample: %s", data.datafile.filename)
     logger.info("DB: %s", data.db_name)
 
+
     # process block-wise
+    cf = []
+    if linajea_config.predict.write_to_zarr:
+        cf.append(lambda b: check_function(
+            b,
+            'predict_zarr',
+            data.db_name,
+            linajea_config.general.db_host))
     if linajea_config.predict.write_to_db:
-        daisy.run_blockwise(
-            input_roi,
-            block_read_roi,
-            block_write_roi,
-            process_function=lambda: predict_worker(
-                linajea_config),
-            check_function=lambda b: check_function(
-                b,
-                'predict',
-                data.db_name,
-                linajea_config.general.db_host),
-            num_workers=linajea_config.predict.job.num_workers,
-            read_write_conflict=False,
-            max_retries=0,
-            fit='valid')
-    else:
-        daisy.run_blockwise(
-            input_roi,
-            block_read_roi,
-            block_write_roi,
-            process_function=lambda: predict_worker(
-                linajea_config),
-            num_workers=linajea_config.predict.job.num_workers,
-            read_write_conflict=False,
-            max_retries=0,
-            fit='valid')
+        cf.append(lambda b: check_function(
+            b,
+            'predict_db',
+            data.db_name,
+            linajea_config.general.db_host))
+
+    # process block-wise
+    daisy.run_blockwise(
+        input_roi,
+        block_read_roi,
+        block_write_roi,
+        process_function=lambda: predict_worker(linajea_config),
+        check_function=lambda b: all([f(b) for f in cf]),
+        num_workers=linajea_config.predict.job.num_workers,
+        read_write_conflict=False,
+        max_retries=0,
+        fit='overhang')
 
 
 def predict_worker(linajea_config):
@@ -129,9 +144,13 @@ def predict_worker(linajea_config):
     else:
         image = None
 
+    if linajea_config.predict.write_db_from_zarr:
+        path_to_script = linajea_config.predict.path_to_script_db_from_zarr
+    else:
+        path_to_script = linajea_config.predict.path_to_script
     cmd = run(
             command='python -u %s --config %s' % (
-                linajea_config.predict.path_to_script,
+                path_to_script,
                 linajea_config.path),
             queue=job.queue,
             num_gpus=1,
