@@ -126,7 +126,7 @@ class CandidateDatabase(MongoDbGraphProvider):
 
     def get_parameters_id(
             self,
-            tracking_parameters,
+            parameters,
             fail_if_not_exists=False):
         '''Get id for parameter set from mongo collection.
         If fail_if_not_exists, fail if the parameter set isn't already there.
@@ -137,28 +137,24 @@ class CandidateDatabase(MongoDbGraphProvider):
         params_id = None
         try:
             params_collection = self.database['parameters']
-            params_dict = tracking_parameters.__dict__
-            params_dict = {key: val
-                           for key, val in params_dict.items()
-                           if val is not None}
-            cnt = params_collection.count_documents(params_dict)
+            query = parameters.query()
+            cnt = params_collection.count_documents(query)
             if fail_if_not_exists:
                 assert cnt > 0, "Did not find id for parameters %s"\
-                    " and fail_if_not_exists set to True" % params_dict
-            if cnt > 1:
-                raise RuntimeError("multiple documents found in db"
-                                   " for these parameters: %s", params_dict)
-            elif cnt == 1:
-                find_result = params_collection.find_one(params_dict)
+                    " and fail_if_not_exists set to True" % query
+            assert cnt <= 1, RuntimeError("multiple documents found in db"
+                                          " for these parameters: %s", query)
+            if cnt == 1:
+                find_result = params_collection.find_one(query)
                 logger.info("Parameters %s already in collection with id %d"
-                            % (params_dict, find_result['_id']))
+                            % (query, find_result['_id']))
                 params_id = find_result['_id']
             else:
-                params_id = self.insert_with_next_id(params_dict,
+                params_id = self.insert_with_next_id(parameters.valid(),
                                                      params_collection)
                 logger.info("Parameters %s not yet in collection,"
                             " adding with id %d",
-                            params_dict, params_id)
+                            query, params_id)
         finally:
             self._MongoDbGraphProvider__disconnect()
 
@@ -211,7 +207,7 @@ class CandidateDatabase(MongoDbGraphProvider):
         self.selected_key = 'selected_' + str(self.parameters_id)
         logger.debug("Set selected_key to %s" % self.selected_key)
 
-    def get_score(self, parameters_id, frames=None):
+    def get_score(self, parameters_id, eval_params=None):
         '''Returns the score for the given parameters_id, or
         None if no score available'''
         self._MongoDbGraphProvider__connect()
@@ -219,28 +215,26 @@ class CandidateDatabase(MongoDbGraphProvider):
         score = None
 
         try:
-            if frames is None:
-                score_collection = self.database['scores']
-                old_score = score_collection.find_one({'_id': parameters_id})
-            else:
+            score_collection = self.database['scores']
+            # for backwards compatibility
+            if eval_params.frame_start is not None:
                 score_collection = self.database[
-                    'scores'+"_".join(str(f) for f in frames)]
-                old_score = score_collection.find_one(
-                    {'param_id': parameters_id,
-                     'frame_start': frames[0],
-                     'frame_end': frames[1]})
-            if old_score:
-                if frames is None:
-                    del old_score['_id']
-                else:
-                    del old_score['param_id']
-                score = old_score
+                    'scores_' +
+                    str(eval_params.frame_start) + "_" +
+                    str(eval_params.frame_end)]
 
+            query = {'param_id': parameters_id}
+            query.update(eval_params.valid())
+            old_score = score_collection.find_one(query)
+            if old_score:
+                del old_score['_id']
+                score = old_score
+                logger.info("loaded score for %s", query)
         finally:
             self._MongoDbGraphProvider__disconnect()
         return score
 
-    def get_scores(self, frames=None, filters=None):
+    def get_scores(self, frames=None, filters=None, eval_params=None):
         '''Returns the a list of all score dictionaries or
         None if no score available'''
         self._MongoDbGraphProvider__connect()
@@ -252,24 +246,27 @@ class CandidateDatabase(MongoDbGraphProvider):
             else:
                 query = {}
 
-            if frames is None:
-                score_collection = self.database['scores']
-                scores = list(score_collection.find(query))
-
-            else:
+            score_collection = self.database['scores']
+            # for backwards compatibility
+            if eval_params.frame_start is not None:
                 score_collection = self.database[
-                    'scores'+"_".join(str(f) for f in frames)]
-                scores = list(score_collection.find(query))
+                    'scores_' +
+                    str(eval_params.frame_start) + "_" +
+                    str(eval_params.frame_end)]
+
+            query.update(eval_params.valid())
+            scores = list(score_collection.find(query))
             logger.debug("Found %d scores" % len(scores))
-            if frames is None:
-                for score in scores:
+            # for backwards compatibility
+            for score in scores:
+                if 'param_id' not in score:
                     score['param_id'] = score['_id']
 
         finally:
             self._MongoDbGraphProvider__disconnect()
         return scores
 
-    def write_score(self, parameters_id, report, frames=None):
+    def write_score(self, parameters_id, report, eval_params=None):
         '''Writes the score for the given parameters_id to the
         scores collection, along with the associated parameters'''
         parameters = self.get_parameters(parameters_id)
@@ -280,30 +277,28 @@ class CandidateDatabase(MongoDbGraphProvider):
         self._MongoDbGraphProvider__connect()
         self._MongoDbGraphProvider__open_db()
         try:
-
-            if frames is None:
-                score_collection = self.database['scores']
-                eval_dict = {'_id': parameters_id}
-            else:
+            score_collection = self.database['scores']
+            # for backwards compatibility
+            if eval_params.frame_start is not None:
                 score_collection = self.database[
-                    'scores'+"_".join(str(f) for f in frames)]
-                eval_dict = {'param_id': parameters_id}
-            if parameters is not None:
-                eval_dict.update(parameters)
-            logger.info("%s  %s", frames, eval_dict)
-            eval_dict.update(report.__dict__)
-            if frames is None:
-                score_collection.replace_one({'_id': parameters_id},
-                                             eval_dict,
-                                             upsert=True)
-            else:
-                eval_dict.update({'frame_start': frames[0],
-                                  'frame_end': frames[1]})
-                score_collection.replace_one({'param_id': parameters_id,
-                                              'frame_start': frames[0],
-                                              'frame_end': frames[1]},
-                                             eval_dict,
-                                             upsert=True)
+                    'scores_' +
+                    str(eval_params.frame_start) + "_" +
+                    str(eval_params.frame_end)]
+
+            query = {'param_id': parameters_id}
+            query.update(eval_params.valid())
+
+            cnt = score_collection.count_documents(query)
+            assert cnt <= 1, "multiple scores for query %s exist, don't know which to overwrite" % query
+
+            if parameters is None:
+                parameters = {}
+            logger.info("writing scores for %s to %s", parameters, query)
+            parameters.update(report.__dict__)
+            parameters.update(query)
+            score_collection.replace_one(query,
+                                         parameters,
+                                         upsert=True)
         finally:
             self._MongoDbGraphProvider__disconnect()
 
