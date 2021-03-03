@@ -11,12 +11,42 @@ from .utils import ensure_cls
 class _EvaluateParametersConfig:
     matching_threshold = attr.ib(type=int)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
-    frames = attr.ib(type=List[int])
+    # deprecated
+    frames = attr.ib(type=List[int], default=None)
+    # deprecated
+    frame_start = attr.ib(type=int, default=None)
+    # deprecated
+    frame_end = attr.ib(type=int, default=None)
+    # deprecated
+    limit_to_roi_offset = attr.ib(type=List[int], default=None)
+    # deprecated
+    limit_to_roi_shape = attr.ib(type=List[int], default=None)
+    # deprecated
+    sparse = attr.ib(type=bool)
+
+    def __attrs_post_init__(self):
+        if self.frames is not None and \
+           self.frame_start is None and self.frame_end is None:
+            self.frame_start = self.frames[0]
+            self.frame_end = self.frames[1]
+            self.frames = None
+
+    def valid(self):
+        return {key: val
+                for key, val in attr.asdict(self).items()
+                if val is not None}
+
+    def query(self):
+        params_dict_valid = self.valid()
+        params_dict_none = {key: {"$exists": False}
+                            for key, val in attr.asdict(self).items()
+                            if val is None}
+        query = {**params_dict_valid, **params_dict_none}
+        return query
 
 
 @attr.s(kw_only=True)
 class _EvaluateConfig:
-    gt_db_name = attr.ib(type=str)
     job = attr.ib(converter=ensure_cls(JobConfig), default=None)
 
 

@@ -141,6 +141,7 @@ shape = [200, 385, 512, 712]
 [[test_data.data_sources]]
 voxel_size = [1, 5, 1, 1]
 db_name = "linajea_some_db_name_test_A"
+gt_db_name = 'linajea_120828_gt_side_1'
 [test_data.data_sources.datafile]
 filename = "/nrs/funke/malinmayorc/120828/FILE_A.n5"
 group='raw'
@@ -151,6 +152,7 @@ shape = [200, 385, 512, 712]
 [[test_data.data_sources]]
 voxel_size = [1, 5, 1, 1]
 db_name = "linajea_some_db_name_test_B"
+gt_db_name = 'linajea_120828_gt_side_1'
 [test_data.data_sources.datafile]
 filename = "/nrs/funke/malinmayorc/120828/FILE_B.n5"
 group='raw'
@@ -169,12 +171,14 @@ shape = [200, 385, 512, 712]
 
 [[validate_data.data_sources]]
 db_name = "linajea_some_db_name_A"
+gt_db_name = 'linajea_120828_gt_side_1'
 [validate_data.data_sources.datafile]
 filename = "/nrs/funke/malinmayorc/120828/FILE_A.n5"
 group='raw'
 
 [[validate_data.data_sources]]
 db_name = "linajea_some_db_name_B"
+gt_db_name = 'linajea_120828_gt_side_1'
 [validate_data.data_sources.datafile]
 filename = "/nrs/funke/malinmayorc/120828/FILE_B.n5"
 group='raw'
@@ -200,7 +204,11 @@ queue = 'local'
 
 [solve]
 from_scratch = false
-[solve.parameters]
+[solve.job]
+num_workers = 8
+queue = 'cpu'
+
+[[solve.parameters]]
 cost_appear = 10000000000.0
 cost_disappear = 100000.0
 cost_split = 0
@@ -210,12 +218,8 @@ threshold_edge_score = 5
 weight_prediction_distance_cost = 1
 block_size = [ 5, 500, 500, 500,]
 context = [ 2, 100, 100, 100,]
-[solve.job]
-num_workers = 8
-queue = 'cpu'
 
 [evaluate]
-gt_db_name = 'linajea_120828_gt_side_1'
 from_scratch = true
 [evaluate.parameters]
 matching_threshold = 15
