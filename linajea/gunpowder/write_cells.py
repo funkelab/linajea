@@ -2,6 +2,7 @@ from funlib import math
 import gunpowder as gp
 import numpy as np
 import pymongo
+from pymongo.errors import BulkWriteError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -101,14 +102,10 @@ class WriteCells(gp.BatchFilter):
                     cell_id, score, parent_vector))
 
         if len(cells) > 0:
-            from pymongo.errors import BulkWriteError
             try:
                 self.cells.insert_many(cells)
-                # bulk.execute()
             except BulkWriteError as bwe:
-                print(bwe.details)
-                #you can also take this component and do more analysis
-                #werrors = bwe.details['writeErrors']
+                logger.error(bwe.details)
                 raise
 
 
