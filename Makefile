@@ -1,19 +1,13 @@
 default:
-	python setup.py install
-	-rm -rf dist build linajea.egg-info
-
-install-pip:
+	pip install -r requirements.txt
 	pip install .
-	-rm -rf dist build linajea.egg-info
-
-.PHONY: install-full
-install-full:
-	pip install .[full]
 	-rm -rf dist build linajea.egg-info
 
 .PHONY: install-dev
 install-dev:
-	pip install -e .[full]
+	pip install -r requirements.txt
+	pip install -r requirements-dev.txt
+	pip install -e .
 	-rm -rf dist build linajea.egg-info
 
 .PHONY: tests
