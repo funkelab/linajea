@@ -1,4 +1,5 @@
 from copy import deepcopy
+import logging
 import os
 import time
 
@@ -11,8 +12,11 @@ from linajea.config import (InferenceDataTrackingConfig,
                             SolveParametersConfig,
                             TrackingConfig)
 
+logger = logging.getLogger(__name__)
+
+
 # TODO: better name maybe?
-def getNextInferenceData(args, val_param_id=None):
+def getNextInferenceData(args, is_solve=False, is_evaluate=False):
     config = TrackingConfig.from_file(args.config)
 
     if args.validation:
@@ -25,31 +29,18 @@ def getNextInferenceData(args, val_param_id=None):
     if args.checkpoint > 0:
         checkpoints = [args.checkpoint]
 
-    if val_param_id is not None:
-        assert not args.validation, "use val_param_id to apply validation parameters with that ID to test set not validation set"
-
-        val_db_name = checkOrCreateDB(
-            config.general.db_host,
-            config.general.setup_dir,
-            config.validate_data.data_sources[0].datafile.filename,
-            checkpoints[0],
-            inference.cell_score_threshold)
-        val_db_name = checkOrCreateDB(config, val_sample)
-        val_db = CandidateDatabase(
-            val_db_name, config['general']['db_host'])
-        parameters = val_db.get_parameters(val_param_id)
-        logger.info("getting params %s (id: %s) from validation database %s (sample: %s)",
-                    parameters, val_param_id, val_db_name,
-                    config.validate_data.data_sources[0].datafile.filename)
-        solve_parameters = [SolveParametersConfig(**parameters)]
-        config.solve.parameters = solve_parameters
+    if is_solve and (args.param_id is not None or args.val_param_id is not None):
+        config = fix_solve_pid(args, config, checkpoints, inference)
+    if is_evaluate and args.param_id is not None:
+        config = fix_evaluate_pid(args, config, checkpoints, inference)
 
     max_cell_move = max(config.extract.edge_move_threshold.values())
-    for param_id in range(len(config.solve.parameters)):
-        if config.solve.parameters[param_id].max_cell_move is None:
-            config.solve.parameters[param_id].max_cell_move = max_cell_move
+    for pid in range(len(config.solve.parameters)):
+        if config.solve.parameters[pid].max_cell_move is None:
+            config.solve.parameters[pid].max_cell_move = max_cell_move
 
     os.makedirs("tmp_configs", exist_ok=True)
+    solve_parameters_sets = deepcopy(config.solve.parameters)
     for checkpoint in checkpoints:
         inference_data = {
             'checkpoint': checkpoint,
@@ -65,7 +56,73 @@ def getNextInferenceData(args, val_param_id=None):
                     inference.cell_score_threshold)
             inference_data['data_source'] = sample
             config.inference = InferenceDataTrackingConfig(**inference_data) # type: ignore
-            config.path = os.path.join("tmp_configs", "config_{}.toml".format(time.time()))
+            if is_solve or is_evaluate:
+                config = fix_solve_roi(config)
+
+            if is_evaluate:
+                config = fix_evaluate_roi(config)
+                for solve_parameters in solve_parameters_sets:
+                    config.solve.parameters = [solve_parameters]
+                    yield config
+                continue
+
+            config.path = os.path.join("tmp_configs", "config_{}.toml".format(
+                time.time()))
             with open(config.path, 'w') as f:
                 toml.dump(attr.asdict(config), f)
             yield config
+
+
+def fix_solve_pid(args, config, checkpoints, inference):
+    if args.param_id is not None:
+        assert len(checkpoints) == 1, "use param_id to reevaluate a single instance"
+        sample_name = inference.data_sources[0].datafile.filename,
+        pid = args.param_id
+    else:
+        assert not args.validation, "use val_param_id to apply validation parameters with that ID to test set not validation set"
+        sample_name = config.validate_data.data_sources[0].datafile.filename
+        pid = args.val_param_id
+
+    config = fix_solve_parameters_with_pid(config, sample_name, checkpoints[0],
+                                           inference, pid)
+
+    return config
+
+
+def fix_solve_roi(config):
+    for i in range(len(config.solve.parameters)):
+        config.solve.parameters[i].roi = config.inference.data_source.roi
+    return config
+
+
+def fix_evaluate_pid(args, config, checkpoints, inference):
+    assert len(checkpoints) == 1, "use param_id to reevaluate a single instance"
+    sample_name = inference.data_sources[0].datafile.filename,
+    pid = args.param_id
+
+    config = fix_solve_parameters_with_pid(config, sample_name, checkpoints[0],
+                                           inference, pid)
+    return config
+
+def fix_evaluate_roi(config):
+    if config.evaluate.parameters.roi is not None:
+        config.inference.data_source.roi = config.evaluate.parameters.roi
+    return config
+
+
+
+def fix_solve_parameters_with_pid(config, sample_name, checkpoint, inference,
+                                  pid):
+    db_name = checkOrCreateDB(
+        config.general.db_host,
+        config.general.setup_dir,
+        sample_name,
+        checkpoint,
+        inference.cell_score_threshold)
+    db = CandidateDatabase(db_name, config.general.db_host)
+    parameters = db.get_parameters(pid)
+    logger.info("getting params %s (id: %s) from validation database %s (sample: %s)",
+                parameters, pid, db_name, sample_name)
+    solve_parameters = [SolveParametersConfig(**parameters)] # type: ignore
+    config.solve.parameters = solve_parameters
+    return config
