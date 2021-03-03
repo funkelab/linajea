@@ -55,5 +55,6 @@ class DataDBMetaConfig:
 class DataSourceConfig:
     datafile = attr.ib(converter=ensure_cls(DataFileConfig))
     db_name = attr.ib(type=str, default=None)
+    gt_db_name = attr.ib(type=str, default=None)
     voxel_size = attr.ib(type=List[int], default=None)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)

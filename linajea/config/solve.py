@@ -1,6 +1,7 @@
 import attr
 from typing import List
 
+from .data import DataROIConfig
 from .job import JobConfig
 from .utils import (ensure_cls,
                     ensure_cls_list)
@@ -19,6 +20,20 @@ class SolveParametersConfig:
     context = attr.ib(type=List[int])
     # max_cell_move: currently use edge_move_threshold from extract
     max_cell_move = attr.ib(type=int, default=None)
+    roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
+
+    def valid(self):
+        return {key: val
+                for key, val in attr.asdict(self).items()
+                if val is not None}
+
+    def query(self):
+        params_dict_valid = self.valid()
+        params_dict_none = {key: {"$exists": False}
+                            for key, val in attr.asdict(self).items()
+                            if val is None}
+        query = {**params_dict_valid, **params_dict_none}
+        return query
 
 
 @attr.s(kw_only=True)
