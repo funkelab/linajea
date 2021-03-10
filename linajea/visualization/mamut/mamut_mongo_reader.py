@@ -57,13 +57,18 @@ class MamutMongoReader(MamutReader):
     def read_data(self, data):
 
         db_name = data['db_name']
+        print("DB name: ", db_name)
         group = data['group'] if 'group' in data else None
         if 'parameters_id' in data:
-            selected_key = 'selected_' + str(data['parameters_id'])
+            try:
+                int(data['parameters_id'])
+                selected_key = 'selected_' + str(data['parameters_id'])
+            except:
+                selected_key = data['parameters_id']
         else:
             selected_key = None
         frames = data['frames'] if 'frames' in data else None
-
+        print("Selected key: ", selected_key)
         nodes, edges = self.read_nodes_and_edges(
                 db_name,
                 frames=frames,

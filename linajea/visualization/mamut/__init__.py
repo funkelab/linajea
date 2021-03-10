@@ -4,6 +4,7 @@ from .mamut_writer import MamutWriter
 from .mamut_reader import MamutReader  
 from .mamut_mongo_reader import MamutMongoReader  
 from .mamut_matched_tracks_reader import MamutMatchedTracksReader
+from .mamut_file_reader import MamutFileReader
 from .mamut_xml_templates import (
         track_template,
         edge_template,
