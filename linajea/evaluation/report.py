@@ -29,6 +29,7 @@ class Report:
         self.f_score = None
         self.aeftl = None
         self.erl = None
+        self.validation_score = None
 
         # FAILURE POINTS
         self.fn_edge_list = None
@@ -180,3 +181,6 @@ class Report:
     def set_aeftl_and_erl(self, aeftl, erl):
         self.aeftl = aeftl
         self.erl = erl
+
+    def set_validation_score(self, validation_score):
+        self.validation_score = validation_score

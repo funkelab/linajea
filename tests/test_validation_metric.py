@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 class TestValidationMetric(unittest.TestCase):
-    tolerance_places = 4
+    tolerance_places = 2
 
     # One GT, one rec track
     def test_perfect(self):
