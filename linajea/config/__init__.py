@@ -23,4 +23,5 @@ from .train import (TrainTrackingConfig,
                     TrainCellCycleConfig)
 # from .validate import (ValidateConfig,
 #                        ValidateCellCycleConfig)
-from .train_test_validate_data import InferenceDataTrackingConfig
+from .train_test_validate_data import (InferenceDataTrackingConfig,
+                                       InferenceDataCellCycleConfig)
