@@ -41,6 +41,7 @@ class TrainTrackingConfig(TrainConfig):
     parent_vectors_loss_transition = attr.ib(type=int, default=50000)
     use_radius = attr.ib(type=Dict[int, int],
                          converter=use_radius_converter())
+    cell_density = attr.ib(default=None)
 
 
 @attr.s(kw_only=True)

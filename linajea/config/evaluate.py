@@ -57,12 +57,17 @@ class EvaluateTrackingConfig(_EvaluateConfig):
 
 
 @attr.s(kw_only=True)
+class _EvaluateParametersCellCycleConfig:
+    matching_threshold = attr.ib()
+    roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
+
+
+@attr.s(kw_only=True)
 class EvaluateCellCycleConfig(_EvaluateConfig):
     max_samples = attr.ib(type=int)
     metric = attr.ib(type=str)
-    use_database = attr.ib(type=bool, default=True)
     one_off = attr.ib(type=bool)
     prob_threshold = attr.ib(type=float)
     dry_run = attr.ib(type=bool)
     find_fn = attr.ib(type=bool)
-    parameters = attr.ib(converter=ensure_cls(_EvaluateParametersConfig))
+    parameters = attr.ib(converter=ensure_cls(_EvaluateParametersCellCycleConfig))
