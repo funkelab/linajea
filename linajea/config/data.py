@@ -2,6 +2,7 @@ import os
 from typing import List
 
 import attr
+import zarr
 
 from linajea import load_config
 from .utils import ensure_cls
@@ -27,7 +28,7 @@ class DataFileConfig:
             else:
                 store = self.filename
             container = zarr.open(store)
-            attributes = zarr_container[self.group].attrs
+            attributes = container[self.group].attrs
 
             self.file_voxel_size = attributes.voxel_size
             self.file_roi = DataROIConfig(offset=attributes.offset,
@@ -49,6 +50,7 @@ class DataDBMetaConfig:
     setup_dir = attr.ib(type=str, default=None)
     checkpoint = attr.ib(type=int)
     cell_score_threshold = attr.ib(type=float)
+    voxel_size = attr.ib(type=List[int], default=None)
 
 
 @attr.s(kw_only=True)

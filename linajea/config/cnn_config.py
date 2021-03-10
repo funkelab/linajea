@@ -10,6 +10,7 @@ from .utils import (ensure_cls,
 
 @attr.s(kw_only=True)
 class CNNConfig:
+    path_to_script = attr.ib(type=str)
     # shape -> voxels, size -> world units
     input_shape = attr.ib(type=List[int],
                           validator=[_int_list_validator,
@@ -26,16 +27,17 @@ class CNNConfig:
     use_global_pool = attr.ib(type=bool, default=True)
     use_conv4d = attr.ib(type=bool, default=True)
     num_classes = attr.ib(type=int, default=3)
+    classes = attr.ib(type=List[str])
+    class_ids = attr.ib(type=List[int])
     network_type = attr.ib(
         type=str,
         validator=attr.validators.in_(["vgg", "resnet", "efficientnet"]))
     make_isotropic = attr.ib(type=int, default=False)
-
+    regularizer_weight = attr.ib(type=float, default=None)
 
 @attr.s(kw_only=True)
 class VGGConfig(CNNConfig):
-    num_fmaps = attr.ib(type=List[int],
-                        validator=_int_list_validator)
+    num_fmaps = attr.ib(type=int)
     fmap_inc_factors = attr.ib(type=List[int],
                                validator=_int_list_validator)
     downsample_factors = attr.ib(type=List[List[int]],
@@ -53,6 +55,8 @@ class ResNetConfig(CNNConfig):
     num_blocks = attr.ib(default=None, type=List[int],
                          validator=_int_list_validator)
     use_bottleneck = attr.ib(default=None, type=bool)
+    num_fmaps = attr.ib(type=List[int],
+                        validator=_int_list_validator)
 
 
 @attr.s(kw_only=True)
