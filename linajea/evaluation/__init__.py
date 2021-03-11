@@ -1,6 +1,7 @@
 # flake8: noqa
 from .evaluate import evaluate
 from .match import match_edges
+from .match_nodes import match_nodes
 from .evaluate_setup import evaluate_setup
 from .report import Report
 from .validation_metric import validation_score
