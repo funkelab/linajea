@@ -82,7 +82,7 @@ def match_nodes(track_graph_x, track_graph_y, matching_threshold):
                 "Done matching frame %d, found %d matches",
                 t, len(node_matches_in_frame))
         node_matches.extend(node_matches_in_frame)
-    logger.info("Done matching, found %d matches and %d edge fps",
+    logger.info("Done matching, found %d matches total",
                 len(node_matches))
     return node_matches
 
