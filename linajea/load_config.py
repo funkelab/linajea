@@ -2,7 +2,7 @@ import json
 import toml
 import os.path
 import logging
-from linajea.tracking import TrackingParameters
+from linajea.tracking import TrackingParameters, NMTrackingParameters
 
 logger = logging.getLogger(__name__)
 
@@ -40,4 +40,7 @@ def tracking_params_from_config(config):
     solve_config.update({
         'max_cell_move': config['extract_edges']['edge_move_threshold']})
 
-    return TrackingParameters(**solve_config)
+    if 'cost_appear' in solve_config:
+        return NMTrackingParameters(**solve_config)
+    else:
+        return TrackingParameters(**solve_config)

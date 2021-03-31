@@ -5,15 +5,15 @@ import pylp
 logger = logging.getLogger(__name__)
 
 
-class Solver(object):
+class NMSolver(object):
     '''
     Class for initializing and solving the ILP problem for
     creating tracks from candidate nodes and edges using pylp.
-    This is the "minimal" version, simplified to minimize the
-    number of hyperparamters
+    This is the "non-minimal" (NM) version, or the original formulation before
+    we minimized the number of variables using assumptions about their
+    relationships
     '''
-    def __init__(self, track_graph, parameters, selected_key,
-                 vgg_key=None, frames=None):
+    def __init__(self, track_graph, parameters, selected_key, frames=None):
         # frames: [start_frame, end_frame] where start_frame is inclusive
         # and end_frame is exclusive. Defaults to track_graph.begin,
         # track_graph.end
@@ -21,7 +21,6 @@ class Solver(object):
         self.graph = track_graph
         self.parameters = parameters
         self.selected_key = selected_key
-        self.vgg_key = vgg_key
         self.start_frame = frames[0] if frames else self.graph.begin
         self.end_frame = frames[1] if frames else self.graph.end
 
@@ -30,53 +29,29 @@ class Solver(object):
         self.node_appear = {}
         self.node_disappear = {}
         self.node_split = {}
-        self.node_child = {}
-        self.node_continuation = {}
         self.pinned_edges = {}
 
         self.num_vars = None
         self.objective = None
-        self.main_constraints = []  # list of LinearConstraint objects
-        self.pin_constraints = []  # list of LinearConstraint objects
-        self.solver = None
+        self.constraints = None
+
+    def solve(self):
 
         self._create_indicators()
         self._set_objective()
         self._add_constraints()
-        self._create_solver()
 
-    def update_objective(self, parameters, selected_key):
-        self.parameters = parameters
-        self.selected_key = selected_key
+        solver = pylp.create_linear_solver(pylp.Preference.Gurobi)
+        solver.initialize(self.num_vars, pylp.VariableType.Binary)
 
-        self._set_objective()
-        self.solver.set_objective(self.objective)
+        solver.set_objective(self.objective)
+        solver.set_constraints(self.constraints)
 
-        self.pinned_edges = {}
-        self.pin_constraints = []
-        self._add_pin_constraints()
-        all_constraints = pylp.LinearConstraints()
-        for c in self.main_constraints + self.pin_constraints:
-            all_constraints.add(c)
-        self.solver.set_constraints(all_constraints)
-
-    def _create_solver(self):
-        self.solver = pylp.LinearSolver(
-                self.num_vars,
-                pylp.VariableType.Binary,
-                preference=pylp.Preference.Gurobi)
-        self.solver.set_objective(self.objective)
-        all_constraints = pylp.LinearConstraints()
-        for c in self.main_constraints + self.pin_constraints:
-            all_constraints.add(c)
-        self.solver.set_constraints(all_constraints)
-        self.solver.set_num_threads(1)
-        self.solver.set_timeout(120)
-
-    def solve(self):
-        solution, message = self.solver.solve()
+        solver.set_num_threads(1)
+        solver.set_timeout(120)
+        solution, message = solver.solve()
         logger.info(message)
-        logger.debug("costs of solution: %f", solution.get_value())
+        logger.info("costs of solution: %f", solution.get_value())
 
         for v in self.graph.nodes:
             self.graph.nodes[v][self.selected_key] = solution[
@@ -100,9 +75,7 @@ class Solver(object):
             self.node_appear[node] = self.num_vars + 1
             self.node_disappear[node] = self.num_vars + 2
             self.node_split[node] = self.num_vars + 3
-            self.node_child[node] = self.num_vars + 4
-            self.node_continuation[node] = self.num_vars + 5
-            self.num_vars += 6
+            self.num_vars += 4
 
         for edge in self.graph.edges():
             self.edge_selected[edge] = self.num_vars
@@ -114,39 +87,29 @@ class Solver(object):
 
         objective = pylp.LinearObjective(self.num_vars)
 
-        # node selection and cell cycle costs
-        for node in self.graph.nodes:
-            objective.set_coefficient(
-                self.node_selected[node],
-                self._node_costs(node))
-            objective.set_coefficient(
-                self.node_split[node],
-                self._split_costs(node))
-            objective.set_coefficient(
-                self.node_child[node],
-                self._child_costs(node))
-            objective.set_coefficient(
-                self.node_continuation[node],
-                self._continuation_costs(node))
-
-        # edge selection costs
-        for edge in self.graph.edges():
-            objective.set_coefficient(
-                self.edge_selected[edge],
-                self._edge_costs(edge))
-
         # node appear (skip first frame)
         for t in range(self.start_frame + 1, self.end_frame):
             for node in self.graph.cells_by_frame(t):
                 objective.set_coefficient(
                     self.node_appear[node],
-                    self.parameters.track_cost)
+                    self.parameters.cost_appear)
         for node in self.graph.cells_by_frame(self.start_frame):
             objective.set_coefficient(
                 self.node_appear[node],
                 0)
 
-        # remove node appear costs at edge of roi
+        # node disappear (skip last frame)
+        for t in range(self.start_frame, self.end_frame - 1):
+            for node in self.graph.cells_by_frame(t):
+                objective.set_coefficient(
+                    self.node_disappear[node],
+                    self.parameters.cost_disappear)
+        for node in self.graph.cells_by_frame(self.end_frame - 1):
+            objective.set_coefficient(
+                self.node_disappear[node],
+                0)
+
+        # remove node appear and disappear costs at edge of roi
         for node, data in self.graph.nodes(data=True):
             if self._check_node_close_to_roi_edge(
                     node,
@@ -155,6 +118,24 @@ class Solver(object):
                 objective.set_coefficient(
                         self.node_appear[node],
                         0)
+                objective.set_coefficient(
+                        self.node_disappear[node],
+                        0)
+
+        # node selection and split costs
+        for node in self.graph.nodes:
+            objective.set_coefficient(
+                self.node_selected[node],
+                self._node_costs(node))
+            objective.set_coefficient(
+                self.node_split[node],
+                self.parameters.cost_split)
+
+        # edge selection costs
+        for edge in self.graph.edges():
+            objective.set_coefficient(
+                self.edge_selected[edge],
+                self._edge_costs(edge))
 
         self.objective = objective
 
@@ -181,53 +162,35 @@ class Solver(object):
         return False
 
     def _node_costs(self, node):
-        # node score times a weight plus a threshold
-        score_costs = ((self.graph.nodes[node]['score'] *
-                        self.parameters.weight_node_score) +
-                       self.parameters.selection_constant)
-        return score_costs
 
-    def _split_costs(self, node):
-        # split score times a weight plus a threshold
-        if self.vgg_key is None:
-            return 1
-        split_costs = ((self.graph.nodes[node][self.vgg_key][0] *
-                        self.parameters.weight_division) +
-                       self.parameters.division_constant)
-        return split_costs
+        # simple linear costs based on the score of a node (negative if above
+        # threshold_node_score, positive otherwise)
 
-    def _child_costs(self, node):
-        # split score times a weight
-        if self.vgg_key is None:
-            return 0
-        split_costs = (self.graph.nodes[node][self.vgg_key][1] *
-                       self.parameters.weight_child)
-        return split_costs
+        score_costs = (
+            self.parameters.threshold_node_score -
+            self.graph.nodes[node]['score'])
 
-    def _continuation_costs(self, node):
-        # split score times a weight
-        if self.vgg_key is None:
-            return 0
-        continuation_costs = (self.graph.nodes[node][self.vgg_key][2] *
-                              self.parameters.weight_continuation)
-        return continuation_costs
+        return score_costs*self.parameters.weight_node_score
 
     def _edge_costs(self, edge):
-        # edge score times a weight
-        # TODO: normalize node and edge scores to a specific range and
-        # ordinality?
-        edge_costs = (self.graph.edges[edge]['prediction_distance'] *
-                      self.parameters.weight_edge_score)
-        return edge_costs
+
+        # simple linear costs based on the score of an edge (negative if above
+        # threshold_edge_score, positive otherwise)
+        score_costs = 0
+
+        prediction_distance_costs = (
+            (self.graph.edges[edge]['prediction_distance'] -
+             self.parameters.threshold_edge_score) *
+            self.parameters.weight_prediction_distance_cost)
+
+        return score_costs + prediction_distance_costs
 
     def _add_constraints(self):
 
-        self.main_constraints = []
-        self.pin_constraints = []
+        self.constraints = pylp.LinearConstraints()
 
         self._add_pin_constraints()
         self._add_edge_constraints()
-        self._add_cell_cycle_constraints()
 
         for t in range(self.graph.begin, self.graph.end):
             self._add_inter_frame_constraints(t)
@@ -246,7 +209,7 @@ class Solver(object):
                 constraint.set_coefficient(ind_e, 1)
                 constraint.set_relation(pylp.Relation.Equal)
                 constraint.set_value(1 if selected else 0)
-                self.pin_constraints.append(constraint)
+                self.constraints.add(constraint)
 
     def _add_edge_constraints(self):
 
@@ -266,7 +229,7 @@ class Solver(object):
             constraint.set_coefficient(ind_v, -1)
             constraint.set_relation(pylp.Relation.LessEqual)
             constraint.set_value(0)
-            self.main_constraints.append(constraint)
+            self.constraints.add(constraint)
 
             logger.debug("set edge constraint %s", constraint)
 
@@ -330,9 +293,9 @@ class Solver(object):
             constraint_next_1.set_value(0)
             constraint_next_2.set_value(0)
 
-            self.main_constraints.append(constraint_prev)
-            self.main_constraints.append(constraint_next_1)
-            self.main_constraints.append(constraint_next_2)
+            self.constraints.add(constraint_prev)
+            self.constraints.add(constraint_next_1)
+            self.constraints.add(constraint_next_2)
 
             logger.debug(
                 "set inter-frame constraints:\t%s\n\t%s\n\t%s",
@@ -370,56 +333,9 @@ class Solver(object):
             constraint_1.set_value(1)
             constraint_2.set_value(0)
 
-            self.main_constraints.append(constraint_1)
-            self.main_constraints.append(constraint_2)
+            self.constraints.add(constraint_1)
+            self.constraints.add(constraint_2)
 
             logger.debug(
                 "set split-indicator constraints:\n\t%s\n\t%s",
                 constraint_1, constraint_2)
-
-    def _add_cell_cycle_constraints(self):
-        # If an edge is selected, the division and child indicators are
-        # linked. Let e=(u,v) be an edge linking node u at time t + 1 to v in
-        # time t.
-        # Constraints:
-        # child(u) + selected(e) - split(v) <= 1
-        # split(v) + selected(e) - child(u) <= 1
-
-        for e in self.graph.edges():
-
-            # if e is selected, u and v have to be selected
-            u, v = e
-            ind_e = self.edge_selected[e]
-            split_v = self.node_split[v]
-            child_u = self.node_child[u]
-
-            link_constraint_1 = pylp.LinearConstraint()
-            link_constraint_1.set_coefficient(child_u, 1)
-            link_constraint_1.set_coefficient(ind_e, 1)
-            link_constraint_1.set_coefficient(split_v, -1)
-            link_constraint_1.set_relation(pylp.Relation.LessEqual)
-            link_constraint_1.set_value(1)
-            self.main_constraints.append(link_constraint_1)
-            link_constraint_2 = pylp.LinearConstraint()
-            link_constraint_2.set_coefficient(split_v, 1)
-            link_constraint_2.set_coefficient(ind_e, 1)
-            link_constraint_2.set_coefficient(child_u, -1)
-            link_constraint_2.set_relation(pylp.Relation.LessEqual)
-            link_constraint_2.set_value(1)
-            self.main_constraints.append(link_constraint_2)
-
-        # Every selected node must be a split, child or continuation
-        # (exclusively). If a node is not selected, all the cell cycle
-        # indicators should be zero.
-        # Constraint for each node:
-        # split + child + continuation - selected = 0
-        for node in self.graph.nodes():
-            cycle_set_constraint = pylp.LinearConstraint()
-            cycle_set_constraint.set_coefficient(self.node_split[node], 1)
-            cycle_set_constraint.set_coefficient(self.node_child[node], 1)
-            cycle_set_constraint.set_coefficient(self.node_continuation[node],
-                                                 1)
-            cycle_set_constraint.set_coefficient(self.node_selected[node], -1)
-            cycle_set_constraint.set_relation(pylp.Relation.Equal)
-            cycle_set_constraint.set_value(0)
-            self.main_constraints.append(cycle_set_constraint)

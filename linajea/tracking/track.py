@@ -8,64 +8,6 @@ import networkx as nx
 logger = logging.getLogger(__name__)
 
 
-class TrackingParameters(object):
-
-    def __init__(
-            self,
-            block_size=None,
-            context=None,
-            track_cost=None,
-            max_cell_move=None,
-            selection_constant=None,
-            weight_node_score=None,
-            weight_edge_score=None,
-            division_constant=1,
-            weight_division=0,
-            weight_child=0,
-            weight_continuation=0,
-            version=None,
-            **kwargs):
-
-        # block size and context
-        assert block_size is not None, "Failed to specify block_size"
-        self.block_size = block_size
-        assert context is not None, "Failed to specify context"
-        self.context = context
-
-        # track costs:
-        assert track_cost is not None, "Failed to specify track_cost"
-        self.track_cost = track_cost
-
-        # max_cell_move
-        # nodes within this distance to the block boundary will not pay
-        # the appear and disappear costs
-        # (Should be < 1/2 the context in z/x/y)
-        assert max_cell_move is not None, "Failed to specify max_cell_move"
-        self.max_cell_move = max_cell_move
-
-        assert selection_constant is not None,\
-            "Failed to specify selection_constant"
-        self.selection_constant = selection_constant
-
-        # scaling factors
-        assert weight_node_score is not None,\
-            "Failed to specify weight_node_score"
-        self.weight_node_score = weight_node_score
-
-        assert weight_edge_score is not None,\
-            "Failed to specify weight_edge_score"
-        self.weight_edge_score = weight_edge_score
-
-        # Cell cycle
-        self.division_constant = division_constant
-        self.weight_division = weight_division
-        self.weight_child = weight_child
-        self.weight_continuation = weight_continuation
-
-        # version control
-        self.version = version
-
-
 def track(graph, parameters, selected_key,
           frame_key='t', frames=None, cell_cycle_key=None):
     ''' A wrapper function that takes a daisy subgraph and input parameters,

@@ -3,7 +3,7 @@ from linajea import CandidateDatabase
 from .daisy_check_functions import (
         check_function, write_done,
         check_function_all_blocks, write_done_all_blocks)
-from linajea.tracking import track
+from linajea.tracking import track, nm_track, NMTrackingParameters
 from ..datasets import get_source_roi
 import logging
 import time
@@ -202,8 +202,11 @@ def solve_in_block(
 
     frames = [read_roi.get_offset()[0],
               read_roi.get_offset()[0] + read_roi.get_shape()[0]]
-    track(graph, parameters, selected_keys, frames=frames,
-          cell_cycle_key=cell_cycle_key)
+    if isinstance(parameters[0], NMTrackingParameters):
+        nm_track(graph, parameters, selected_keys, frames=frames)
+    else:
+        track(graph, parameters, selected_keys, frames=frames,
+              cell_cycle_key=cell_cycle_key)
     start_time = time.time()
     graph.update_edge_attrs(
             write_roi,
