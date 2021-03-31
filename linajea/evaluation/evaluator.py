@@ -2,6 +2,7 @@ import logging
 import math
 import networkx as nx
 from .report import Report
+from .validation_metric import validation_score
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,7 @@ class Evaluator:
         self.get_fn_divisions()
         self.get_f_score()
         self.get_aeftl_and_erl()
+        self.get_validation_score()
         return self.report
 
     def get_fp_edges(self):
@@ -372,8 +374,10 @@ class Evaluator:
 
         # <=2 children per node
         in_degrees = [d for _, d in track_graph.in_degree()]
+        max_index = in_degrees.index(max(in_degrees))
         assert max(in_degrees) <= 2,\
-            "Track has a node with %d > 2 children" % max(in_degrees)
+            "Track has node %d with %d > 2 children" %\
+            (list(track_graph.nodes())[max_index], max(in_degrees))
 
     def __get_track_matches(self):
         self.edges_to_track_id_rec = {}
@@ -393,3 +397,9 @@ class Evaluator:
             track_ids_gt_to_rec.setdefault(gt_track_id, set())
             track_ids_gt_to_rec[gt_track_id].add(rec_track_id)
         return track_ids_gt_to_rec
+
+    def get_validation_score(self):
+        vald_score = validation_score(
+                self.gt_track_graph,
+                self.rec_track_graph)
+        self.report.set_validation_score(vald_score)

@@ -93,7 +93,8 @@ class CandidateDatabase(MongoDbGraphProvider):
         edges collection
         '''
         if self.parameters_id is None and parameter_ids is None:
-            logger.warn("No parameters id stored or provided: cannot reset selection")
+            logger.warn("No parameters id stored or provided:"
+                        " cannot reset selection")
             return
 
         if roi:
@@ -101,10 +102,10 @@ class CandidateDatabase(MongoDbGraphProvider):
             node_ids = list([int(np.int64(n['id'])) for n in nodes])
             query = {self.endpoint_names[0]: {'$in': node_ids}}
         else:
-            query={}
+            query = {}
 
         if not parameter_ids:
-            parameter_ids=[self.parameters_id]
+            parameter_ids = [self.parameters_id]
         logger.info("Resetting solution for parameter ids %s",
                     parameter_ids)
         start_time = time.time()
@@ -119,7 +120,8 @@ class CandidateDatabase(MongoDbGraphProvider):
             for _id in parameter_ids:
                 daisy_coll_name = 'solve_' + str(_id) + '_daisy'
                 self.database.drop_collection(daisy_coll_name)
-        logger.info("Resetting soln for parameter_ids %s in roi %s took %d seconds",
+        logger.info("Resetting soln for parameter_ids %s in roi %s"
+                    " took %d seconds",
                     parameter_ids, roi, time.time() - start_time)
 
     def get_parameters_id(
@@ -271,8 +273,9 @@ class CandidateDatabase(MongoDbGraphProvider):
         '''Writes the score for the given parameters_id to the
         scores collection, along with the associated parameters'''
         parameters = self.get_parameters(parameters_id)
-        assert parameters is not None,\
-            "No parameters with id %d" % parameters_id
+        if parameters is None:
+            logger.warning("No parameters with id %d. Saving with key only",
+                           parameters_id)
 
         self._MongoDbGraphProvider__connect()
         self._MongoDbGraphProvider__open_db()
@@ -285,7 +288,8 @@ class CandidateDatabase(MongoDbGraphProvider):
                 score_collection = self.database[
                     'scores'+"_".join(str(f) for f in frames)]
                 eval_dict = {'param_id': parameters_id}
-            eval_dict.update(parameters)
+            if parameters is not None:
+                eval_dict.update(parameters)
             logger.info("%s  %s", frames, eval_dict)
             eval_dict.update(report.__dict__)
             if frames is None:
@@ -302,7 +306,6 @@ class CandidateDatabase(MongoDbGraphProvider):
                                              upsert=True)
         finally:
             self._MongoDbGraphProvider__disconnect()
-
 
     def get_nodes_roi(self):
         start = []

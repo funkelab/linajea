@@ -46,6 +46,7 @@ def evaluate_setup(
     if frames:
         begin, end = frames
         crop_roi = daisy.Roi(
+            (begin, None, None, None),
             (end - begin, None, None, None))
         source_roi = source_roi.intersect(crop_roi)
 
@@ -95,7 +96,6 @@ def evaluate_setup(
             matching_threshold=matching_threshold,
             sparse=sparse)
 
-    logger.info(report.__dict__)
     logger.info("Done evaluating results for %d. Saving results to mongo."
                 % parameters_id)
     results_db.write_score(parameters_id, report, frames=frames)

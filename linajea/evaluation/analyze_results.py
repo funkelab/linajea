@@ -107,8 +107,9 @@ def get_results(
     dataframe = pandas.DataFrame(scores)
     logger.debug("data types of dataframe columns: %s"
                  % str(dataframe.dtypes))
-    dataframe['_id'] = dataframe['param_id']
-    dataframe.set_index('param_id', inplace=True)
+    if 'param_id' in dataframe:
+        dataframe['_id'] = dataframe['param_id']
+        dataframe.set_index('param_id', inplace=True)
     return dataframe
 
 

@@ -17,27 +17,37 @@ class MamutMongoReader(MamutReader):
             self,
             db_name,
             frames=None,
-            key=None):
+            nodes_key=None,
+            edges_key=None,
+            key=None,
+            filter_unattached=True):
         db = linajea.CandidateDatabase(db_name, self.mongo_url)
         if frames is None:
             frames = [0, 1e10]
         roi = daisy.Roi((frames[0], 0, 0, 0),
                         (frames[1] - frames[0], 1e10, 1e10, 1e10))
-        nodes = db.read_nodes(roi)
+        if nodes_key is None:
+            nodes = db.read_nodes(roi)
+        else:
+            nodes = db.read_nodes(roi, attr_filter={nodes_key: True})
         node_ids = [node['id'] for node in nodes]
-        if key is None:
+        logger.debug("Found %d nodes" % len(node_ids))
+        if edges_key is None and key is not None:
+            edges_key = key
+        if edges_key is None:
             edges = db.read_edges(roi, nodes=nodes)
         else:
             edges = db.read_edges(
-                    roi, nodes=nodes, attr_filter={key: True})
-            logger.debug("Filtering cells")
-            filtered_cell_ids = set([edge['source'] for edge in edges] +
-                                    [edge['target'] for edge in edges])
-            filtered_cells = [cell for cell in nodes
-                              if cell['id'] in filtered_cell_ids]
-            nodes = filtered_cells
-            node_ids = filtered_cell_ids
-            logger.debug("Done filtering cells")
+                    roi, nodes=nodes, attr_filter={edges_key: True})
+            if filter_unattached:
+                logger.debug("Filtering cells")
+                filtered_cell_ids = set([edge['source'] for edge in edges] +
+                                        [edge['target'] for edge in edges])
+                filtered_cells = [cell for cell in nodes
+                                  if cell['id'] in filtered_cell_ids]
+                nodes = filtered_cells
+                node_ids = filtered_cell_ids
+                logger.debug("Done filtering cells")
 
         logger.debug("Adjusting ids")
         target_min_id = 0
@@ -57,13 +67,18 @@ class MamutMongoReader(MamutReader):
     def read_data(self, data):
 
         db_name = data['db_name']
+        logger.debug("DB name: ", db_name)
         group = data['group'] if 'group' in data else None
         if 'parameters_id' in data:
-            selected_key = 'selected_' + str(data['parameters_id'])
+            try:
+                int(data['parameters_id'])
+                selected_key = 'selected_' + str(data['parameters_id'])
+            except:
+                selected_key = data['parameters_id']
         else:
             selected_key = None
         frames = data['frames'] if 'frames' in data else None
-
+        logger.debug("Selected key: ", selected_key)
         nodes, edges = self.read_nodes_and_edges(
                 db_name,
                 frames=frames,

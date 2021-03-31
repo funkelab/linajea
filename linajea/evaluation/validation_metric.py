@@ -7,12 +7,69 @@ import time
 logger = logging.getLogger(__name__)
 
 
-def track_distance(track1, track2):
+def validation_score(gt_lineages, rec_lineages):
+    ''' Args:
+
+        gt_lineages (networkx.DiGraph)
+            Ground truth cell lineages. Assumed to be sparse
+
+        rec_lineages (networkx.DiGraph)
+            Reconstructed cell lineages
+
+    Returns:
+        A float value that reflects the quality of a set of reconstructed
+        lineages. A lower score indicates higher quality. The score suffers a
+        high penalty for topological errors (FN edges, FN divisions, FP
+        divisions) and a lower penalty for having a large matching distance
+        between nodes in the GT and rec tracks.
+    '''
+    gt_tracks = split_into_tracks(gt_lineages)
+    rec_tracks = split_into_tracks(rec_lineages)
+    rec_tracks_sorted_nodes = [sort_nodes(track)
+                               for track in rec_tracks]
+
+    # This is a naive approach where we compare all pairs of tracks.
+    # Filtering by frame and/or xyz region would increase efficiency
+
+    total_score = 0
+    processed = 0
+    start_time = time.time()
+    for gt_track in gt_tracks:
+        gt_nodes = sort_nodes(gt_track)
+        track_score = None
+        for rec_nodes in rec_tracks_sorted_nodes:
+            s = track_distance(gt_nodes, rec_nodes,
+                               current_min=track_score)
+            if not s:  # returned None because greater than current min
+                continue
+            if track_score is None or s < track_score:
+                track_score = s
+        total_score += track_score
+        processed += 1
+        if processed % 25 == 0:
+            logging.info("Processed %d gt tracks in %d seconds",
+                         processed, time.time() - start_time)
+    logging.info("Calculating validation score took %d seconds",
+                 time.time() - start_time)
+    return total_score
+
+
+def sort_nodes(track):
     # Sort nodes by frame (assumed 1 per frame)
-    nodes1 = [d for n, d in track1.nodes(data=True)]
-    nodes2 = [d for n, d in track2.nodes(data=True)]
-    nodes1 = sorted(nodes1, key=lambda n: n['t'])
-    nodes2 = sorted(nodes2, key=lambda n: n['t'])
+    nodes = [d for n, d in track.nodes(data=True)]
+    nodes = sorted(nodes, key=lambda n: n['t'])
+    return nodes
+
+
+def track_distance(track1, track2, current_min=None):
+    if isinstance(track1, nx.DiGraph):
+        nodes1 = sort_nodes(track1)
+    else:
+        nodes1 = track1
+    if isinstance(track2, nx.DiGraph):
+        nodes2 = sort_nodes(track2)
+    else:
+        nodes2 = track2
 
     # Handle empty track edge case
     if len(nodes1) == 0 or len(nodes2) == 0:
@@ -24,10 +81,17 @@ def track_distance(track1, track2):
         nodes2 = nodes1
         nodes1 = tmp
 
+    # if there is no overlap, return added lengths
+    if nodes1[-1]['t'] < nodes2[0]['t']:
+        return len(nodes1) + len(nodes2)
+
     dist = 0.
     i1 = 0
     i2 = 0
     while i1 < len(nodes1) and i2 < len(nodes2):
+        if current_min and dist > current_min:
+            # For efficiency, stop processing when greater than min
+            return None
         t1 = nodes1[i1]['t']
         t2 = nodes2[i2]['t']
         if t1 == t2:
@@ -47,10 +111,12 @@ def track_distance(track1, track2):
             i1 += 1
 
     if i1 < len(nodes1):
-        logger.debug("No match from frame %d to %d", i1, len(nodes1) - 1)
+        logger.debug("No match from frame %d to %d",
+                     nodes1[i1]['t'], nodes1[-1]['t'])
         dist += (len(nodes1) - i1)
     if i2 < len(nodes2):
-        logger.debug("No match from frame %d to %d", i2, len(nodes2) - 1)
+        logger.debug("No match from frame %d to %d",
+                     nodes2[i2]['t'], nodes2[-1]['t'])
         dist += (len(nodes2) - i2)
     logger.debug("Final distance: %f", dist)
     return dist
@@ -78,7 +144,7 @@ def get_node_attr_range(graph, attr):
 def norm_distance(dist, inflect_point=50):
     ''' Normalize the distance to between 0 and 1 using the logistic
     function. The function will be adjusted so that the value at distance zero
-    is 10^-6. Due to symmetry, the value at 2*inflect_point will be 1-10^-6.
+    is 10^-4. Due to symmetry, the value at 2*inflect_point will be 1-10^-4.
 
     Args:
         dist (float)
@@ -89,9 +155,9 @@ def norm_distance(dist, inflect_point=50):
             will penalize the node matching distance less
 
     '''
-    val_at_zero = 0.000001
+    val_at_zero = 0.0001
     slope = math.log(1/val_at_zero - 1) / inflect_point
-    logger.debug("Calculated slope: %f" % slope)
+    logger.debug("Calculated slope: %f", slope)
     return 1. / (1 + math.pow(math.e, -1*slope*(dist - inflect_point)))
 
 
@@ -104,7 +170,7 @@ def split_into_tracks(lineages):
     '''
     degrees = lineages.in_degree()
     div_nodes = [node for node, degree in degrees if degree == 2]
-    logger.debug("Division nodes: %s" % str(div_nodes))
+    logger.debug("Division nodes: %s", str(div_nodes))
     for node in div_nodes:
         in_edges = list(lineages.in_edges(node))
         min_id = 0
@@ -113,7 +179,7 @@ def split_into_tracks(lineages):
         if len(lineages.out_edges(edge[1])) == 0:
             lineages.remove_node(edge[1])
     conn_components = get_connected_components(lineages)
-    logger.info("Number of connected components: %d" % len(conn_components))
+    logger.info("Number of connected components: %d", len(conn_components))
     return conn_components
 
 
@@ -135,7 +201,7 @@ def replace_target(edge, graph, i=0):
     edge_data = graph.edges[edge]
     new_id = get_unused_node_id(graph, i)
     graph.add_node(new_id, **node_data)
-    logger.debug("New node has data %s" % graph.nodes[new_id])
+    logger.debug("New node has data %s", graph.nodes[new_id])
     graph.remove_edge(*edge)
     graph.add_edge(edge[0], new_id, **edge_data)
     return new_id
@@ -145,42 +211,3 @@ def get_unused_node_id(graph, i=0):
     while i in graph.nodes:
         i += 1
     return i
-
-
-def validation_score(gt_lineages, rec_lineages):
-    ''' Args:
-
-        gt_lineages (networkx.DiGraph)
-            Ground truth cell lineages. Assumed to be sparse
-
-        rec_lineages (networkx.DiGraph)
-            Reconstructed cell lineages
-
-    Returns:
-        A float value that reflects the quality of a set of reconstructed
-        lineages. A lower score indicates higher quality. The score suffers a
-        high penalty for topological errors (FN edges, FN divisions, FP
-        divisions) and a lower penalty for having a large matching distance
-        between nodes in the GT and rec tracks.
-    '''
-    gt_tracks = split_into_tracks(gt_lineages)
-    rec_tracks = split_into_tracks(rec_lineages)
-
-    # This is a naive approach where we compare all pairs of tracks.
-    # Filtering by frame and/or xyz region would increase efficiency
-
-    total_score = 0
-    processed = 0
-    start_time = time.time()
-    for gt_track in gt_tracks:
-        track_score = None
-        for rec_track in rec_tracks:
-            s = track_distance(gt_track, rec_track)
-            if track_score is None or s < track_score:
-                track_score = s
-        total_score += track_score
-        processed += 1
-        if processed % 25 == 0:
-            logging.info("Processed %d gt tracks in %d seconds"
-                         % (processed, time.time() - start_time))
-    return total_score
