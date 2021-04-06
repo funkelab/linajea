@@ -52,7 +52,6 @@ def _parse_csv_ndims(filename, scale=1.0, limit_to_roi=None, read_dims=4):
     track_info = []
     for line in tokens:
         loc = np.array([float(d) for d in line[:read_dims]]) * scale
-        logger.debug("Read location %s from file", loc)
         if limit_to_roi is not None and \
            not limit_to_roi.contains(Coordinate(loc)):
             continue

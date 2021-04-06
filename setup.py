@@ -15,5 +15,6 @@ setup(
             'linajea.tracking',
             'linajea.evaluation',
             'linajea.process_blockwise',
-        ]
+        ],
+        python_requires="<3.8"
 )
