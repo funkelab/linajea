@@ -7,8 +7,7 @@ import time
 logger = logging.getLogger(__name__)
 
 
-def track(graph, parameters, selected_key,
-          frame_key='t', frames=None, cell_cycle_key=None):
+def track(graph, config, selected_key, frame_key='t', frames=None)
     ''' A wrapper function that takes a daisy subgraph and input parameters,
     creates and solves the ILP to create tracks, and updates the daisy subgraph
     to reflect the selected nodes and edges.
@@ -19,10 +18,11 @@ def track(graph, parameters, selected_key,
 
             The candidate graph to extract tracks from
 
-        parameters (``TrackingParameters``)
+        config (``TrackingConfig``)
 
-            The parameters to use when optimizing the tracking ILP.
-            Can also be a list of parameters.
+            Configuration object to be used. The parameters to use when
+            optimizing the tracking ILP are at config.solve.parameters
+            (can also be a list of parameters).
 
         selected_key (``string``)
 
@@ -65,6 +65,7 @@ def track(graph, parameters, selected_key,
         logger.info("No nodes in graph - skipping solving step")
         return
 
+    parameters = config.solve.parameters
     if not isinstance(parameters, list):
         parameters = [parameters]
         selected_key = [selected_key]

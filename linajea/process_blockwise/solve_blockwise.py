@@ -177,10 +177,9 @@ def solve_in_block(linajea_config,
     frames = [read_roi.get_offset()[0],
               read_roi.get_offset()[0] + read_roi.get_shape()[0]]
     if linajea_config.solve.non_minimal:
-        nm_track(graph, linajea_config.solve.parameters, selected_keys,
-                 frames=frames)
+        nm_track(graph, linajea_config, selected_keys, frames=frames)
     else:
-        track(graph, linajea_config.solve.parameters, selected_keys,
+        track(graph, linajea_config, selected_keys,
               frames=frames)
     start_time = time.time()
     graph.update_edge_attrs(
