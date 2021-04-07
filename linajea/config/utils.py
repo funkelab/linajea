@@ -39,7 +39,10 @@ def ensure_cls(cl):
 def ensure_cls_list(cl):
     """If the attribute is an list of instances of cls, pass, else try constructing."""
     def converter(vals):
-        assert isinstance(vals, list), "list of {} expected".format(cl)
+        if vals is None:
+            return None
+
+        assert isinstance(vals, list), "list of {} expected ({})".format(cl, vals)
         converted = []
         for val in vals:
             if isinstance(val, cl) or val is None:
