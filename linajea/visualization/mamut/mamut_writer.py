@@ -1,6 +1,7 @@
 from __future__ import print_function, division, absolute_import
 import os
 import logging
+
 from .mamut_xml_templates import (
         begin_template,
         alltracks_template,
@@ -78,7 +79,7 @@ class MamutWriter:
 
             output.write(begin_template)
 
-            self.cells_to_xml(output, scale)
+            self.cells_to_xml(output, scale=scale)
 
             # Begin AllTracks.
             output.write(alltracks_template)

@@ -9,15 +9,8 @@ class MamutMatchedTracksReader(MamutReader):
     def __init__(self):
         super(MamutReader, self).__init__()
 
-    def read_data(self, data):
-        (gt_tracks, rec_tracks, track_matches) = data
-        matched_rec_tracks_indexes = [rec for gt, rec in track_matches
-                                      if gt < len(gt_tracks)]
-        matched_rec_tracks = []
-        logger.debug(track_matches)
-        logger.debug("Matched Rec Tracks: %s" % matched_rec_tracks_indexes)
-        for index in matched_rec_tracks_indexes:
-            matched_rec_tracks.append(rec_tracks[index])
+    def read_data(self, data, is_tp=None):
+        (gt_tracks, matched_rec_tracks) = data
 
         logger.info("Adding %d gt tracks" % len(gt_tracks))
         track_id = 0
@@ -41,11 +34,11 @@ class MamutMatchedTracksReader(MamutReader):
     def add_track(self, track, track_id, group):
         if len(track.nodes) == 0:
             logger.info("Track has no nodes. Skipping")
-            return [], []
+            return [], {}
 
         if len(track.edges) == 0:
             logger.info("Track has no edges. Skipping")
-            return [], []
+            return [], {}
 
         cells = []
         invalid_cells = []
