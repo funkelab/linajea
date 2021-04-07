@@ -78,5 +78,6 @@ def evaluate_setup(linajea_config):
 
     logger.info("Done evaluating results for %d. Saving results to mongo."
                 % parameters_id)
+    logger.info("Result summary: %s", report.get_short_report())
     results_db.write_score(parameters_id, report,
                            eval_params=linajea_config.evaluate.parameters)
