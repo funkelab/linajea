@@ -3,7 +3,7 @@ from gunpowder.array import Array
 from gunpowder.array_spec import ArraySpec
 from gunpowder.coordinate import Coordinate
 from gunpowder.morphology import enlarge_binary_map
-from gunpowder.points_spec import PointsSpec
+from gunpowder.graph_spec import GraphSpec
 from gunpowder.roi import Roi
 import logging
 import numpy as np
@@ -64,6 +64,7 @@ class AddParentVectors(BatchFilter):
         for i in range(1, len(context)):
             context[i] = max(context[i], self.move_radius)
 
+        logger.debug ("parent vector context %s", context)
         # request points in a larger area
         points_roi = request[self.array].roi.grow(
                 Coordinate(context),
@@ -72,11 +73,11 @@ class AddParentVectors(BatchFilter):
         # however, restrict the request to the points actually provided
         points_roi = points_roi.intersect(self.spec[self.points].roi)
         logger.debug("Requesting points in roi %s" % points_roi)
-        request[self.points] = PointsSpec(roi=points_roi)
+        request[self.points] = GraphSpec(roi=points_roi)
 
     def process(self, batch, request):
 
-        points = batch.points[self.points]
+        points = batch.graphs[self.points]
         voxel_size = self.spec[self.array].voxel_size
 
         # get roi used for creating the new array (points_roi does not
@@ -91,10 +92,11 @@ class AddParentVectors(BatchFilter):
         data_roi = data_roi.grow((-1, 0, 0, 0), (-1, 0, 0, 0))
 
         logger.debug("Points in %s", points.spec.roi)
-        for i, point in points.data.items():
-            logger.debug("%d, %s", i, point.location)
-        logger.debug("Data roi in voxels: %s", data_roi)
-        logger.debug("Data roi in world units: %s", data_roi*voxel_size)
+        if logger.isEnabledFor(logging.DEBUG):
+            for node in points.nodes:
+                logger.debug("%d, %s", node.id, node.location)
+            logger.debug("Data roi in voxels: %s", data_roi)
+            logger.debug("Data roi in world units: %s", data_roi*voxel_size)
 
         parent_vectors_data, mask_data = self.__draw_parent_vectors(
             points,
@@ -125,11 +127,11 @@ class AddParentVectors(BatchFilter):
         if self.points in request:
             request_roi = request[self.points].roi
             points.spec.roi = request_roi
-            for i, p in list(points.data.items()):
-                if not request_roi.contains(p.location):
-                    del points.data[i]
+            for point in list(points.nodes):
+                if not request_roi.contains(point.location):
+                    points.remove_node(point)
 
-            if len(points.data) == 0:
+            if points.num_vertices() == 0:
                 logger.warning("Returning empty batch for key %s and roi %s"
                                % (self.points, request_roi))
 
@@ -166,12 +168,12 @@ class AddParentVectors(BatchFilter):
 
         logger.debug(
             "Adding parent vectors for %d points...",
-            len(points.data))
+            points.num_vertices())
 
         empty = True
         cnt = 0
         total = 0
-        for point_id, point in points.data.items():
+        for point in points.nodes:
 
             # get the voxel coordinate, 'Coordinate' ensures integer
             v = Coordinate(point.location/voxel_size)
@@ -183,15 +185,15 @@ class AddParentVectors(BatchFilter):
                 continue
 
             total += 1
-            if point.parent_id is None:
+            if point.attrs.get("parent_id") is None:
                 logger.warning("Skipping point without parent")
                 continue
 
-            if point.parent_id not in points.data:
+            if not points.contains(point.attrs["parent_id"]):
                 logger.warning(
                     "parent %d of %d not in %s",
-                    point.parent_id,
-                    point_id, self.points)
+                    point.attrs["parent_id"],
+                    point.id, self.points)
                 logger.debug("request roi: %s" % data_roi)
                 if not self.dense:
                     continue
@@ -207,18 +209,22 @@ class AddParentVectors(BatchFilter):
             point_mask = np.zeros(shape, dtype=np.bool)
             point_mask[v] = 1
 
+            r = radius
+            if point.attrs.get('value') is not None:
+                r = point.attrs['value'][0]
+
             enlarge_binary_map(
                 point_mask,
-                radius,
+                r,
                 voxel_size,
                 in_place=True)
 
             mask = np.logical_or(mask, point_mask)
-            if point.parent_id not in points.data and self.dense:
+            if not points.contains(point.attrs["parent_id"]) and self.dense:
                 continue
 
             cnt += 1
-            parent = points.data[point.parent_id]
+            parent = points.node(point.attrs["parent_id"])
 
             parent_vectors[0][point_mask] = (parent.location[1]
                                              - coords[0][point_mask])
@@ -229,7 +235,7 @@ class AddParentVectors(BatchFilter):
 
         if empty:
             logger.warning("No parent vectors written for points %s"
-                           % points.data)
+                           % points.nodes)
         logger.info("written {}/{}".format(cnt, total))
 
         return parent_vectors, mask.astype(np.float32)

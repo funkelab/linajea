@@ -118,7 +118,6 @@ class TracksSource(BatchProvider):
 
         points_data = self._get_points(point_filter)
         logger.debug("Points data: %s", points_data)
-        logger.debug("Type of point: %s", type(points_data[0]))
         points_spec = GraphSpec(roi=request[self.points].roi.copy())
 
         batch = Batch()
