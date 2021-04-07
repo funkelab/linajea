@@ -66,12 +66,17 @@ class TracksSource(BatchProvider):
             positions to convert them to world units.
     '''
 
-    def __init__(self, filename, points, points_spec=None, scale=1.0):
+    def __init__(self, filename, points, points_spec=None, scale=1.0,
+                 use_radius=False):
 
         self.filename = filename
         self.points = points
         self.points_spec = points_spec
         self.scale = scale
+        if isinstance(use_radius, dict):
+            self.use_radius = {int(k):v for k,v in use_radius.items()}
+        else:
+            self.use_radius = use_radius
         self.locations = None
         self.track_info = None
 
@@ -133,6 +138,14 @@ class TracksSource(BatchProvider):
         for location, track_info in zip(filtered_locations,
                                         filtered_track_info):
             t = location[0]
+            if isinstance(self.use_radius, dict):
+                for th in sorted(self.use_radius.keys()):
+                    if t < int(th):
+                        value = track_info[3]
+                        value[0] = self.use_radius[th]
+                        break
+            else:
+                value = track_info[3] if self.use_radius else None
             node = TrackNode(
                 # point_id
                 track_info[0],
@@ -142,7 +155,7 @@ class TracksSource(BatchProvider):
                 # track_id
                 track_info[2],
                 # radius
-                value=track_info[3] if len(track_info) > 3 else None)
+                value=value)
             nodes.append(node)
         return nodes
 
