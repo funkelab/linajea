@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 import time
 
@@ -12,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 def evaluate_setup(linajea_config):
 
-    assert len(linajea_config.solve.parameters) == 1, "can only handle single parameter set"
+    assert len(linajea_config.solve.parameters) == 1, \
+        "can only handle single parameter set"
     parameters = linajea_config.solve.parameters[0]
 
     data = linajea_config.inference.data_source
@@ -31,9 +33,11 @@ def evaluate_setup(linajea_config):
         if old_score:
             logger.info("Already evaluated %d (%s). Skipping" %
                         (parameters_id, linajea_config.evaluate.parameters))
-            return old_score
+            logger.info("Stored results: %s", old_score)
+            return
 
-    logger.info("Evaluating in %s", evaluate_roi)
+    logger.info("Evaluating %s in %s",
+                os.path.basename(data.datafile.filename), evaluate_roi)
 
     edges_db = linajea.CandidateDatabase(db_name, db_host,
                                          parameters_id=parameters_id)

@@ -165,12 +165,12 @@ def solve_in_block(linajea_config,
 
     num_nodes = graph.number_of_nodes()
     num_edges = graph.number_of_edges()
-    logger.info("Reading graph with %d nodes and %d edges took %s seconds"
-                % (num_nodes, num_edges, time.time() - start_time))
+    logger.info("Reading graph with %d nodes and %d edges took %s seconds",
+                num_nodes, num_edges, time.time() - start_time)
 
     if num_edges == 0:
-        logger.info("No edges in roi %s. Skipping"
-                    % read_roi)
+        logger.info("No edges in roi %s. Skipping",
+                    read_roi)
         write_done(block, step_name, db_name, db_host)
         return 0
 
@@ -183,11 +183,11 @@ def solve_in_block(linajea_config,
               frames=frames, block_id=block.block_id)
     start_time = time.time()
     graph.update_edge_attrs(
-            write_roi,
+            roi=write_roi,
             attributes=selected_keys)
-    logger.info("Updating %d keys for %d edges took %s seconds"
-                % (len(selected_keys),
-                   num_edges,
-                   time.time() - start_time))
+    logger.info("Updating %d keys for %d edges took %s seconds",
+                len(selected_keys),
+                num_edges,
+                time.time() - start_time)
     write_done(block, step_name, db_name, db_host)
     return 0
