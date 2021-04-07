@@ -29,7 +29,7 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
     if args.checkpoint > 0:
         checkpoints = [args.checkpoint]
 
-    if is_solve and (args.param_id is not None or args.val_param_id is not None):
+    if is_solve and args.val_param_id is not None:
         config = fix_solve_pid(args, config, checkpoints, inference)
     if is_evaluate and args.param_id is not None:
         config = fix_evaluate_pid(args, config, checkpoints, inference)
@@ -56,12 +56,14 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
                     inference.cell_score_threshold)
             inference_data['data_source'] = sample
             config.inference = InferenceDataTrackingConfig(**inference_data) # type: ignore
-            if is_solve or is_evaluate:
+            if is_solve:
                 config = fix_solve_roi(config)
 
             if is_evaluate:
                 config = fix_evaluate_roi(config)
                 for solve_parameters in solve_parameters_sets:
+                    solve_parameters = deepcopy(solve_parameters)
+                    solve_parameters.roi = config.inference.data_source.roi
                     config.solve.parameters = [solve_parameters]
                     yield config
                 continue
@@ -97,7 +99,7 @@ def fix_solve_roi(config):
 
 def fix_evaluate_pid(args, config, checkpoints, inference):
     assert len(checkpoints) == 1, "use param_id to reevaluate a single instance"
-    sample_name = inference.data_sources[0].datafile.filename,
+    sample_name = inference.data_sources[0].datafile.filename
     pid = args.param_id
 
     config = fix_solve_parameters_with_pid(config, sample_name, checkpoints[0],
@@ -106,6 +108,9 @@ def fix_evaluate_pid(args, config, checkpoints, inference):
 
 def fix_evaluate_roi(config):
     if config.evaluate.parameters.roi is not None:
+        assert config.evaluate.parameters.roi.shape[0] < \
+            config.inference.data_source.roi.shape[0], \
+            "your evaluation ROI is larger than your data roi!"
         config.inference.data_source.roi = config.evaluate.parameters.roi
     return config
 
