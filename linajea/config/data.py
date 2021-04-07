@@ -20,6 +20,7 @@ class DataFileConfig:
     group = attr.ib(type=str, default=None)
     file_roi = attr.ib(default=None)
     file_voxel_size = attr.ib(default=None)
+    file_track_range = attr.ib(type=List[int], default=None)
 
     def __attrs_post_init__(self):
         if os.path.splitext(self.filename)[1] in (".n5", ".zarr"):
@@ -41,6 +42,7 @@ class DataFileConfig:
                 offset=data_config['general']['offset'],
                 shape=[s*v for s,v in zip(data_config['general']['shape'],
                                           self.file_voxel_size)])  # type: ignore
+            self.file_track_range = data_config['general'].get('track_range')
             if self.group is None:
                 self.group = data_config['general']['group']
 
