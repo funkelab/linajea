@@ -70,8 +70,8 @@ class AugmentTrackingConfig(AugmentConfig):
     norm_bounds = attr.ib(type=List[int])
     divisions = attr.ib(type=bool) # float for percentage?
     normalization = attr.ib(type=str, default=None)
-    perc_min = attr.ib(type=str)
-    perc_max = attr.ib(type=str)
+    perc_min = attr.ib(type=str, default=None)
+    perc_max = attr.ib(type=str, default=None)
 
 
 @attr.s(kw_only=True)
