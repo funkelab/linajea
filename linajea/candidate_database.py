@@ -64,7 +64,7 @@ class CandidateDatabase(MongoDbGraphProvider):
                 )
         self.parameters_id = None
         self.selected_key = None
-        if parameters_id:
+        if parameters_id is not None:
             self.set_parameters_id(parameters_id)
 
     def get_selected_graph(self, roi, edge_attrs=None):
