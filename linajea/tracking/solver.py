@@ -13,11 +13,15 @@ class Solver(object):
     number of hyperparamters
     '''
     def __init__(self, track_graph, parameters, selected_key, frames=None,
-                 write_struct_svm=False, block_id=None)
+                 write_struct_svm=False, block_id=None,
+                 check_node_close_to_roi=True,
+                 add_node_density_constraints=False):
         # frames: [start_frame, end_frame] where start_frame is inclusive
         # and end_frame is exclusive. Defaults to track_graph.begin,
         # track_graph.end
         self.write_struct_svm = write_struct_svm
+        self.check_node_close_to_roi = check_node_close_to_roi
+        self.add_node_density_constraints = add_node_density_constraints
         self.block_id = block_id
 
         self.graph = track_graph
@@ -216,17 +220,18 @@ class Solver(object):
                 disappear_file.write("{} 0\n".format(self.node_disappear[node]))
 
         # remove node appear costs at edge of roi
-        for node, data in self.graph.nodes(data=True):
-            if self._check_node_close_to_roi_edge(
-                    node,
-                    data,
-                    self.parameters.max_cell_move):
-                objective.set_coefficient(
-                        self.node_appear[node],
-                        0)
-                if self.write_struct_svm:
-                    appear_file.write("{} 0\n".format(
-                        self.node_appear[node]))
+        if self.check_node_close_to_roi:
+            for node, data in self.graph.nodes(data=True):
+                if self._check_node_close_to_roi_edge(
+                        node,
+                        data,
+                        self.parameters.max_cell_move):
+                    objective.set_coefficient(
+                            self.node_appear[node],
+                            0)
+                    if self.write_struct_svm:
+                        appear_file.write("{} 0\n".format(
+                            self.node_appear[node]))
 
         if self.write_struct_svm:
             appear_file.close()
@@ -358,6 +363,10 @@ class Solver(object):
 
         for t in range(self.graph.begin, self.graph.end):
             self._add_inter_frame_constraints(t)
+
+        if self.add_node_density_constraints:
+            self._add_node_density_constraints_objective()
+
 
     def _add_pin_constraints(self):
 
@@ -653,3 +662,71 @@ class Solver(object):
 
         if self.write_struct_svm:
             node_cell_cycle_constraint_file.close()
+
+    def _add_node_density_constraints_objective(self):
+        from scipy.spatial import cKDTree
+        import numpy as np
+        try:
+            nodes_by_t = {
+                t: [
+                    (
+                        node,
+                        np.array([data[d] for d in ['z', 'y', 'x']]),
+                    )
+                    for node, data in self.graph.nodes(data=True)
+                    if 't' in data and data['t'] == t
+                ]
+                for t in range(self.start_frame, self.end_frame)
+            }
+        except:
+            for node, data in self.graph.nodes(data=True):
+                print(node, data)
+            raise
+
+        rad = 15
+        dia = 2*rad
+        filter_sz = 1*dia
+        r = filter_sz/2
+        radius = {30: 35, 60: 25, 100: 15, 1000:10}
+        if self.write_struct_svm:
+            node_density_constraint_file = open(f"constraints_node_density_b{self.block_id}", 'w')
+        for t in range(self.start_frame, self.end_frame):
+            kd_data = [pos for _, pos in nodes_by_t[t]]
+            kd_tree = cKDTree(kd_data)
+
+            if isinstance(radius, dict):
+                for th, val in radius.items():
+                    if t < int(th):
+                        r = val
+                        break
+            nn_nodes = kd_tree.query_ball_point(kd_data, r, p=np.inf,
+                                                return_length=False)
+
+            for idx, (node, _) in enumerate(nodes_by_t[t]):
+                if len(nn_nodes[idx]) == 1:
+                    continue
+                constraint = pylp.LinearConstraint()
+                if self.write_struct_svm:
+                    cnstr = ""
+                logger.debug("new constraint (frame %s) node pos %s",
+                             t, kd_data[idx])
+                for nn_id in nn_nodes[idx]:
+                    if nn_id == idx:
+                        continue
+                    nn = nodes_by_t[t][nn_id][0]
+                    constraint.set_coefficient(self.node_selected[nn], 1)
+                    if self.write_struct_svm:
+                        cnstr += "1*{} ".format(self.node_selected[nn])
+                    logger.debug("   neighbor pos %s %s", kd_data[nn_id], np.linalg.norm(np.array(kd_data[idx])-np.array(kd_data[nn_id]), ord=np.inf))
+                constraint.set_coefficient(self.node_selected[node], 1)
+                constraint.set_relation(pylp.Relation.LessEqual)
+                constraint.set_value(1)
+                self.main_constraints.append(constraint)
+                if self.write_struct_svm:
+                    cnstr += "1*{} ".format(self.node_selected[node])
+                    cnstr += " <= "
+                    cnstr += " 1\n"
+                    node_density_constraint_file.write(cnstr)
+
+        if self.write_struct_svm:
+            node_density_constraint_file.close()
