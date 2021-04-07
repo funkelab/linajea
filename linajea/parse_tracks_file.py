@@ -100,7 +100,7 @@ def _parse_csv_fields(filename, scale=1.0, limit_to_roi=None):
             track_info.append([int(row['cell_id']),
                                int(row['parent_id']),
                                int(row['track_id']),
-                               [row.get("radius"),
+                               [float(row['radius']) if 'radius' in row else None,
                                 row.get("name")]])
             if 'div_state' in row:
                 track_info[-1].append(int(row['div_state']))
