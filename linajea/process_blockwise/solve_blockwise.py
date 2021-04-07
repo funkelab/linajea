@@ -180,7 +180,7 @@ def solve_in_block(linajea_config,
         nm_track(graph, linajea_config, selected_keys, frames=frames)
     else:
         track(graph, linajea_config, selected_keys,
-              frames=frames)
+              frames=frames, block_id=block.block_id)
     start_time = time.time()
     graph.update_edge_attrs(
             write_roi,
