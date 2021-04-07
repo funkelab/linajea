@@ -33,7 +33,12 @@ class NMSolver(object):
         self.node_appear = {}
         self.node_disappear = {}
         self.node_split = {}
+        self.node_child = {}
+        self.node_continuation = {}
         self.pinned_edges = {}
+
+        if self.parameters.use_cell_state:
+            self.edge_split = {}
 
         self.num_vars = None
         self.objective = None
@@ -47,6 +52,8 @@ class NMSolver(object):
         self.update_objective(parameters, selected_key)
 
     def update_objective(self, parameters, selected_key):
+        assert self.parameters.use_cell_state == parameters.use_cell_state, \
+            "cannot switch between w/ and w/o cell cycle within one run"
         self.parameters = parameters
         self.selected_key = selected_key
 
@@ -96,17 +103,48 @@ class NMSolver(object):
             self.node_appear[node] = self.num_vars + 1
             self.node_disappear[node] = self.num_vars + 2
             self.node_split[node] = self.num_vars + 3
-            self.num_vars += 4
+            self.node_child[node] = self.num_vars + 4
+            self.node_continuation[node] = self.num_vars + 5
+            self.num_vars += 6
 
         for edge in self.graph.edges():
             self.edge_selected[edge] = self.num_vars
             self.num_vars += 1
+
+            if self.parameters.use_cell_state:
+                self.edge_split[edge] = self.num_vars
+                self.num_vars += 1
 
     def _set_objective(self):
 
         logger.debug("setting objective")
 
         objective = pylp.LinearObjective(self.num_vars)
+
+        # node selection and split costs
+        for node in self.graph.nodes:
+            objective.set_coefficient(
+                self.node_selected[node],
+                self._node_costs(node))
+            objective.set_coefficient(
+                self.node_split[node],
+                self._split_costs(node))
+            objective.set_coefficient(
+                self.node_child[node],
+                self._child_costs(node))
+            objective.set_coefficient(
+                self.node_continuation[node],
+                self._continuation_costs(node))
+
+        # edge selection costs
+        for edge in self.graph.edges():
+            objective.set_coefficient(
+                self.edge_selected[edge],
+                self._edge_costs(edge))
+
+            if self.parameters.use_cell_state:
+                objective.set_coefficient(
+                    self.edge_split[edge], 0)
 
         # node appear (skip first frame)
         for t in range(self.start_frame + 1, self.end_frame):
@@ -144,21 +182,6 @@ class NMSolver(object):
                             self.node_disappear[node],
                             0)
 
-        # node selection and split costs
-        for node in self.graph.nodes:
-            objective.set_coefficient(
-                self.node_selected[node],
-                self._node_costs(node))
-            objective.set_coefficient(
-                self.node_split[node],
-                self.parameters.cost_split)
-
-        # edge selection costs
-        for edge in self.graph.edges():
-            objective.set_coefficient(
-                self.edge_selected[edge],
-                self._edge_costs(edge))
-
         self.objective = objective
 
     def _check_node_close_to_roi_edge(self, node, data, distance):
@@ -187,15 +210,70 @@ class NMSolver(object):
         return False
 
     def _node_costs(self, node):
+        # node score times a weight plus a threshold
+        score_costs = ((self.parameters.threshold_node_score -
+                        self.graph.nodes[node]['score']) *
+                       self.parameters.weight_node_score)
 
-        # simple linear costs based on the score of a node (negative if above
-        # threshold_node_score, positive otherwise)
+        return score_costs
 
-        score_costs = (
-            self.parameters.threshold_node_score -
-            self.graph.nodes[node]['score'])
+    def _split_costs(self, node):
+        if not self.parameters.use_cell_state:
+            return self.parameters.cost_split
+        elif self.parameters.use_cell_state == 'simple' or \
+           self.parameters.use_cell_state == 'v1' or \
+           self.parameters.use_cell_state == 'v2':
+            return ((self.parameters.threshold_split_score -
+                     self.graph.nodes[node][self.parameters.prefix+'mother']) *
+                    self.parameters.cost_split)
+        elif self.parameters.use_cell_state == 'v3' or \
+             self.parameters.use_cell_state == 'v4':
+            if self.graph.nodes[node][self.parameters.prefix+'mother'] > \
+               self.parameters.threshold_split_score:
+                return -self.parameters.cost_split
+            else:
+                return self.parameters.cost_split
+        else:
+            raise NotImplementedError("invalid value for use_cell_state")
 
-        return score_costs*self.parameters.weight_node_score
+    def _child_costs(self, node):
+        if not self.parameters.use_cell_state:
+            return 0
+        elif self.parameters.use_cell_state == 'v1' or \
+           self.parameters.use_cell_state == 'v2':
+            # TODO cost_split -> cost_daughter
+            return ((self.parameters.threshold_split_score -
+                     self.graph.nodes[node][self.parameters.prefix+'daughter']) *
+                    self.parameters.cost_split)
+        elif self.parameters.use_cell_state == 'v3' or \
+             self.parameters.use_cell_state == 'v4':
+            if self.graph.nodes[node][self.parameters.prefix+'daughter'] > \
+               self.parameters.threshold_split_score:
+                return -self.parameters.cost_daughter
+            else:
+                return self.parameters.cost_daughter
+        else:
+            raise NotImplementedError("invalid value for use_cell_state")
+
+    def _continuation_costs(self, node):
+        if not self.parameters.use_cell_state or \
+           self.parameters.use_cell_state == 'v1' or \
+           self.parameters.use_cell_state == 'v3':
+            return 0
+        elif self.parameters.use_cell_state == 'v2':
+            # TODO cost_split -> cost_normal
+            return ((self.parameters.threshold_is_normal_score -
+                     self.graph.nodes[node][self.parameters.prefix+'normal']) *
+                    self.parameters.cost_split)
+        elif self.parameters.use_cell_state == 'v4':
+            if self.graph.nodes[node][self.parameters.prefix+'normal'] > \
+               self.parameters.threshold_is_normal_score:
+                # return 0
+                return -self.parameters.cost_normal
+            else:
+                return self.parameters.cost_normal
+        else:
+            raise NotImplementedError("invalid value for use_cell_state")
 
     def _edge_costs(self, edge):
 
@@ -366,6 +444,39 @@ class NMSolver(object):
             logger.debug(
                 "set split-indicator constraints:\n\t%s\n\t%s",
                 constraint_1, constraint_2)
+
+    def _add_cell_cycle_constraints(self, t):
+        for node in self.graph.cells_by_frame(t):
+            if self.parameters.use_cell_state:
+                #  sum(next(edges_split))- 2*split >= 0
+                constraint_3 = pylp.LinearConstraint()
+                for edge in self.graph.next_edges(node):
+                    constraint_3.set_coefficient(self.edge_split[edge], 1)
+                constraint_3.set_coefficient(self.node_split[node], -2)
+                constraint_3.set_relation(pylp.Relation.Equal)
+                constraint_3.set_value(0)
+
+                self.main_constraints.append(constraint_3)
+
+                constraint_4 = pylp.LinearConstraint()
+                for edge in self.graph.prev_edges(node):
+                    constraint_4.set_coefficient(self.edge_split[edge], 1)
+                constraint_4.set_coefficient(self.node_child[node], -1)
+                constraint_4.set_relation(pylp.Relation.Equal)
+                constraint_4.set_value(0)
+
+                self.main_constraints.append(constraint_4)
+
+            if self.parameters.use_cell_state == 'v2' or \
+               self.parameters.use_cell_state == 'v4':
+                constraint_6 = pylp.LinearConstraint()
+                constraint_6.set_coefficient(self.node_selected[node], -1)
+                constraint_6.set_coefficient(self.node_split[node], 1)
+                constraint_6.set_coefficient(self.node_child[node], 1)
+                constraint_6.set_coefficient(self.node_continuation[node], 1)
+                constraint_6.set_relation(pylp.Relation.Equal)
+                constraint_6.set_value(0)
+                self.main_constraints.append(constraint_6)
 
     def _add_node_density_constraints_objective(self):
         from scipy.spatial import cKDTree
