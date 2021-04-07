@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 import logging
 import pylp
 
@@ -13,10 +13,14 @@ class NMSolver(object):
     we minimized the number of variables using assumptions about their
     relationships
     '''
-    def __init__(self, track_graph, parameters, selected_key, frames=None):
+    def __init__(self, track_graph, parameters, selected_key, frames=None,
+                 check_node_close_to_roi=True,
+                 add_node_density_constraints=False):
         # frames: [start_frame, end_frame] where start_frame is inclusive
         # and end_frame is exclusive. Defaults to track_graph.begin,
         # track_graph.end
+        self.check_node_close_to_roi = check_node_close_to_roi
+        self.add_node_density_constraints = add_node_density_constraints
 
         self.graph = track_graph
         self.parameters = parameters
@@ -38,9 +42,9 @@ class NMSolver(object):
         self.solver = None
 
         self._create_indicators()
-        self._set_objective()
-        self._add_constraints()
         self._create_solver()
+        self._create_constraints()
+        self.update_objective(parameters, selected_key)
 
     def update_objective(self, parameters, selected_key):
         self.parameters = parameters
@@ -62,11 +66,6 @@ class NMSolver(object):
                 self.num_vars,
                 pylp.VariableType.Binary,
                 preference=pylp.Preference.Gurobi)
-        self.solver.set_objective(self.objective)
-        all_constraints = pylp.LinearConstraints()
-        for c in self.main_constraints + self.pin_constraints:
-            all_constraints.add(c)
-        self.solver.set_constraints(all_constraints)
         self.solver.set_num_threads(1)
         self.solver.set_timeout(120)
 
@@ -132,17 +131,18 @@ class NMSolver(object):
                 0)
 
         # remove node appear and disappear costs at edge of roi
-        for node, data in self.graph.nodes(data=True):
-            if self._check_node_close_to_roi_edge(
-                    node,
-                    data,
-                    self.parameters.max_cell_move):
-                objective.set_coefficient(
-                        self.node_appear[node],
-                        0)
-                objective.set_coefficient(
-                        self.node_disappear[node],
-                        0)
+        if self.check_node_close_to_roi:
+            for node, data in self.graph.nodes(data=True):
+                if self._check_node_close_to_roi_edge(
+                        node,
+                        data,
+                        self.parameters.max_cell_move):
+                    objective.set_coefficient(
+                            self.node_appear[node],
+                            0)
+                    objective.set_coefficient(
+                            self.node_disappear[node],
+                            0)
 
         # node selection and split costs
         for node in self.graph.nodes:
@@ -164,6 +164,9 @@ class NMSolver(object):
     def _check_node_close_to_roi_edge(self, node, data, distance):
         '''Return true if node is within distance to the z,y,x edge
         of the roi. Assumes 4D data with t,z,y,x'''
+        if isinstance(distance, dict):
+            distance = min(distance.values())
+
         begin = self.graph.roi.get_begin()[1:]
         end = self.graph.roi.get_end()[1:]
         for index, dim in enumerate(['z', 'y', 'x']):
@@ -207,16 +210,20 @@ class NMSolver(object):
 
         return score_costs + prediction_distance_costs
 
-    def _add_constraints(self):
+    def _create_constraints(self):
 
         self.main_constraints = []
-        self.pin_constraints = []
 
-        self._add_pin_constraints()
         self._add_edge_constraints()
+        for t in range(self.graph.begin, self.graph.end):
+            self._add_cell_cycle_constraints(t)
 
         for t in range(self.graph.begin, self.graph.end):
             self._add_inter_frame_constraints(t)
+
+        if self.add_node_density_constraints:
+            self._add_node_density_constraints_objective()
+
 
     def _add_pin_constraints(self):
 
@@ -265,7 +272,6 @@ class NMSolver(object):
         # one or two to the next frame. This includes the special "appear" and
         # "disappear" edges.
         for node in self.graph.cells_by_frame(t):
-
             # we model this as three constraints:
             #  sum(prev) -   node  = 0 # exactly one prev edge,
             #                               iff node selected
@@ -299,13 +305,11 @@ class NMSolver(object):
             # plus "disappear"
             constraint_next_1.set_coefficient(self.node_disappear[node], 1)
             constraint_next_2.set_coefficient(self.node_disappear[node], -1)
-
             # node
 
             constraint_prev.set_coefficient(self.node_selected[node], -1)
             constraint_next_1.set_coefficient(self.node_selected[node], -2)
             constraint_next_2.set_coefficient(self.node_selected[node], 1)
-
             # relation, value
 
             constraint_prev.set_relation(pylp.Relation.Equal)
@@ -362,3 +366,57 @@ class NMSolver(object):
             logger.debug(
                 "set split-indicator constraints:\n\t%s\n\t%s",
                 constraint_1, constraint_2)
+
+    def _add_node_density_constraints_objective(self):
+        from scipy.spatial import cKDTree
+        import numpy as np
+        try:
+            nodes_by_t = {
+                t: [
+                    (
+                        node,
+                        np.array([data[d] for d in ['z', 'y', 'x']]),
+                    )
+                    for node, data in self.graph.nodes(data=True)
+                    if 't' in data and data['t'] == t
+                ]
+                for t in range(self.start_frame, self.end_frame)
+            }
+        except:
+            for node, data in self.graph.nodes(data=True):
+                print(node, data)
+            raise
+
+        rad = 15
+        dia = 2*rad
+        filter_sz = 1*dia
+        r = filter_sz/2
+        radius = {30: 35, 60: 25, 100: 15, 1000:10}
+        for t in range(self.start_frame, self.end_frame):
+            kd_data = [pos for _, pos in nodes_by_t[t]]
+            kd_tree = cKDTree(kd_data)
+
+            if isinstance(radius, dict):
+                for th, val in radius.items():
+                    if t < int(th):
+                        r = val
+                        break
+            nn_nodes = kd_tree.query_ball_point(kd_data, r, p=np.inf,
+                                                return_length=False)
+
+            for idx, (node, _) in enumerate(nodes_by_t[t]):
+                if len(nn_nodes[idx]) == 1:
+                    continue
+                constraint = pylp.LinearConstraint()
+                logger.debug("new constraint (frame %s) node pos %s",
+                             t, kd_data[idx])
+                for nn_id in nn_nodes[idx]:
+                    if nn_id == idx:
+                        continue
+                    nn = nodes_by_t[t][nn_id][0]
+                    constraint.set_coefficient(self.node_selected[nn], 1)
+                    logger.debug("   neighbor pos %s %s", kd_data[nn_id], np.linalg.norm(np.array(kd_data[idx])-np.array(kd_data[nn_id]), ord=np.inf))
+                constraint.set_coefficient(self.node_selected[node], 1)
+                constraint.set_relation(pylp.Relation.LessEqual)
+                constraint.set_value(1)
+                self.main_constraints.append(constraint)
