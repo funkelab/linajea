@@ -1,8 +1,12 @@
-import pandas
-from linajea import CandidateDatabase
-from linajea.tracking import TrackingParameters
-import re
 import logging
+import os
+import re
+
+import pandas
+
+from linajea import (CandidateDatabase,
+                     checkOrCreateDB)
+from linajea.tracking import TrackingParameters
 
 logger = logging.getLogger(__name__)
 
@@ -166,3 +170,82 @@ def get_best_result_per_setup(setups, region, db_host,
     best_df = pandas.DataFrame(best_results)
     best_df.sort_values('sum_errors', inplace=True)
     return best_df
+
+
+def get_results_sorted(config,
+                       filter_params=None,
+                       score_columns=None,
+                       score_weights=None,
+                       sort_by="sum_errors"):
+    if not score_columns:
+        score_columns = ['fn_edges', 'identity_switches',
+                         'fp_divisions', 'fn_divisions']
+    if not score_weights:
+        score_weights = [1.]*len(score_columns)
+
+    db_name = config.inference.data_source.db_name
+
+    logger.info("checking db: %s", db_name)
+
+    candidate_db = CandidateDatabase(db_name, config.general.db_host, 'r')
+    scores = candidate_db.get_scores(filters=filter_params,
+                                     eval_params=config.evaluate.parameters)
+
+    if len(scores) == 0:
+        raise RuntimeError("no scores found!")
+
+    results_df = pandas.DataFrame(scores)
+    logger.debug("data types of results_df dataframe columns: %s"
+                 % str(results_df.dtypes))
+    if 'param_id' in results_df:
+        results_df['_id'] = results_df['param_id']
+        results_df.set_index('param_id', inplace=True)
+
+    results_df['sum_errors'] = sum([results_df[col]*weight for col, weight
+                                   in zip(score_columns, score_weights)])
+    results_df['sum_divs'] = sum([results_df[col]*weight for col, weight
+                                   in zip(score_columns[-2:], score_weights[-2:])])
+    ascending = True
+    if sort_by == "matched_edges":
+        ascending = False
+    results_df.sort_values(sort_by, ascending=ascending, inplace=True)
+    return results_df
+
+
+def get_best_result_with_config(config,
+                                filter_params=None,
+                                score_columns=None,
+                                score_weights=None):
+    ''' Gets the best result for the given setup and region according to
+    the sum of errors in score_columns, with optional weighting.
+
+    Returns a dictionary'''
+
+    results_df = get_results_sorted(config,
+                                    filter_params=filter_params,
+                                    score_columns=score_columns,
+                                    score_weights=score_weights)
+    best_result = results_df.iloc[0].to_dict()
+    for key, value in best_result.items():
+        try:
+            best_result[key] = value.item()
+        except AttributeError:
+            pass
+    return best_result
+
+
+def get_result_id(
+        config,
+        parameters_id):
+    ''' Get the scores, statistics, and parameters for given
+    setup, region, and parameters.
+    Returns a dictionary containing the keys and values of the score
+    object.
+
+    tracking_parameters can be a dict or a TrackingParameters object'''
+    db_name = config.inference.data_source.db_name
+    candidate_db = CandidateDatabase(db_name, config.general.db_host, 'r')
+
+    result = candidate_db.get_score(parameters_id,
+                                    eval_params=config.evaluate.parameters)
+    return result
