@@ -54,6 +54,7 @@ def predict_blockwise(
                     daisy.Coordinate(config['limit_to_roi_offset']),
                     daisy.Coordinate(config['limit_to_roi_shape']))
             predict_roi = predict_roi.intersect(limit_to_roi)
+
         # Given frames and rois are the prediction region,
         # not the solution region
         # predict_roi = target_roi.grow(solve_context, solve_context)
@@ -67,6 +68,10 @@ def predict_blockwise(
     net_input_size = daisy.Coordinate(net_input_size)*voxel_size
     net_output_size = daisy.Coordinate(net_output_size)*voxel_size
     context = (net_input_size - net_output_size)/2
+
+    # expand predict roi to multiple of block write_roi
+    predict_roi = predict_roi.snap_to_grid(net_output_size, mode='grow')
+
     input_roi = predict_roi.grow(context, context)
     output_roi = predict_roi
 
@@ -123,7 +128,7 @@ def predict_blockwise(
             num_workers=config['num_workers'],
             read_write_conflict=False,
             max_retries=0,
-            fit='overhang')
+            fit='valid')
     else:
         daisy.run_blockwise(
             input_roi,
@@ -135,7 +140,7 @@ def predict_blockwise(
             num_workers=config['num_workers'],
             read_write_conflict=False,
             max_retries=0,
-            fit='overhang')
+            fit='valid')
 
 
 def predict_worker(
