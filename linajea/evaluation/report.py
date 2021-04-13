@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 class Report:
     def __init__(self):
         # STATISTICS
@@ -189,7 +191,7 @@ class Report:
         return self.__dict__
 
     def get_short_report(self):
-        report = self.__dict__
+        report = deepcopy(self.__dict__)
                 # STATISTICS
         del report['fn_edge_list']
         del report['identity_switch_gt_nodes']
