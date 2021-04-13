@@ -62,6 +62,14 @@ class CandidateDatabase(MongoDbGraphProvider):
                 position_attribute=['t', 'z', 'y', 'x'],
                 endpoint_names=endpoint_names
                 )
+        if mode == 'w':
+            try:
+                self._MongoDbGraphProvider__connect()
+                self._MongoDbGraphProvider__open_db()
+                params_collection = self.database['parameters']
+                params_collection.drop()
+            finally:
+                self._MongoDbGraphProvider__disconnect()
         self.parameters_id = None
         self.selected_key = None
         if parameters_id is not None:
