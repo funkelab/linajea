@@ -121,7 +121,7 @@ class TracksSource(BatchProvider):
         points_spec = GraphSpec(roi=request[self.points].roi.copy())
 
         batch = Batch()
-        batch.points[self.points] = Graph(points_data, [], points_spec)
+        batch.graphs[self.points] = Graph(points_data, [], points_spec)
 
         timing.stop()
         batch.profiling_stats.add(timing)
