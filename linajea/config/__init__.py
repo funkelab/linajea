@@ -15,7 +15,8 @@ from .job import JobConfig
 from .predict import (PredictCellCycleConfig,
                       PredictTrackingConfig)
 from .solve import (SolveConfig,
-                    SolveParametersConfig)
+                    SolveParametersMinimalConfig,
+                    SolveParametersNonMinimalConfig)
 from .tracking_config import TrackingConfig
 # from .test import (TestTrackingConfig,
 #                    TestCellCycleConfig)
