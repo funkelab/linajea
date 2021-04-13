@@ -1,4 +1,5 @@
 import linajea.tracking
+import linajea.config
 import logging
 import linajea
 import unittest
@@ -64,14 +65,15 @@ class TestSolver(unittest.TestCase):
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
             }
-        parameters = linajea.tracking.TrackingParameters(**ps)
+        job = {"num_workers": 5, "queue": "normal"}
+        solve_config = linajea.config.SolveConfig(parameters=ps, job=job)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)
                               for edge in edges])
         linajea.tracking.track(
                 graph,
-                parameters,
+                solve_config,
                 frame_key='t',
                 selected_key='selected')
 
@@ -131,7 +133,7 @@ class TestSolver(unittest.TestCase):
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
             }
-        parameters = linajea.tracking.TrackingParameters(**ps)
+        parameters = linajea.config.SolveParametersMinimalConfig(**ps)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)
@@ -204,16 +206,17 @@ class TestSolver(unittest.TestCase):
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
             }
-        parameters = [linajea.tracking.TrackingParameters(**ps1),
-                      linajea.tracking.TrackingParameters(**ps2)]
+        parameters = [ps1, ps2]
         keys = ['selected_1', 'selected_2']
+        job = {"num_workers": 5, "queue": "normal"}
+        solve_config = linajea.config.SolveConfig(parameters=parameters, job=job)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)
                               for edge in edges])
         linajea.tracking.track(
                 graph,
-                parameters,
+                solve_config,
                 frame_key='t',
                 selected_key=keys)
 
@@ -253,17 +256,29 @@ class TestSolver(unittest.TestCase):
 
         cells = [
                 {'id': 0, 't': 0, 'z': 1, 'y': 1, 'x': 1,  'score': 2.0,
-                 'vgg_score': [0, 0, 1]},
+                 'vgg_scoremother': 0,
+                 "vgg_scoredaughter": 0,
+                 "vgg_scorenormal": 1},
                 {'id': 1, 't': 1, 'z': 1, 'y': 1, 'x': 1,  'score': 2.0,
-                 'vgg_score': [1, 0, 0]},
+                 'vgg_scoremother': 1,
+                 "vgg_scoredaughter": 0,
+                 "vgg_scorenormal": 0},
                 {'id': 2, 't': 2, 'z': 1, 'y': 1, 'x': 0,  'score': 2.0,
-                 'vgg_score': [0, 1, 0]},
+                 'vgg_scoremother': 0,
+                 "vgg_scoredaughter": 1,
+                 "vgg_scorenormal": 0},
                 {'id': 3, 't': 2, 'z': 1, 'y': 1, 'x': 2,  'score': 2.0,
-                 'vgg_score': [0, 1, 0]},
+                 'vgg_scoremother': 0,
+                 "vgg_scoredaughter": 1,
+                 "vgg_scorenormal": 0},
                 {'id': 4, 't': 2, 'z': 1, 'y': 1, 'x': 3,  'score': 2.0,
-                 'vgg_score': [0, 0, 1]},
+                 'vgg_scoremother': 0,
+                 "vgg_scoredaughter": 0,
+                 "vgg_scorenormal": 1},
                 {'id': 5, 't': 3, 'z': 1, 'y': 1, 'x': 2,  'score': 2.0,
-                 'vgg_score': [0, 0, 1]}
+                 'vgg_scoremother': 0,
+                 "vgg_scoredaughter": 0,
+                 "vgg_scorenormal": 1}
         ]
 
         edges = [
@@ -297,18 +312,19 @@ class TestSolver(unittest.TestCase):
                 "max_cell_move": 0.0,
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
+                "cell_cycle_key": "vgg_score",
             }
-        parameters = linajea.tracking.TrackingParameters(**ps)
+        job = {"num_workers": 5, "queue": "normal"}
+        solve_config = linajea.config.SolveConfig(parameters=ps, job=job)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)
                               for edge in edges])
         linajea.tracking.track(
                 graph,
-                parameters,
+                solve_config,
                 frame_key='t',
-                selected_key='selected',
-                cell_cycle_key="vgg_score")
+                selected_key='selected')
 
         selected_edges = []
         for u, v, data in graph.edges(data=True):
@@ -337,17 +353,29 @@ class TestSolver(unittest.TestCase):
 
         cells = [
                 {'id': 0, 't': 0, 'z': 1, 'y': 1, 'x': 1,  'score': 2.0,
-                 'vgg_score': [0, 0, 1]},
+                 'vgg_scoremother': 0,
+                 "vgg_scoredaughter": 0,
+                 "vgg_scorenormal": 1},
                 {'id': 1, 't': 1, 'z': 1, 'y': 1, 'x': 1,  'score': 2.0,
-                 'vgg_score': [0, 0, 1]},
+                 'vgg_scoremother': 0,
+                 "vgg_scoredaughter": 0,
+                 "vgg_scorenormal": 1},
                 {'id': 2, 't': 2, 'z': 1, 'y': 1, 'x': 0,  'score': 2.0,
-                 'vgg_score': [0, 0, 1]},
+                 'vgg_scoremother': 0,
+                 "vgg_scoredaughter": 0,
+                 "vgg_scorenormal": 1},
                 {'id': 3, 't': 2, 'z': 1, 'y': 1, 'x': 2,  'score': 2.0,
-                 'vgg_score': [0, 0, 1]},
+                 'vgg_scoremother': 0,
+                 "vgg_scoredaughter": 0,
+                 "vgg_scorenormal": 1},
                 {'id': 4, 't': 2, 'z': 1, 'y': 1, 'x': 3,  'score': 2.0,
-                 'vgg_score': [0, 0, 1]},
+                 'vgg_scoremother': 0,
+                 "vgg_scoredaughter": 0,
+                 "vgg_scorenormal": 1},
                 {'id': 5, 't': 3, 'z': 1, 'y': 1, 'x': 2,  'score': 2.0,
-                 'vgg_score': [0, 0, 1]}
+                 'vgg_scoremother': 0,
+                 "vgg_scoredaughter": 0,
+                 "vgg_scorenormal": 1},
         ]
 
         edges = [
@@ -381,18 +409,19 @@ class TestSolver(unittest.TestCase):
                 "max_cell_move": 0.0,
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
+                "cell_cycle_key": "vgg_score"
             }
-        parameters = linajea.tracking.TrackingParameters(**ps)
+        job = {"num_workers": 5, "queue": "normal"}
+        solve_config = linajea.config.SolveConfig(parameters=ps, job=job)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)
                               for edge in edges])
         linajea.tracking.track(
                 graph,
-                parameters,
+                solve_config,
                 frame_key='t',
-                selected_key='selected',
-                cell_cycle_key="vgg_score")
+                selected_key='selected')
 
         selected_edges = []
         for u, v, data in graph.edges(data=True):
