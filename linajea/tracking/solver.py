@@ -100,6 +100,13 @@ class Solver(object):
             node_split_file = open(f"node_split_b{self.block_id}", 'w')
             node_child_file = open(f"node_child_b{self.block_id}", 'w')
             node_continuation_file = open(f"node_continuation_b{self.block_id}", 'w')
+        else:
+            node_selected_file = None
+            node_appear_file = None
+            node_disappear_file = None
+            node_split_file = None
+            node_child_file = None
+            node_continuation_file = None
         for node in self.graph.nodes:
             if self.write_struct_svm:
                 node_selected_file.write("{} {}\n".format(node, self.num_vars))
@@ -157,6 +164,14 @@ class Solver(object):
                 f"features_node_child_weight_or_constant_b{self.block_id}", 'w')
             node_continuation_weight_or_constant_file = open(
                 f"features_node_continuation_weight_or_constant_b{self.block_id}", 'w')
+        else:
+            node_selected_weight_file = None
+            node_selected_constant_file = None
+            node_split_weight_file = None
+            node_split_constant_file = None
+            node_child_weight_or_constant_file = None
+            node_continuation_weight_or_constant_file = None
+
         for node in self.graph.nodes:
             objective.set_coefficient(
                 self.node_selected[node],
@@ -191,6 +206,8 @@ class Solver(object):
         if self.write_struct_svm:
             edge_selected_weight_file = open(
                 f"features_edge_selected_weight_b{self.block_id}", 'w')
+        else:
+            edge_selected_weight_file = None
         for edge in self.graph.edges():
             objective.set_coefficient(
                 self.edge_selected[edge],
@@ -281,7 +298,8 @@ class Solver(object):
     def _split_costs(self, node, file_weight, file_constant):
         # split score times a weight plus a threshold
         if self.parameters.cell_cycle_key is None:
-            file_constant.write("{} 1\n".format(self.node_split[node]))
+            if self.write_struct_svm:
+                file_constant.write("{} 1\n".format(self.node_split[node]))
             return 1
         split_costs = (
             (
@@ -303,8 +321,9 @@ class Solver(object):
     def _child_costs(self, node, file_weight_or_constant):
         # split score times a weight
         if self.parameters.cell_cycle_key is None:
-            file_weight_or_constant.write("{} 1\n".format(
-                self.node_child[node]))
+            if self.write_struct_svm:
+                file_weight_or_constant.write("{} 1\n".format(
+                    self.node_child[node]))
             return 0
         split_costs = (
             # self.graph.nodes[node][self.parameters.cell_cycle_key][1] *
@@ -323,8 +342,9 @@ class Solver(object):
     def _continuation_costs(self, node, file_weight_or_constant):
         # split score times a weight
         if self.parameters.cell_cycle_key is None:
-            file_weight_or_constant.write("{} 1\n".format(
-                self.node_child[node]))
+            if self.write_struct_svm:
+                file_weight_or_constant.write("{} 1\n".format(
+                    self.node_child[node]))
             return 0
         continuation_costs = (
             # self.graph.nodes[node][self.parameters.cell_cycle_key][2] *
