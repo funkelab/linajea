@@ -9,7 +9,8 @@ import toml
 from linajea import (CandidateDatabase,
                      checkOrCreateDB)
 from linajea.config import (InferenceDataTrackingConfig,
-                            SolveParametersConfig,
+                            SolveParametersMinimalConfig,
+                            SolveParametersNonMinimalConfig,
                             TrackingConfig)
 
 logger = logging.getLogger(__name__)
@@ -126,8 +127,13 @@ def fix_solve_parameters_with_pid(config, sample_name, checkpoint, inference,
         inference.cell_score_threshold)
     db = CandidateDatabase(db_name, config.general.db_host)
     parameters = db.get_parameters(pid)
-    logger.info("getting params %s (id: %s) from validation database %s (sample: %s)",
+    logger.info("getting params %s (id: %s) from database %s (sample: %s)",
                 parameters, pid, db_name, sample_name)
-    solve_parameters = [SolveParametersConfig(**parameters)] # type: ignore
+    try:
+        solve_parameters = [SolveParametersMinimalConfig(**parameters)] # type: ignore
+        config.solve.non_minimal = False
+    except TypeError:
+        solve_parameters = [SolveParametersNonMinimalConfig(**parameters)] # type: ignore
+        config.solve.non_minimal = True
     config.solve.parameters = solve_parameters
     return config
