@@ -73,9 +73,8 @@ def track(graph, config, selected_key, frame_key='t', frames=None,
         logger.info("No nodes in graph - skipping solving step")
         return
 
-    parameters = config.solve.parameters
-    if not isinstance(parameters, list):
-        parameters = [parameters]
+    parameters = config.parameters
+    if not isinstance(selected_key, list):
         selected_key = [selected_key]
 
     assert len(parameters) == len(selected_key),\
