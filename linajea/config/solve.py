@@ -12,12 +12,14 @@ from .utils import (ensure_cls,
 
 logger = logging.getLogger(__name__)
 
+
 def convert_solve_params_list():
     def converter(vals):
         if vals is None:
             return None
-
-        assert isinstance(vals, list), "list({})".format(vals)
+        print(type(vals))
+        if not isinstance(vals, list):
+            vals = [vals]
         converted = []
         for val in vals:
             if isinstance(val, SolveParametersMinimalConfig):
