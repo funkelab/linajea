@@ -48,7 +48,10 @@ def track(graph, config, selected_key, frame_key='t', frames=None,
 
     '''
     # cell_cycle_keys = [p.cell_cycle_key for p in config.solve.parameters]
-    cell_cycle_keys = [p.cell_cycle_key + "mother" for p in config.solve.parameters]
+    cell_cycle_keys = [p.cell_cycle_key + "mother"
+                       if p.cell_cycle_key is not None
+                       else None
+                       for p in config.solve.parameters]
     if any(cell_cycle_keys):
         # remove nodes that don't have a cell cycle key, with warning
         to_remove = []
