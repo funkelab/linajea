@@ -26,7 +26,7 @@ class CandidateDatabase(MongoDbGraphProvider):
         mode (``string``, optional):
 
             One of ``r``, ``r+``, or ``w``. Defaults to ``r+``. ``w`` drops the
-            node, edge, and meta collections.
+            node, edge, meta, and parameters collections.
 
         total_roi (``bool``, optional):
 
