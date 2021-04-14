@@ -225,7 +225,8 @@ class CandidateDatabase(MongoDbGraphProvider):
         try:
             score_collection = self.database['scores']
             query = {'param_id': parameters_id}
-            query.update(eval_params.valid())
+            if eval_params is not None:
+                query.update(eval_params.valid())
             old_score = score_collection.find_one(query)
             if old_score:
                 del old_score['_id']
@@ -248,7 +249,8 @@ class CandidateDatabase(MongoDbGraphProvider):
                 query = {}
 
             score_collection = self.database['scores']
-            query.update(eval_params.valid())
+            if eval_params is not None:
+                query.update(eval_params.valid())
             scores = list(score_collection.find(query))
             logger.debug("Found %d scores" % len(scores))
             # for backwards compatibility
@@ -273,7 +275,8 @@ class CandidateDatabase(MongoDbGraphProvider):
         try:
             score_collection = self.database['scores']
             query = {'param_id': parameters_id}
-            query.update(eval_params.valid())
+            if eval_params is not None:
+                query.update(eval_params.valid())
 
             cnt = score_collection.count_documents(query)
             assert cnt <= 1, "multiple scores for query %s exist, don't know which to overwrite" % query
