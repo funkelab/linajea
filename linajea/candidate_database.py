@@ -236,7 +236,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             self._MongoDbGraphProvider__disconnect()
         return score
 
-    def get_scores(self, frames=None, filters=None, eval_params=None):
+    def get_scores(self, filters=None, eval_params=None):
         '''Returns the a list of all score dictionaries or
         None if no score available'''
         self._MongoDbGraphProvider__connect()
@@ -253,10 +253,6 @@ class CandidateDatabase(MongoDbGraphProvider):
                 query.update(eval_params.valid())
             scores = list(score_collection.find(query))
             logger.debug("Found %d scores" % len(scores))
-            # for backwards compatibility
-            for score in scores:
-                if 'param_id' not in score:
-                    score['param_id'] = score['_id']
 
         finally:
             self._MongoDbGraphProvider__disconnect()
