@@ -17,7 +17,6 @@ def convert_solve_params_list():
     def converter(vals):
         if vals is None:
             return None
-        print(type(vals))
         if not isinstance(vals, list):
             vals = [vals]
         converted = []
