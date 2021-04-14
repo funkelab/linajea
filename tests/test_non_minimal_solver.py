@@ -59,14 +59,15 @@ class TestSolver(unittest.TestCase):
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
             }
-        parameters = linajea.tracking.NMTrackingParameters(**ps)
+        job = {"num_workers": 5, "queue": "normal"}
+        solve_config = linajea.config.SolveConfig(parameters=ps, job=job)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)
                               for edge in edges])
         linajea.tracking.nm_track(
                 graph,
-                parameters,
+                solve_config,
                 frame_key='t',
                 selected_key='selected')
 
@@ -125,7 +126,7 @@ class TestSolver(unittest.TestCase):
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
             }
-        parameters = linajea.tracking.NMTrackingParameters(**ps)
+        parameters = linajea.config.SolveParametersNonMinimalConfig(**ps)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)
@@ -198,16 +199,17 @@ class TestSolver(unittest.TestCase):
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
             }
-        parameters = [linajea.tracking.NMTrackingParameters(**ps1),
-                      linajea.tracking.NMTrackingParameters(**ps2)]
+        parameters = [ps1, ps2]
         keys = ['selected_1', 'selected_2']
+        job = {"num_workers": 5, "queue": "normal"}
+        solve_config = linajea.config.SolveConfig(parameters=parameters, job=job)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)
                               for edge in edges])
         linajea.tracking.nm_track(
                 graph,
-                parameters,
+                solve_config,
                 frame_key='t',
                 selected_key=keys)
 
