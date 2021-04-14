@@ -20,10 +20,10 @@ def track(graph, config, selected_key, frame_key='t', frames=None,
 
             The candidate graph to extract tracks from
 
-        config (``SolveConfig``)
+        config (``TrackingConfig``)
 
             Configuration object to be used. The parameters to use when
-            optimizing the tracking ILP are at config.parameters
+            optimizing the tracking ILP are at config.solve.parameters
             (can also be a list of parameters).
 
         selected_key (``string``)
@@ -48,11 +48,11 @@ def track(graph, config, selected_key, frame_key='t', frames=None,
             The ID of the current daisy block.
 
     '''
-    # cell_cycle_keys = [p.cell_cycle_key for p in config.parameters]
+    # cell_cycle_keys = [p.cell_cycle_key for p in config.solve.parameters]
     cell_cycle_keys = [p.cell_cycle_key + "mother"
                        if p.cell_cycle_key is not None
                        else None
-                       for p in config.parameters]
+                       for p in config.solve.parameters]
     if any(cell_cycle_keys):
         # remove nodes that don't have a cell cycle key, with warning
         to_remove = []
@@ -93,10 +93,10 @@ def track(graph, config, selected_key, frame_key='t', frames=None,
         if not solver:
             solver = Solver(
                 track_graph, parameter, key, frames=frames,
-                write_struct_svm=config.write_struct_svm,
+                write_struct_svm=config.solve.write_struct_svm,
                 block_id=block_id,
-                check_node_close_to_roi=config.check_node_close_to_roi,
-                add_node_density_constraints=config.add_node_density_constraints)
+                check_node_close_to_roi=config.solve.check_node_close_to_roi,
+                add_node_density_constraints=config.solve.add_node_density_constraints)
         else:
             solver.update_objective(parameter, key)
 
