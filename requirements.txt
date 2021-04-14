@@ -6,7 +6,7 @@ toml
 scipy
 pandas
 torch
-tensorflow==1.15
+tensorflow==2.4.0
 zarr
 sklearn
 -e git+https://github.com/funkelab/funlib.math#egg=funlib.math
