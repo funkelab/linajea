@@ -224,13 +224,6 @@ class CandidateDatabase(MongoDbGraphProvider):
 
         try:
             score_collection = self.database['scores']
-            # for backwards compatibility
-            if eval_params.frame_start is not None:
-                score_collection = self.database[
-                    'scores_' +
-                    str(eval_params.frame_start) + "_" +
-                    str(eval_params.frame_end)]
-
             query = {'param_id': parameters_id}
             query.update(eval_params.valid())
             old_score = score_collection.find_one(query)
@@ -255,13 +248,6 @@ class CandidateDatabase(MongoDbGraphProvider):
                 query = {}
 
             score_collection = self.database['scores']
-            # for backwards compatibility
-            if eval_params.frame_start is not None:
-                score_collection = self.database[
-                    'scores_' +
-                    str(eval_params.frame_start) + "_" +
-                    str(eval_params.frame_end)]
-
             query.update(eval_params.valid())
             scores = list(score_collection.find(query))
             logger.debug("Found %d scores" % len(scores))
@@ -286,13 +272,6 @@ class CandidateDatabase(MongoDbGraphProvider):
         self._MongoDbGraphProvider__open_db()
         try:
             score_collection = self.database['scores']
-            # for backwards compatibility
-            if eval_params.frame_start is not None:
-                score_collection = self.database[
-                    'scores_' +
-                    str(eval_params.frame_start) + "_" +
-                    str(eval_params.frame_end)]
-
             query = {'param_id': parameters_id}
             query.update(eval_params.valid())
 
