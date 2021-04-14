@@ -142,7 +142,7 @@ class DatabaseTestCase(TestCase):
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
             }
-        parameters = linajea.tracking.TrackingParameters(**ps)
+        parameters = linajea.config.SolveParametersMinimalConfig(**ps)
 
         db = CandidateDatabase(
                 db_name,
@@ -159,7 +159,8 @@ class DatabaseTestCase(TestCase):
 
         compare_dict = score.__dict__
         compare_dict.update(db.get_parameters(params_id))
-        self.assertDictEqual(compare_dict, score_dict)
+        compare_dict.update({'param_id': params_id})
+        self.assertEqual(compare_dict, score_dict)
 
 
 class TestParameterIds(TestCase):
@@ -187,9 +188,9 @@ class TestParameterIds(TestCase):
                 db_host,
                 mode='w')
         for i in range(10):
-            tp = linajea.tracking.TrackingParameters(
+            tp = linajea.config.SolveParametersMinimalConfig(
                     **self.get_tracking_params())
-            tp.cost_appear = i
+            tp.track_cost = i
             _id = db.get_parameters_id(tp)
             self.assertEqual(_id, i + 1)
         self.delete_db(db_name, db_host)
@@ -203,7 +204,7 @@ class TestParameterIds(TestCase):
                 mode='w')
         tps = []
         for i in range(10):
-            tp = linajea.tracking.TrackingParameters(
+            tp = linajea.config.SolveParametersMinimalConfig(
                     **self.get_tracking_params())
             tp.cost_appear = i
             tps.append(tp)
