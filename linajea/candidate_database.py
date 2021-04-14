@@ -311,7 +311,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             if parameters is None:
                 parameters = {}
             logger.info("writing scores for %s to %s", parameters, query)
-            parameters.update(report.__dict__)
+            parameters.update(report.get_report())
             parameters.update(query)
             score_collection.replace_one(query,
                                          parameters,
