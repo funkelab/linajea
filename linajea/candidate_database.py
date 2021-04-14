@@ -217,7 +217,16 @@ class CandidateDatabase(MongoDbGraphProvider):
 
     def get_score(self, parameters_id, eval_params=None):
         '''Returns the score for the given parameters_id, or
-        None if no score available'''
+        None if no score available
+        Arguments:
+
+            parameters_id (``int``):
+                The parameters ID to return the score of
+
+            eval_params (``_EvaluateParametersConfig``):
+                Additional parameters used for evaluation (e.g. roi,
+                matching threshold, sparsity)
+        '''
         self._MongoDbGraphProvider__connect()
         self._MongoDbGraphProvider__open_db()
         score = None
@@ -238,7 +247,16 @@ class CandidateDatabase(MongoDbGraphProvider):
 
     def get_scores(self, filters=None, eval_params=None):
         '''Returns the a list of all score dictionaries or
-        None if no score available'''
+        None if no score available
+        Arguments:
+
+            parameters_id (``int``):
+                The parameters ID to return the score of
+
+            eval_params (``_EvaluateParametersConfig``):
+                Additional parameters used for evaluation (e.g. roi,
+                matching threshold, sparsity)
+        '''
         self._MongoDbGraphProvider__connect()
         self._MongoDbGraphProvider__open_db()
 
@@ -260,7 +278,20 @@ class CandidateDatabase(MongoDbGraphProvider):
 
     def write_score(self, parameters_id, report, eval_params=None):
         '''Writes the score for the given parameters_id to the
-        scores collection, along with the associated parameters'''
+        scores collection, along with the associated parameters
+
+        Arguments:
+
+            parameters_id (``int``):
+                The parameters ID to write the score of
+
+            report (``linajea.evaluation.Report``):
+                The report with the scores to write
+
+            eval_params (``linajea.config._EvaluateParametersConfig``):
+                Additional parameters used for evaluation (e.g. roi,
+                matching threshold, sparsity)
+        '''
         parameters = self.get_parameters(parameters_id)
         if parameters is None:
             logger.warning("No parameters with id %d. Saving with key only",
