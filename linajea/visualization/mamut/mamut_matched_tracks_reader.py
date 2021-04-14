@@ -16,6 +16,7 @@ class MamutMatchedTracksReader(MamutReader):
     def read_data(self, data):
         candidate_db_name = data['db_name']
         start_frame, end_frame = data['frames']
+        matching_threshold = data.get('matching_threshold', 20)
         gt_db_name = data['gt_db_name']
         assert end_frame > start_frame
         roi = Roi((start_frame, 0, 0, 0),
@@ -46,14 +47,14 @@ class MamutMatchedTracksReader(MamutReader):
         graph = linajea.tracking.TrackGraph(subgraph, frame_key='t')
         tracks = list(graph.get_tracks())
         print("Found %d tracks" % len(tracks))
-        
+
         if len(graph.nodes) == 0 or len(gt_graph.nodes) == 0:
             logger.info("Didn't find gt or reconstruction - returning")
             return [], []
 
         m = linajea.evaluation.match_edges(
             gt_graph, graph,
-            matching_threshold=20)
+            matching_threshold=matching_threshold)
         (edges_x, edges_y, edge_matches, edge_fps) = m
         matched_rec_tracks = []
         for track in tracks:
