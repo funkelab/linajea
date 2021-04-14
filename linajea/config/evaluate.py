@@ -11,17 +11,6 @@ from .utils import ensure_cls
 class _EvaluateParametersConfig:
     matching_threshold = attr.ib(type=int)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
-    # deprecated
-    frames = attr.ib(type=List[int], default=None)
-    # deprecated
-    frame_start = attr.ib(type=int, default=None)
-    # deprecated
-    frame_end = attr.ib(type=int, default=None)
-    # deprecated
-    limit_to_roi_offset = attr.ib(type=List[int], default=None)
-    # deprecated
-    limit_to_roi_shape = attr.ib(type=List[int], default=None)
-    # deprecated
     sparse = attr.ib(type=bool)
 
     def __attrs_post_init__(self):
