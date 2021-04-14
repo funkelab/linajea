@@ -12,12 +12,13 @@ from .utils import (ensure_cls,
 
 logger = logging.getLogger(__name__)
 
+
 def convert_solve_params_list():
     def converter(vals):
         if vals is None:
             return None
-
-        assert isinstance(vals, list), "list({})".format(vals)
+        if not isinstance(vals, list):
+            vals = [vals]
         converted = []
         for val in vals:
             if isinstance(val, SolveParametersMinimalConfig):
@@ -54,10 +55,10 @@ class SolveParametersMinimalConfig:
     track_cost = attr.ib(type=float)
     weight_node_score = attr.ib(type=float)
     selection_constant = attr.ib(type=float)
-    weight_division = attr.ib(type=float)
-    division_constant = attr.ib(type=float)
-    weight_child = attr.ib(type=float)
-    weight_continuation = attr.ib(type=float)
+    weight_division = attr.ib(type=float, default=0.0)
+    division_constant = attr.ib(type=float, default=0.0)
+    weight_child = attr.ib(type=float, default=0.0)
+    weight_continuation = attr.ib(type=float, default=0.0)
     weight_edge_score = attr.ib(type=float)
     cell_cycle_key = attr.ib(type=str, default=None)
     block_size = attr.ib(type=List[int])

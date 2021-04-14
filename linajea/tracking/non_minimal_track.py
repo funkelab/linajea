@@ -47,8 +47,7 @@ def nm_track(graph, config, selected_key, frame_key='t', frames=None):
         return
 
     parameters = config.solve.parameters
-    if not isinstance(parameters, list):
-        parameters = [parameters]
+    if not isinstance(selected_key, list):
         selected_key = [selected_key]
 
     assert len(parameters) == len(selected_key),\
