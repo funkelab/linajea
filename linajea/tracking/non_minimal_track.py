@@ -18,10 +18,10 @@ def nm_track(graph, config, selected_key, frame_key='t', frames=None):
 
             The candidate graph to extract tracks from
 
-        config (``SolveConfig``)
+        config (``TrackingConfig``)
 
             Configuration object to be used. The parameters to use when
-            optimizing the tracking ILP are at config.parameters
+            optimizing the tracking ILP are at config.solve.parameters
             (can also be a list of parameters).
 
         selected_key (``string``)
@@ -46,8 +46,9 @@ def nm_track(graph, config, selected_key, frame_key='t', frames=None):
     if graph.number_of_nodes() == 0:
         return
 
-    parameters = config.parameters
-    if not isinstance(selected_key, list):
+    parameters = config.solve.parameters
+    if not isinstance(parameters, list):
+        parameters = [parameters]
         selected_key = [selected_key]
 
     assert len(parameters) == len(selected_key),\
@@ -66,8 +67,8 @@ def nm_track(graph, config, selected_key, frame_key='t', frames=None):
         if not solver:
             solver = NMSolver(
                 track_graph, parameter, key, frames=frames,
-                check_node_close_to_roi=config.check_node_close_to_roi,
-                add_node_density_constraints=config.add_node_density_constraints)
+                check_node_close_to_roi=config.solve.check_node_close_to_roi,
+                add_node_density_constraints=config.solve.add_node_density_constraints)
         else:
             solver.update_objective(parameter, key)
 
