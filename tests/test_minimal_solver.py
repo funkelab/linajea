@@ -9,6 +9,10 @@ import pymongo
 logging.basicConfig(level=logging.INFO)
 # logging.getLogger('linajea.tracking').setLevel(logging.DEBUG)
 
+class TestTrackingConfig():
+    def __init__(self, solve_config):
+        self.solve = solve_config
+
 
 class TestSolver(unittest.TestCase):
 
@@ -67,13 +71,14 @@ class TestSolver(unittest.TestCase):
             }
         job = {"num_workers": 5, "queue": "normal"}
         solve_config = linajea.config.SolveConfig(parameters=ps, job=job)
+        config = TestTrackingConfig(solve_config)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)
                               for edge in edges])
         linajea.tracking.track(
                 graph,
-                solve_config,
+                config,
                 frame_key='t',
                 selected_key='selected')
 
@@ -210,13 +215,14 @@ class TestSolver(unittest.TestCase):
         keys = ['selected_1', 'selected_2']
         job = {"num_workers": 5, "queue": "normal"}
         solve_config = linajea.config.SolveConfig(parameters=parameters, job=job)
+        config = TestTrackingConfig(solve_config)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)
                               for edge in edges])
         linajea.tracking.track(
                 graph,
-                solve_config,
+                config,
                 frame_key='t',
                 selected_key=keys)
 
@@ -316,13 +322,14 @@ class TestSolver(unittest.TestCase):
             }
         job = {"num_workers": 5, "queue": "normal"}
         solve_config = linajea.config.SolveConfig(parameters=ps, job=job)
+        config = TestTrackingConfig(solve_config)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)
                               for edge in edges])
         linajea.tracking.track(
                 graph,
-                solve_config,
+                config,
                 frame_key='t',
                 selected_key='selected')
 
@@ -413,13 +420,14 @@ class TestSolver(unittest.TestCase):
             }
         job = {"num_workers": 5, "queue": "normal"}
         solve_config = linajea.config.SolveConfig(parameters=ps, job=job)
+        config = TestTrackingConfig(solve_config)
 
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
         graph.add_edges_from([(edge['source'], edge['target'], edge)
                               for edge in edges])
         linajea.tracking.track(
                 graph,
-                solve_config,
+                config,
                 frame_key='t',
                 selected_key='selected')
 
