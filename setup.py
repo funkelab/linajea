@@ -15,6 +15,8 @@ setup(
             'linajea.tracking',
             'linajea.evaluation',
             'linajea.process_blockwise',
+            'linajea.visualization',
+            'linajea.visualization.mamut',
         ],
         python_requires="<3.8"
 )
