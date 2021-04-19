@@ -13,8 +13,56 @@ class MamutMatchedTracksReader(MamutReader):
         super(MamutReader, self).__init__()
         self.db_host = db_host
 
-    def read_data(self, data, is_tp=None):
-        (gt_tracks, matched_rec_tracks) = data
+    def read_data(self, data):
+        candidate_db_name = data['db_name']
+        start_frame, end_frame = data['frames']
+        gt_db_name = data['gt_db_name']
+        assert end_frame > start_frame
+        roi = Roi((start_frame, 0, 0, 0),
+                  (end_frame - start_frame, 1e10, 1e10, 1e10))
+        if 'parameters_id' in data:
+            try:
+                int(data['parameters_id'])
+                selected_key = 'selected_' + str(data['parameters_id'])
+            except:
+                selected_key = data['parameters_id']
+        else:
+            selected_key = None
+        db = linajea.CandidateDatabase(
+                candidate_db_name, self.db_host)
+        db.selected_key = selected_key
+        gt_db = linajea.CandidateDatabase(gt_db_name, self.db_host)
+
+        print("Reading GT cells and edges in %s" % roi)
+        gt_subgraph = gt_db[roi]
+        gt_graph = linajea.tracking.TrackGraph(gt_subgraph, frame_key='t')
+        gt_tracks = list(gt_graph.get_tracks())
+        print("Found %d GT tracks" % len(gt_tracks))
+
+        # tracks_to_xml(gt_cells, gt_tracks, 'linajea_gt.xml')
+
+        print("Reading cells and edges in %s" % roi)
+        subgraph = db.get_selected_graph(roi)
+        graph = linajea.tracking.TrackGraph(subgraph, frame_key='t')
+        tracks = list(graph.get_tracks())
+        print("Found %d tracks" % len(tracks))
+        
+        if len(graph.nodes) == 0 or len(gt_graph.nodes) == 0:
+            logger.info("Didn't find gt or reconstruction - returning")
+            return [], []
+
+        m = linajea.evaluation.match_edges(
+            gt_graph, graph,
+            matching_threshold=20)
+        (edges_x, edges_y, edge_matches, edge_fps) = m
+        matched_rec_tracks = []
+        for track in tracks:
+            for _, edge_index in edge_matches:
+                edge = edges_y[edge_index]
+                if track.has_edge(edge[0], edge[1]):
+                    matched_rec_tracks.append(track)
+                    break
+        logger.debug("found %d matched rec tracks" % len(matched_rec_tracks))
 
         logger.info("Adding %d gt tracks" % len(gt_tracks))
         track_id = 0
