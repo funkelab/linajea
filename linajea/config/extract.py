@@ -21,3 +21,4 @@ class ExtractConfig:
     block_size = attr.ib(type=List[int])
     job = attr.ib(converter=ensure_cls(JobConfig))
     context = attr.ib(type=List[int], default=None)
+    use_pv_distance = attr.ib(type=bool, default=False)

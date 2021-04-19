@@ -148,9 +148,14 @@ def extract_edges_in_block(
             nex_cell_center = nex_cell[1]
             nex_parent_center = nex_cell_center + nex_cell[2]
 
-            pre_cells_indices = pre_kd_tree.query_ball_point(
-                nex_cell_center,
-                edge_move_threshold)
+            if linajea_config.extract.use_pv_distance:
+                pre_cells_indices = pre_kd_tree.query_ball_point(
+                    nex_parent_center,
+                    edge_move_threshold)
+            else:
+                pre_cells_indices = pre_kd_tree.query_ball_point(
+                    nex_cell_center,
+                    edge_move_threshold)
             pre_cells = [all_pre_cells[i] for i in pre_cells_indices]
 
             logger.debug(
