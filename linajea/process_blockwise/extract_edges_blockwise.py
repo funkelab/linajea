@@ -21,7 +21,6 @@ def extract_edges_blockwise(
         frames=None,
         frame_context=1,
         data_dir='../01_data',
-        use_pv_distance=False,
         **kwargs):
 
     voxel_size, source_roi = get_source_roi(data_dir, sample)
@@ -65,8 +64,7 @@ def extract_edges_blockwise(
             db_name,
             db_host,
             edge_move_threshold,
-            b,
-            use_pv_distance=use_pv_distance),
+            b),
         check_function=lambda b: check_function(
             b,
             'extract_edges',
@@ -82,8 +80,7 @@ def extract_edges_in_block(
         db_name,
         db_host,
         edge_move_threshold,
-        block,
-        use_pv_distance=False):
+        block):
 
     logger.info(
         "Finding edges in %s, reading from %s",
@@ -152,15 +149,9 @@ def extract_edges_in_block(
             nex_cell_center = nex_cell[1]
             nex_parent_center = nex_cell_center + nex_cell[2]
 
-            if use_pv_distance:
-                pre_cells_indices = pre_kd_tree.query_ball_point(
-                    nex_parent_center,
-                    edge_move_threshold)
-
-            else:
-                pre_cells_indices = pre_kd_tree.query_ball_point(
-                    nex_cell_center,
-                    edge_move_threshold)
+            pre_cells_indices = pre_kd_tree.query_ball_point(
+                nex_cell_center,
+                edge_move_threshold)
             pre_cells = [all_pre_cells[i] for i in pre_cells_indices]
 
             logger.debug(
