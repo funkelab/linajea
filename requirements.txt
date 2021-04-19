@@ -13,5 +13,5 @@ sklearn
 -e git+https://github.com/funkelab/funlib.run#egg=funlib.run
 -e git+https://github.com/funkelab/funlib.learn.torch#egg=funlib.learn.torch
 -e git+https://github.com/funkelab/funlib.learn.tensorflow#egg=funlib.learn.tensorflow
--e git+https://github.com/funkey/gunpowder@b7bd287e82553fa6d1d667a474e3e5457577060e#egg=gunpowder
+-e git+https://github.com/funkey/gunpowder@2ce2fdbee5c0bb5d2e12471e079a252f7fae54ea#egg=gunpowder
 -e git+https://github.com/funkelab/daisy@3d7826e7e4ab5844d55debac9bbb00b4e43a998b#egg=daisy
