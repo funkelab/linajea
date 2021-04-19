@@ -15,6 +15,14 @@ supporting code to run those experiments, and is where most of the interesting
 functionality resides, other than network architecture definition.
 
 
+INSTALLATION
+ - create a conda environment
+ - pip or conda install numpy, cython
+ - pip install -r requirements.txt
+ - conda install -c funkey pylp
+ - pip install .
+
+
 VERSIONING
 The current stable version is v1.3, and the 1.4-dev branch has the
 most cutting edge functionality. We will do our best to release minor version
