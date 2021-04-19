@@ -67,6 +67,10 @@ def predict_blockwise(
     net_input_size = daisy.Coordinate(net_input_size)*voxel_size
     net_output_size = daisy.Coordinate(net_output_size)*voxel_size
     context = (net_input_size - net_output_size)/2
+
+    # expand predict roi to multiple of block write_roi
+    predict_roi = predict_roi.snap_to_grid(net_output_size, mode='grow')
+
     input_roi = predict_roi.grow(context, context)
     output_roi = predict_roi
 
@@ -128,53 +132,34 @@ def predict_blockwise(
 
 
     # process block-wise
-    if 'db_name' in config:
-        daisy.run_blockwise(
-            input_roi,
-            block_read_roi,
-            block_write_roi,
-            process_function=lambda: predict_worker(
-                config_file,
-                iteration),
-            check_function=lambda b: check_function(
-                b,
-                'predict',
-                config['db_name'],
-                config['db_host']),
-            num_workers=config['num_workers'],
-            read_write_conflict=False,
-            max_retries=0,
-            fit='overhang')
-    else:
-        daisy.run_blockwise(
-            input_roi,
-            block_read_roi,
-            block_write_roi,
-            process_function=lambda: predict_worker(
-                config_file,
-                iteration),
-            num_workers=config['num_workers'],
-            read_write_conflict=False,
-            max_retries=0,
-            fit='overhang')
+    cf = []
+    if linajea_config.predict.write_to_zarr:
+        cf.append(lambda b: check_function(
+            b,
+            'predict_zarr',
+            data.db_name,
+            linajea_config.general.db_host))
+    if linajea_config.predict.write_to_db:
+        cf.append(lambda b: check_function(
+            b,
+            'predict_db',
+            data.db_name,
+            linajea_config.general.db_host))
+
+    # process block-wise
+    daisy.run_blockwise(
+        input_roi,
+        block_read_roi,
+        block_write_roi,
+        process_function=lambda: predict_worker(linajea_config),
+        check_function=lambda b: all([f(b) for f in cf]),
+        num_workers=linajea_config.predict.job.num_workers,
+        read_write_conflict=False,
+        max_retries=0,
+        fit='valid')
 
 
-def predict_worker(
-        config_file,
-        iteration):
-    config = {
-            "singularity_image": 'linajea/linajea:v1.1',
-            "queue": 'slowpoke',
-            'setups_dir': '../02_setups'
-        }
-    master_config = load_config(config_file)
-    config.update(master_config['general'])
-    config.update(master_config['predict'])
-    singularity_image = config['singularity_image']
-    queue = config['queue']
-    setups_dir = config['setups_dir']
-    setup = config['setup']
-    chargeback = config['lab']
+def predict_worker(linajea_config):
 
     worker_id = daisy.Context.from_env().worker_id
     worker_time = time.time()
