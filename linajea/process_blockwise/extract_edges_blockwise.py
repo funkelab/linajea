@@ -12,20 +12,29 @@ from .daisy_check_functions import write_done, check_function
 logger = logging.getLogger(__name__)
 
 
-def extract_edges_blockwise(linajea_config):
+def extract_edges_blockwise(
+        db_host,
+        db_name,
+        sample,
+        edge_move_threshold,
+        block_size,
+        num_workers,
+        frames=None,
+        frame_context=1,
+        data_dir='../01_data',
+        **kwargs):
 
-    data = linajea_config.inference.data_source
-    voxel_size = daisy.Coordinate(data.voxel_size)
-    extract_roi = daisy.Roi(offset=data.roi.offset,
-                            shape=data.roi.shape)
-    # allow for solve context
-    extract_roi = extract_roi.grow(
-            daisy.Coordinate(linajea_config.solve.parameters[0].context),
-            daisy.Coordinate(linajea_config.solve.parameters[0].context))
-    # but limit to actual file roi
-    extract_roi = extract_roi.intersect(
-        daisy.Roi(offset=data.datafile.file_roi.offset,
-                  shape=data.datafile.file_roi.shape))
+    voxel_size, source_roi = get_source_roi(data_dir, sample)
+
+    # limit to specific frames, if given
+    if frames:
+        begin, end = frames
+        begin -= frame_context
+        end += frame_context
+        crop_roi = daisy.Roi(
+            (begin, None, None, None),
+            (end - begin, None, None, None))
+        source_roi = source_roi.intersect(crop_roi)
 
     # block size in world units
     block_write_roi = daisy.Roi(
@@ -56,7 +65,9 @@ def extract_edges_blockwise(linajea_config):
         block_read_roi,
         block_write_roi,
         process_function=lambda b: extract_edges_in_block(
-            linajea_config,
+            db_name,
+            db_host,
+            edge_move_threshold,
             b),
         check_function=lambda b: check_function(
             b,
@@ -70,7 +81,9 @@ def extract_edges_blockwise(linajea_config):
 
 
 def extract_edges_in_block(
-        linajea_config,
+        db_name,
+        db_host,
+        edge_move_threshold,
         block):
 
     logger.info(
@@ -148,15 +161,9 @@ def extract_edges_in_block(
             nex_cell_center = nex_cell[1]
             nex_parent_center = nex_cell_center + nex_cell[2]
 
-            if use_pv_distance:
-                pre_cells_indices = pre_kd_tree.query_ball_point(
-                    nex_parent_center,
-                    edge_move_threshold)
-
-            else:
-                pre_cells_indices = pre_kd_tree.query_ball_point(
-                    nex_cell_center,
-                    edge_move_threshold)
+            pre_cells_indices = pre_kd_tree.query_ball_point(
+                nex_cell_center,
+                edge_move_threshold)
             pre_cells = [all_pre_cells[i] for i in pre_cells_indices]
 
             logger.debug(
