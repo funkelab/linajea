@@ -217,22 +217,25 @@ class CandidateDatabase(MongoDbGraphProvider):
 
     def get_score(self, parameters_id, eval_params=None):
         '''Returns the score for the given parameters_id, or
-        None if no score available'''
+        None if no score available
+        Arguments:
+
+            parameters_id (``int``):
+                The parameters ID to return the score of
+
+            eval_params (``EvaluateParametersConfig``):
+                Additional parameters used for evaluation (e.g. roi,
+                matching threshold, sparsity)
+        '''
         self._MongoDbGraphProvider__connect()
         self._MongoDbGraphProvider__open_db()
         score = None
 
         try:
             score_collection = self.database['scores']
-            # for backwards compatibility
-            if eval_params.frame_start is not None:
-                score_collection = self.database[
-                    'scores_' +
-                    str(eval_params.frame_start) + "_" +
-                    str(eval_params.frame_end)]
-
             query = {'param_id': parameters_id}
-            query.update(eval_params.valid())
+            if eval_params is not None:
+                query.update(eval_params.valid())
             old_score = score_collection.find_one(query)
             if old_score:
                 del old_score['_id']
@@ -242,9 +245,18 @@ class CandidateDatabase(MongoDbGraphProvider):
             self._MongoDbGraphProvider__disconnect()
         return score
 
-    def get_scores(self, frames=None, filters=None, eval_params=None):
+    def get_scores(self, filters=None, eval_params=None):
         '''Returns the a list of all score dictionaries or
-        None if no score available'''
+        None if no score available
+        Arguments:
+
+            parameters_id (``int``):
+                The parameters ID to return the score of
+
+            eval_params (``EvaluateParametersConfig``):
+                Additional parameters used for evaluation (e.g. roi,
+                matching threshold, sparsity)
+        '''
         self._MongoDbGraphProvider__connect()
         self._MongoDbGraphProvider__open_db()
 
@@ -255,20 +267,10 @@ class CandidateDatabase(MongoDbGraphProvider):
                 query = {}
 
             score_collection = self.database['scores']
-            # for backwards compatibility
-            if eval_params.frame_start is not None:
-                score_collection = self.database[
-                    'scores_' +
-                    str(eval_params.frame_start) + "_" +
-                    str(eval_params.frame_end)]
-
-            query.update(eval_params.valid())
+            if eval_params is not None:
+                query.update(eval_params.valid())
             scores = list(score_collection.find(query))
             logger.debug("Found %d scores" % len(scores))
-            # for backwards compatibility
-            for score in scores:
-                if 'param_id' not in score:
-                    score['param_id'] = score['_id']
 
         finally:
             self._MongoDbGraphProvider__disconnect()
@@ -276,7 +278,20 @@ class CandidateDatabase(MongoDbGraphProvider):
 
     def write_score(self, parameters_id, report, eval_params=None):
         '''Writes the score for the given parameters_id to the
-        scores collection, along with the associated parameters'''
+        scores collection, along with the associated parameters
+
+        Arguments:
+
+            parameters_id (``int``):
+                The parameters ID to write the score of
+
+            report (``linajea.evaluation.Report``):
+                The report with the scores to write
+
+            eval_params (``linajea.config.EvaluateParametersConfig``):
+                Additional parameters used for evaluation (e.g. roi,
+                matching threshold, sparsity)
+        '''
         parameters = self.get_parameters(parameters_id)
         if parameters is None:
             logger.warning("No parameters with id %d. Saving with key only",
@@ -286,15 +301,9 @@ class CandidateDatabase(MongoDbGraphProvider):
         self._MongoDbGraphProvider__open_db()
         try:
             score_collection = self.database['scores']
-            # for backwards compatibility
-            if eval_params.frame_start is not None:
-                score_collection = self.database[
-                    'scores_' +
-                    str(eval_params.frame_start) + "_" +
-                    str(eval_params.frame_end)]
-
             query = {'param_id': parameters_id}
-            query.update(eval_params.valid())
+            if eval_params is not None:
+                query.update(eval_params.valid())
 
             cnt = score_collection.count_documents(query)
             assert cnt <= 1, "multiple scores for query %s exist, don't know which to overwrite" % query
@@ -302,7 +311,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             if parameters is None:
                 parameters = {}
             logger.info("writing scores for %s to %s", parameters, query)
-            parameters.update(report.__dict__)
+            parameters.update(report.get_report())
             parameters.update(query)
             score_collection.replace_one(query,
                                          parameters,
