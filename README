@@ -10,6 +10,14 @@ code to run those experiments, and is where most of the interesting
 functionality resides, other than network architecture definition.
 
 
+INSTALLATION
+ - create a conda environment
+ - pip or conda install numpy, cython
+ - pip install -r requirements.txt
+ - conda install -c funkey pylp
+ - pip install .
+
+
 VERSIONING
 After and initial period for experimentation with high change in the code base,
 we are releasing version 1.0. After that release, the master branch will remain

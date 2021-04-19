@@ -1,7 +1,6 @@
 cython
 networkx
 pymongo
-pylp
 toml
 scipy
 pandas
