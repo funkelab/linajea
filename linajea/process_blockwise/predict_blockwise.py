@@ -39,6 +39,10 @@ def predict_blockwise(linajea_config):
     net_input_size = daisy.Coordinate(net_input_size)*voxel_size
     net_output_size = daisy.Coordinate(net_output_size)*voxel_size
     context = (net_input_size - net_output_size)/2
+
+    # expand predict roi to multiple of block write_roi
+    predict_roi = predict_roi.snap_to_grid(net_output_size, mode='grow')
+
     input_roi = predict_roi.grow(context, context)
     output_roi = predict_roi
 
@@ -124,7 +128,7 @@ def predict_blockwise(linajea_config):
         num_workers=linajea_config.predict.job.num_workers,
         read_write_conflict=False,
         max_retries=0,
-        fit='overhang')
+        fit='valid')
 
 
 def predict_worker(linajea_config):
