@@ -8,7 +8,7 @@ from .utils import ensure_cls
 
 
 @attr.s(kw_only=True)
-class _EvaluateParametersConfig:
+class EvaluateParametersConfig:
     matching_threshold = attr.ib(type=int)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
     # deprecated
@@ -46,28 +46,28 @@ class _EvaluateParametersConfig:
 
 
 @attr.s(kw_only=True)
-class _EvaluateConfig:
+class EvaluateConfig:
     job = attr.ib(converter=ensure_cls(JobConfig), default=None)
 
 
 @attr.s(kw_only=True)
-class EvaluateTrackingConfig(_EvaluateConfig):
+class EvaluateTrackingConfig(EvaluateConfig):
     from_scratch = attr.ib(type=bool, default=False)
-    parameters = attr.ib(converter=ensure_cls(_EvaluateParametersConfig))
+    parameters = attr.ib(converter=ensure_cls(EvaluateParametersConfig))
 
 
 @attr.s(kw_only=True)
-class _EvaluateParametersCellCycleConfig:
+class EvaluateParametersCellCycleConfig:
     matching_threshold = attr.ib()
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
 
 
 @attr.s(kw_only=True)
-class EvaluateCellCycleConfig(_EvaluateConfig):
+class EvaluateCellCycleConfig(EvaluateConfig):
     max_samples = attr.ib(type=int)
     metric = attr.ib(type=str)
     one_off = attr.ib(type=bool)
     prob_threshold = attr.ib(type=float)
     dry_run = attr.ib(type=bool)
     find_fn = attr.ib(type=bool)
-    parameters = attr.ib(converter=ensure_cls(_EvaluateParametersCellCycleConfig))
+    parameters = attr.ib(converter=ensure_cls(EvaluateParametersCellCycleConfig))

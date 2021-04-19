@@ -223,7 +223,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             parameters_id (``int``):
                 The parameters ID to return the score of
 
-            eval_params (``_EvaluateParametersConfig``):
+            eval_params (``EvaluateParametersConfig``):
                 Additional parameters used for evaluation (e.g. roi,
                 matching threshold, sparsity)
         '''
@@ -253,7 +253,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             parameters_id (``int``):
                 The parameters ID to return the score of
 
-            eval_params (``_EvaluateParametersConfig``):
+            eval_params (``EvaluateParametersConfig``):
                 Additional parameters used for evaluation (e.g. roi,
                 matching threshold, sparsity)
         '''
@@ -288,7 +288,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             report (``linajea.evaluation.Report``):
                 The report with the scores to write
 
-            eval_params (``linajea.config._EvaluateParametersConfig``):
+            eval_params (``linajea.config.EvaluateParametersConfig``):
                 Additional parameters used for evaluation (e.g. roi,
                 matching threshold, sparsity)
         '''
