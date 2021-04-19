@@ -41,7 +41,7 @@ class TracksSourceTestCase(unittest.TestCase):
         os.remove(TEST_FILE_WITH_HEADER)
 
     def test_parent_location(self):
-        points = gp.PointsKey("POINTS")
+        points = gp.GraphKey("POINTS")
         ts = TracksSource(
                 TEST_FILE,
                 points)
@@ -53,18 +53,18 @@ class TracksSourceTestCase(unittest.TestCase):
 
         ts.setup()
         b = ts.provide(request)
-        points = b[points].data
+        points = [n.location for n in b[points].nodes]
         self.assertListEqual([0.0, 0.0, 0.0, 0.0],
-                             list(points[1].location))
+                             list(points[0]))
         self.assertListEqual([1.0, 0.0, 0.0, 0.0],
-                             list(points[2].location))
+                             list(points[1]))
         self.assertListEqual([1.0, 1.0, 2.0, 3.0],
-                             list(points[3].location))
+                             list(points[2]))
         self.assertListEqual([2.0, 2.0, 2.0, 2.0],
-                             list(points[4].location))
+                             list(points[3]))
 
     def test_csv_header(self):
-        points = gp.PointsKey("POINTS")
+        points = gp.GraphKey("POINTS")
         tswh = TracksSource(
                 TEST_FILE_WITH_HEADER,
                 points)
@@ -76,18 +76,18 @@ class TracksSourceTestCase(unittest.TestCase):
 
         tswh.setup()
         b = tswh.provide(request)
-        points = b[points].data
+        points = [n.location for n in b[points].nodes]
         self.assertListEqual([0.0, 0.0, 0.0, 0.0],
-                             list(points[1].location))
+                             list(points[0]))
         self.assertListEqual([1.0, 0.0, 0.0, 0.0],
-                             list(points[2].location))
+                             list(points[1]))
         self.assertListEqual([1.0, 1.0, 2.0, 3.0],
-                             list(points[3].location))
+                             list(points[2]))
         self.assertListEqual([2.0, 2.0, 2.0, 2.0],
-                             list(points[4].location))
+                             list(points[3]))
 
     def test_delete_points_in_context(self):
-        points = gp.PointsKey("POINTS")
+        points = gp.GraphKey("POINTS")
         pv_array = gp.ArrayKey("PARENT_VECTORS")
         mask = gp.ArrayKey("MASK")
         radius = [0.1, 0.1, 0.1, 0.1]
@@ -118,7 +118,7 @@ class TracksSourceTestCase(unittest.TestCase):
             pipeline.request_batch(request)
 
     def test_add_parent_vectors(self):
-        points = gp.PointsKey("POINTS")
+        points = gp.GraphKey("POINTS")
         pv_array = gp.ArrayKey("PARENT_VECTORS")
         mask = gp.ArrayKey("MASK")
         radius = [0.1, 0.1, 0.1, 0.1]
@@ -148,7 +148,7 @@ class TracksSourceTestCase(unittest.TestCase):
         with gp.build(pipeline):
             batch = pipeline.request_batch(request)
 
-        points = batch[points].data
+        points = [n.location for n in batch[points].nodes]
         expected_mask = np.zeros(shape=(1, 4, 4, 4))
         expected_mask[0, 0, 0, 0] = 1
         expected_mask[0, 1, 2, 3] = 1

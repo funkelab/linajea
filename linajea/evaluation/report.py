@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 class Report:
     def __init__(self):
         # STATISTICS
@@ -184,3 +186,19 @@ class Report:
 
     def set_validation_score(self, validation_score):
         self.validation_score = validation_score
+
+    def get_report(self):
+        return self.__dict__
+
+    def get_short_report(self):
+        report = deepcopy(self.__dict__)
+                # STATISTICS
+        del report['fn_edge_list']
+        del report['identity_switch_gt_nodes']
+        del report['fp_div_rec_nodes']
+        del report['no_connection_gt_nodes']
+        del report['unconnected_child_gt_nodes']
+        del report['unconnected_parent_gt_nodes']
+        del report['tp_div_gt_nodes']
+
+        return report

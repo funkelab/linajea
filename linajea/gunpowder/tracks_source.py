@@ -1,5 +1,5 @@
-from gunpowder import (Point, Coordinate, Batch, BatchProvider,
-                       Roi, PointsSpec, Points)
+from gunpowder import (Node, Coordinate, Batch, BatchProvider,
+                       Roi, GraphSpec, Graph)
 from gunpowder.profiling import Timing
 import numpy as np
 import logging
@@ -9,19 +9,15 @@ from linajea import parse_tracks_file
 logger = logging.getLogger(__name__)
 
 
-class TrackPoint(Point):
+class TrackNode(Node):
 
-    def __init__(self, location, parent_id, track_id, value=None):
+    def __init__(self, id, location, parent_id, track_id, value=None):
 
-        super(TrackPoint, self).__init__(location)
-
-        self.thaw()
-        self.original_location = np.array(location, dtype=np.float32)
-        self.parent_id = parent_id
-        self.track_id = track_id
-        self.value = value
-        self.freeze()
-
+        attrs = {"original_location": np.array(location, dtype=np.float32),
+                 "parent_id": parent_id,
+                 "track_id": track_id,
+                 "value": value}
+        super(TrackNode, self).__init__(id, location, attrs=attrs)
 
 class TracksSource(BatchProvider):
     '''Read tracks of points from a comma-separated-values text file.
@@ -53,13 +49,13 @@ class TracksSource(BatchProvider):
 
             The file to read from.
 
-        points (:class:`PointsKey`):
+        points (:class:`GraphKey`):
 
             The key of the points set to create.
 
-        points_spec (:class:`PointsSpec`, optional):
+        points_spec (:class:`GraphSpec`, optional):
 
-            An optional :class:`PointsSpec` to overwrite the points specs
+            An optional :class:`GraphSpec` to overwrite the points specs
             automatically determined from the CSV file. This is useful to set
             the :class:`Roi` manually, for example.
 
@@ -70,12 +66,17 @@ class TracksSource(BatchProvider):
             positions to convert them to world units.
     '''
 
-    def __init__(self, filename, points, points_spec=None, scale=1.0):
+    def __init__(self, filename, points, points_spec=None, scale=1.0,
+                 use_radius=False):
 
         self.filename = filename
         self.points = points
         self.points_spec = points_spec
         self.scale = scale
+        if isinstance(use_radius, dict):
+            self.use_radius = {int(k):v for k,v in use_radius.items()}
+        else:
+            self.use_radius = use_radius
         self.locations = None
         self.track_info = None
 
@@ -94,7 +95,7 @@ class TracksSource(BatchProvider):
 
         roi = Roi(min_bb, max_bb - min_bb)
 
-        self.provides(self.points, PointsSpec(roi=roi))
+        self.provides(self.points, GraphSpec(roi=roi))
 
     def provide(self, request):
 
@@ -117,11 +118,10 @@ class TracksSource(BatchProvider):
 
         points_data = self._get_points(point_filter)
         logger.debug("Points data: %s", points_data)
-        logger.debug("Type of point: %s", type(list(points_data.values())[0]))
-        points_spec = PointsSpec(roi=request[self.points].roi.copy())
+        points_spec = GraphSpec(roi=request[self.points].roi.copy())
 
         batch = Batch()
-        batch.points[self.points] = Points(points_data, points_spec)
+        batch.graphs[self.points] = Graph(points_data, [], points_spec)
 
         timing.stop()
         batch.profiling_stats.add(timing)
@@ -133,19 +133,30 @@ class TracksSource(BatchProvider):
         filtered_locations = self.locations[point_filter]
         filtered_track_info = self.track_info[point_filter]
 
-        return {
-            # point_id
-            track_info[0]: TrackPoint(
+        nodes = []
+        for location, track_info in zip(filtered_locations,
+                                        filtered_track_info):
+            t = location[0]
+            if isinstance(self.use_radius, dict):
+                for th in sorted(self.use_radius.keys()):
+                    if t < int(th):
+                        value = track_info[3]
+                        value[0] = self.use_radius[th]
+                        break
+            else:
+                value = track_info[3] if self.use_radius else None
+            node = TrackNode(
+                # point_id
+                track_info[0],
                 location,
                 # parent_id
                 track_info[1] if track_info[1] > 0 else None,
                 # track_id
                 track_info[2],
                 # radius
-                value=track_info[3] if len(track_info) > 3 else None)
-            for location, track_info in zip(filtered_locations,
-                                            filtered_track_info)
-        }
+                value=value)
+            nodes.append(node)
+        return nodes
 
     def _read_points(self):
         roi = self.points_spec.roi if self.points_spec is not None else None

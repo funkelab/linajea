@@ -7,6 +7,7 @@ from .report import Report
 from .validation_metric import validation_score
 from .analyze_results import (
         get_result, get_results, get_best_result,
+        get_results_sorted, get_best_result_with_config, get_result_id,
         get_best_result_per_setup,
         get_tgmm_results,
         get_best_tgmm_result)

@@ -1,3 +1,4 @@
+from copy import deepcopy
 import logging
 import math
 import networkx as nx
@@ -400,6 +401,6 @@ class Evaluator:
 
     def get_validation_score(self):
         vald_score = validation_score(
-                self.gt_track_graph,
-                self.rec_track_graph)
+                deepcopy(self.gt_track_graph),
+                deepcopy(self.rec_track_graph))
         self.report.set_validation_score(vald_score)

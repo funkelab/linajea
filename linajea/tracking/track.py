@@ -7,8 +7,8 @@ import time
 logger = logging.getLogger(__name__)
 
 
-def track(graph, parameters, selected_key,
-          frame_key='t', frames=None, cell_cycle_key=None):
+def track(graph, config, selected_key, frame_key='t', frames=None,
+          block_id=None):
     ''' A wrapper function that takes a daisy subgraph and input parameters,
     creates and solves the ILP to create tracks, and updates the daisy subgraph
     to reflect the selected nodes and edges.
@@ -19,10 +19,11 @@ def track(graph, parameters, selected_key,
 
             The candidate graph to extract tracks from
 
-        parameters (``TrackingParameters``)
+        config (``TrackingConfig``)
 
-            The parameters to use when optimizing the tracking ILP.
-            Can also be a list of parameters.
+            Configuration object to be used. The parameters to use when
+            optimizing the tracking ILP are at config.solve.parameters
+            (can also be a list of parameters).
 
         selected_key (``string``)
 
@@ -41,20 +42,26 @@ def track(graph, parameters, selected_key,
             have nodes in all frames). Start is inclusive, end is exclusive.
             Defaults to graph.begin, graph.end
 
-        cell_cycle_key (``string``, optional):
+        block_id (``int``, optional):
 
-            The name of the node attribute that corresponds to a prediction
-            about the cell cycle state. The prediction should be a list of
-            three values [mother/division, daughter, continuation].
+            The ID of the current daisy block.
+
     '''
-    if cell_cycle_key is not None:
+    # cell_cycle_keys = [p.cell_cycle_key for p in config.solve.parameters]
+    cell_cycle_keys = [p.cell_cycle_key + "mother"
+                       if p.cell_cycle_key is not None
+                       else None
+                       for p in config.solve.parameters]
+    if any(cell_cycle_keys):
         # remove nodes that don't have a cell cycle key, with warning
         to_remove = []
         for node, data in graph.nodes(data=True):
-            if cell_cycle_key not in data:
-                logger.warning("Node %d does not have cell cycle key %s",
-                               node, cell_cycle_key)
-                to_remove.append(node)
+            for key in cell_cycle_keys:
+                if key not in data:
+                    logger.warning("Node %d does not have cell cycle key %s",
+                                   node, key)
+                    to_remove.append(node)
+                    break
 
         for node in to_remove:
             logger.debug("Removing node %d", node)
@@ -65,8 +72,8 @@ def track(graph, parameters, selected_key,
         logger.info("No nodes in graph - skipping solving step")
         return
 
-    if not isinstance(parameters, list):
-        parameters = [parameters]
+    parameters = config.solve.parameters
+    if not isinstance(selected_key, list):
         selected_key = [selected_key]
 
     assert len(parameters) == len(selected_key),\
@@ -83,8 +90,12 @@ def track(graph, parameters, selected_key,
     total_solve_time = 0
     for parameter, key in zip(parameters, selected_key):
         if not solver:
-            solver = Solver(track_graph, parameter, key, frames=frames,
-                            vgg_key=cell_cycle_key)
+            solver = Solver(
+                track_graph, parameter, key, frames=frames,
+                write_struct_svm=config.solve.write_struct_svm,
+                block_id=block_id,
+                check_node_close_to_roi=config.solve.check_node_close_to_roi,
+                add_node_density_constraints=config.solve.add_node_density_constraints)
         else:
             solver.update_objective(parameter, key)
 

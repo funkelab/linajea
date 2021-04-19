@@ -1,0 +1,231 @@
+[general]
+db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin"
+setup_dir = "~/linajea_experiments/unet_setups/setup211_simple_train_side_2"
+logging = 20
+seed = 42
+
+[model]
+path_to_script = "mknet_celegans.py"
+train_input_shape = [
+    7,
+    40,
+    148,
+    148
+  ]
+predict_input_shape = [
+    7,
+    80,
+    260,
+    260
+  ]
+fmap_inc_factors = 3
+downsample_factors = [[1, 2, 2], [1, 2, 2], [2, 2, 2]]
+kernel_size_down = [[3, 3], [3, 3], [3, 3], [3, 3]]
+kernel_size_up = [[3, 3], [3, 3], [3, 3]]
+constant_upsample = false
+average_vectors = false
+nms_window_shape = [3, 11, 11]
+# nms_window_shape = [5, 15, 15]
+unet_style = 'multihead'
+num_fmaps = 36
+# num_fmaps = [24, 12]
+cell_indicator_weighted = true
+
+
+[train]
+path_to_script = "train_celegans.py"
+cache_size = 10
+checkpoint_stride = 10000
+snapshot_stride = 1000
+profiling_stride = 100
+max_iterations = 50000
+use_tf_data = false
+use_auto_mixed_precision = false
+val_log_step = 10
+
+# radius for binary map -> *2
+parent_radius = [0.1, 16.0, 8.0, 8.0]
+# sigma for Gauss -> ~*4 (5 in z -> in 3 slices)
+rasterize_radius = [0.1, 16.0, 5.0, 5.0]
+parent_vectors_loss_transition = 50000
+
+[train.job]
+num_workers = 5
+queue = 'gpu_rtx'
+
+[train.use_radius]
+15 = 30
+60 = 20
+100 = 15
+1000 = 10
+
+[train.augment]
+reject_empty_prob = 0.99
+# default/None, minmax, mean, median
+normalization = 'percminmax'
+norm_bounds = [0, 255]
+# perc_min = 'perc0_01'
+# perc_max = 'perc99_99'
+# norm_min = 100
+# norm_max = 5000
+# norm_min = 2000
+# norm_max = 7500
+divisions = true
+
+[train.augment.elastic]
+# control_point_spacing = [5, 25, 25]
+control_point_spacing = [5, 25, 25]
+jitter_sigma = [1,1,1]
+rotation_min = -10
+rotation_max = 10
+subsample = 4
+# use_fast_points_transform = false
+
+[train.augment.shift]
+prob_slip = 0.1
+prob_shift = 0.1
+sigma = [0, 4, 4, 4]
+
+[train.augment.intensity]
+scale = [0.8, 1.2]
+shift = [-0.1, 0.1]
+
+[train.augment.simple]
+mirror = [ 2, 3]
+transpose = [2, 3]
+
+[train.augment.noise_gaussian]
+var = [0.3]
+
+[train.augment.noise_saltpepper]
+amount = [0.001]
+
+
+[train_data]
+voxel_size = [1, 5, 1, 1]
+[train_data.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]
+[[train_data.data_sources]] # this line is necessary for the [[ ]] syntax
+[train_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/FILE_A.n5"
+group='raw'
+
+[[train_data.data_sources]]
+[train_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/FILE_B.n5"
+group='raw'
+
+
+[optimizer]
+# optimizer = "GradientDescentOptimizer"
+# optimizer = "MomentumOptimizer"
+optimizer = "AdamOptimizer"
+[optimizer.args]
+learning_rate = 0.0005
+# momentum = 0.9
+[optimizer.kwargs]
+beta1 = 0.95
+beta2 = 0.999
+epsilon = 1e-8
+
+
+[test_data]
+checkpoint = 100000
+cell_score_threshold = 0.4
+voxel_size = [1, 5, 1, 1]
+[test_data.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]
+
+[[test_data.data_sources]]
+voxel_size = [1, 5, 1, 1]
+db_name = "linajea_some_db_name_test_A"
+gt_db_name = 'linajea_120828_gt_side_1'
+[test_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/FILE_A.n5"
+group='raw'
+[test_data.data_sources.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]
+
+[[test_data.data_sources]]
+voxel_size = [1, 5, 1, 1]
+db_name = "linajea_some_db_name_test_B"
+gt_db_name = 'linajea_120828_gt_side_1'
+[test_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/FILE_B.n5"
+group='raw'
+[test_data.data_sources.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]
+
+
+[validate_data]
+checkpoints = [100000, 200000, 300000, 400000]
+cell_score_threshold = 0.4
+voxel_size = [1, 5, 1, 1]
+[validate_data.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]
+
+[[validate_data.data_sources]]
+db_name = "linajea_some_db_name_A"
+gt_db_name = 'linajea_120828_gt_side_1'
+[validate_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/FILE_A.n5"
+group='raw'
+
+[[validate_data.data_sources]]
+db_name = "linajea_some_db_name_B"
+gt_db_name = 'linajea_120828_gt_side_1'
+[validate_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/120828/FILE_B.n5"
+group='raw'
+
+
+[predict]
+path_to_script = "predict_celegans.py"
+write_to_zarr = false
+write_to_db = true
+processes_per_worker = 4
+output_zarr_prefix = "/nrs/funke/hirschp/linajea_experiments"
+
+[predict.job]
+num_workers = 16
+queue = 'gpu_rtx'
+
+[extract]
+edge_move_threshold = 1
+block_size = [5, 500, 500, 500]
+[extract.job]
+num_workers = 16
+queue = 'local'
+
+[solve]
+from_scratch = false
+[solve.job]
+num_workers = 8
+queue = 'cpu'
+
+[[solve.parameters]]
+cost_appear = 10000000000.0
+cost_disappear = 100000.0
+cost_split = 0
+threshold_node_score = 0.5
+weight_node_score = 100
+threshold_edge_score = 5
+weight_prediction_distance_cost = 1
+block_size = [ 5, 500, 500, 500,]
+context = [ 2, 100, 100, 100,]
+
+[evaluate]
+from_scratch = true
+[evaluate.parameters]
+matching_threshold = 15
+# optional, can overwrite validate/test roi
+frames = [0, 200]
+# or
+[evaluate.parameters.roi]
+offset = [0, 0, 0, 0]
+shape = [200, 385, 512, 712]

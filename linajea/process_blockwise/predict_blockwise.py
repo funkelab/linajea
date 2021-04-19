@@ -9,55 +9,27 @@ import daisy
 from funlib.run import run
 
 from .daisy_check_functions import check_function
-from linajea import load_config
+from ..construct_zarr_filename import construct_zarr_filename
 from ..datasets import get_source_roi
 
 logger = logging.getLogger(__name__)
 
 
-def predict_blockwise(
-        config_file,
-        iteration
-        ):
-    config = {
-            "solve_context": daisy.Coordinate((2, 100, 100, 100)),
-            "num_workers": 16,
-            "data_dir": '../01_data',
-            "setups_dir": '../02_setups',
-        }
-    master_config = load_config(config_file)
-    config.update(master_config['general'])
-    config.update(master_config['predict'])
-    sample = config['sample']
-    data_dir = config['data_dir']
-    setup = config['setup']
-    # solve_context = daisy.Coordinate(master_config['solve']['context'])
-    setup_dir = os.path.abspath(
-            os.path.join(config['setups_dir'], setup))
-    voxel_size, source_roi = get_source_roi(data_dir, sample)
-    predict_roi = source_roi
+def predict_blockwise(linajea_config):
+    setup_dir = linajea_config.general.setup_dir
 
-    # limit to specific frames, if given
-    if 'limit_to_roi_offset' in config or 'frames' in config:
-        if 'frames' in config:
-            frames = config['frames']
-            logger.info("Limiting prediction to frames %s" % str(frames))
-            begin, end = frames
-            frames_roi = daisy.Roi(
-                    (begin, None, None, None),
-                    (end - begin, None, None, None))
-            predict_roi = predict_roi.intersect(frames_roi)
-        if 'limit_to_roi_offset' in config:
-            assert 'limit_to_roi_shape' in config,\
-                    "Must specify shape and offset in config file"
-            limit_to_roi = daisy.Roi(
-                    daisy.Coordinate(config['limit_to_roi_offset']),
-                    daisy.Coordinate(config['limit_to_roi_shape']))
-            predict_roi = predict_roi.intersect(limit_to_roi)
-        # Given frames and rois are the prediction region,
-        # not the solution region
-        # predict_roi = target_roi.grow(solve_context, solve_context)
-        # predict_roi = predict_roi.intersect(source_roi)
+    data = linajea_config.inference.data_source
+    voxel_size = daisy.Coordinate(data.voxel_size)
+    predict_roi = daisy.Roi(offset=data.roi.offset,
+                            shape=data.roi.shape)
+    # allow for solve context
+    predict_roi = predict_roi.grow(
+            daisy.Coordinate(linajea_config.solve.parameters[0].context),
+            daisy.Coordinate(linajea_config.solve.parameters[0].context))
+    # but limit to actual file roi
+    predict_roi = predict_roi.intersect(
+        daisy.Roi(offset=data.datafile.file_roi.offset,
+                  shape=data.datafile.file_roi.shape))
 
     # get context and total input and output ROI
     with open(os.path.join(setup_dir, 'test_net_config.json'), 'r') as f:
@@ -70,11 +42,25 @@ def predict_blockwise(
     input_roi = predict_roi.grow(context, context)
     output_roi = predict_roi
 
+    # create read and write ROI
+    block_write_roi = daisy.Roi((0, 0, 0, 0), net_output_size)
+    block_read_roi = block_write_roi.grow(context, context)
+
+    output_zarr = construct_zarr_filename(linajea_config,
+                                          data.datafile.filename,
+                                          linajea_config.inference.checkpoint)
+
+    if linajea_config.predict.write_db_from_zarr:
+        assert os.path.exists(output_zarr), \
+            "{} does not exist, cannot write to db from it!".format(output_zarr)
+        input_roi = output_roi
+        block_read_roi = block_write_roi
+
     # prepare output zarr, if necessary
-    if 'output_zarr' in config:
-        output_zarr = config['output_zarr']
+    if linajea_config.predict.write_to_zarr:
         parent_vectors_ds = 'volumes/parent_vectors'
         cell_indicator_ds = 'volumes/cell_indicator'
+        maxima_ds = 'volumes/maxima'
         output_path = os.path.join(setup_dir, output_zarr)
         logger.debug("Preparing zarr at %s" % output_path)
         daisy.prepare_ds(
@@ -93,95 +79,91 @@ def predict_blockwise(
                 dtype=np.float32,
                 write_size=net_output_size,
                 num_channels=1)
-
-    # create read and write ROI
-    block_write_roi = daisy.Roi((0, 0, 0, 0), net_output_size)
-    block_read_roi = block_write_roi.grow(context, context)
+        daisy.prepare_ds(
+                output_path,
+                maxima_ds,
+                output_roi,
+                voxel_size,
+                dtype=np.float32,
+                write_size=net_output_size,
+                num_channels=1)
 
     logger.info("Following ROIs in world units:")
-    logger.info("Input ROI       = %s" % input_roi)
-    logger.info("Block read  ROI = %s" % block_read_roi)
-    logger.info("Block write ROI = %s" % block_write_roi)
-    logger.info("Output ROI      = %s" % output_roi)
+    logger.info("Input ROI       = %s", input_roi)
+    logger.info("Block read  ROI = %s", block_read_roi)
+    logger.info("Block write ROI = %s", block_write_roi)
+    logger.info("Output ROI      = %s", output_roi)
 
     logger.info("Starting block-wise processing...")
+    logger.info("Sample: %s", data.datafile.filename)
+    logger.info("DB: %s", data.db_name)
+
 
     # process block-wise
-    if 'db_name' in config:
-        daisy.run_blockwise(
-            input_roi,
-            block_read_roi,
-            block_write_roi,
-            process_function=lambda: predict_worker(
-                config_file,
-                iteration),
-            check_function=lambda b: check_function(
-                b,
-                'predict',
-                config['db_name'],
-                config['db_host']),
-            num_workers=config['num_workers'],
-            read_write_conflict=False,
-            max_retries=0,
-            fit='overhang')
-    else:
-        daisy.run_blockwise(
-            input_roi,
-            block_read_roi,
-            block_write_roi,
-            process_function=lambda: predict_worker(
-                config_file,
-                iteration),
-            num_workers=config['num_workers'],
-            read_write_conflict=False,
-            max_retries=0,
-            fit='overhang')
+    cf = []
+    if linajea_config.predict.write_to_zarr:
+        cf.append(lambda b: check_function(
+            b,
+            'predict_zarr',
+            data.db_name,
+            linajea_config.general.db_host))
+    if linajea_config.predict.write_to_db:
+        cf.append(lambda b: check_function(
+            b,
+            'predict_db',
+            data.db_name,
+            linajea_config.general.db_host))
+
+    # process block-wise
+    daisy.run_blockwise(
+        input_roi,
+        block_read_roi,
+        block_write_roi,
+        process_function=lambda: predict_worker(linajea_config),
+        check_function=lambda b: all([f(b) for f in cf]),
+        num_workers=linajea_config.predict.job.num_workers,
+        read_write_conflict=False,
+        max_retries=0,
+        fit='overhang')
 
 
-def predict_worker(
-        config_file,
-        iteration):
-    config = {
-            "singularity_image": 'linajea/linajea:v1.1',
-            "queue": 'slowpoke',
-            'setups_dir': '../02_setups'
-        }
-    master_config = load_config(config_file)
-    config.update(master_config['general'])
-    config.update(master_config['predict'])
-    singularity_image = config['singularity_image']
-    queue = config['queue']
-    setups_dir = config['setups_dir']
-    setup = config['setup']
-    chargeback = config['lab']
+def predict_worker(linajea_config):
 
     worker_id = daisy.Context.from_env().worker_id
     worker_time = time.time()
-    if singularity_image is not None:
+    job = linajea_config.predict.job
+
+    if job.singularity_image is not None:
         image_path = '/nrs/funke/singularity/'
-        image = image_path + singularity_image + '.img'
+        image = image_path + job.singularity_image + '.img'
         logger.debug("Using singularity image %s" % image)
     else:
         image = None
+
+    if linajea_config.predict.write_db_from_zarr:
+        path_to_script = linajea_config.predict.path_to_script_db_from_zarr
+    else:
+        path_to_script = linajea_config.predict.path_to_script
     cmd = run(
-            command='python -u %s --config %s --iteration %d' % (
-                os.path.join(setups_dir, 'predict.py'),
-                config_file,
-                iteration),
-            queue=queue,
+            command='python -u %s --config %s' % (
+                path_to_script,
+                linajea_config.path),
+            queue=job.queue,
             num_gpus=1,
-            num_cpus=5,
+            num_cpus=linajea_config.predict.processes_per_worker,
             singularity_image=image,
             mount_dirs=['/groups', '/nrs'],
             execute=False,
             expand=False,
-            flags=['-P ' + chargeback]
+            flags=['-P ' + job.lab] if job.lab is not None else None
             )
     logger.info("Starting predict worker...")
     logger.info("Command: %s" % str(cmd))
     daisy.call(
         cmd,
-        log_out='logs/predict_%s_%d_%d.out' % (setup, worker_time, worker_id),
-        log_err='logs/predict_%s_%d_%d.err' % (setup, worker_time, worker_id))
+        log_out='logs/predict_%s_%d_%d.out' % (linajea_config.general.setup,
+                                               worker_time, worker_id),
+        log_err='logs/predict_%s_%d_%d.err' % (linajea_config.general.setup,
+                                               worker_time, worker_id))
 
     logger.info("Predict worker finished")

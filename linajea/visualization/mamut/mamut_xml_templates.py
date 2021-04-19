@@ -60,7 +60,7 @@ inframe_empty_template = '     <SpotsInFrame frame="{frame}" />\n'
 # Templates for tracks and edges.
 alltracks_template =        '    <AllTracks>\n'
 track_template =            '      <Track name="Track_{id}" TRACK_INDEX="{id}" TRACK_ID="{id}" TRACK_DURATION="{duration}.0" TRACK_START="{start}" TRACK_STOP="{stop}.0" TRACK_DISPLACEMENT="0" NUMBER_SPOTS="{nspots}" NUMBER_GAPS="0" LONGEST_GAP="0" NUMBER_SPLITS="0" NUMBER_MERGES="0" NUMBER_COMPLEX="0" DIVISION_TIME_MEAN="NaN" DIVISION_TIME_STD="NaN">\n'
-edge_template =             '        <Edge SPOT_SOURCE_ID="{source_id}" SPOT_TARGET_ID="{target_id}" LINK_COST="-1.0" VELOCITY="0" DISPLACEMENT="0" TISSUE_TYPE="0" TIME="{time}" />\n'
+edge_template =             '        <Edge SPOT_SOURCE_ID="{source_id}" SPOT_TARGET_ID="{target_id}" LINK_COST="{score}" VELOCITY="0" DISPLACEMENT="0" TISSUE_TYPE="0" TIME="{time}" />\n'
 # edge_template =             '        <Edge SPOT_SOURCE_ID="{source_id}" SPOT_TARGET_ID="{target_id}" LINK_COST="-1.0" VELOCITY="{velocity}" DISPLACEMENT="{displacement}" />\n'
 track_end_template =        '      </Track>\n'
 alltracks_end_template =    '    </AllTracks>\n'

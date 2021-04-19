@@ -2,6 +2,7 @@ from funlib import math
 import gunpowder as gp
 import numpy as np
 import pymongo
+from pymongo.errors import BulkWriteError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -101,7 +102,12 @@ class WriteCells(gp.BatchFilter):
                     cell_id, score, parent_vector))
 
         if len(cells) > 0:
-            self.cells.insert_many(cells)
+            try:
+                self.cells.insert_many(cells)
+            except BulkWriteError as bwe:
+                logger.error(bwe.details)
+                raise
+
 
     def get_avg_pv(parent_vectors, index, edge_length):
         ''' Computes the average parent vector offset from the parent vectors
