@@ -130,6 +130,20 @@ def solve_in_block(linajea_config,
         step_name = 'solve_' + str(_id)
     logger.debug("Solving in block %s", block)
 
+    done_indices = []
+    for index, pid in enumerate(parameters_id):
+        name = 'solve_' + str(pid)
+        if check_function_all_blocks(name, db_name, db_host):
+            logger.info("Params with id %d already completed. Removing", pid)
+            done_indices.append(index)
+    for index in done_indices[::-1]:
+        del parameters_id[index]
+        del parameters[index]
+
+    if len(parameters) == 0:
+        logger.info("All parameters already completed. Exiting")
+        return 0
+
     if solution_roi:
         # Limit block to source_roi
         logger.debug("Block write roi: %s", block.write_roi)
