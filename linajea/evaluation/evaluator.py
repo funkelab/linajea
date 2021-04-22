@@ -40,7 +40,8 @@ class Evaluator:
             rec_track_graph,
             edge_matches,
             unselected_potential_matches,
-            sparse=True
+            sparse=True,
+            validation_score=True,
             ):
         self.report = Report()
 
@@ -49,6 +50,7 @@ class Evaluator:
         self.edge_matches = edge_matches
         self.unselected_potential_matches = unselected_potential_matches
         self.sparse = sparse
+        self.validation_score = validation_score
 
         # get tracks
         self.gt_tracks = gt_track_graph.get_tracks()
@@ -96,7 +98,8 @@ class Evaluator:
         self.get_fn_divisions()
         self.get_f_score()
         self.get_aeftl_and_erl()
-        self.get_validation_score()
+        if self.validation_score:
+            self.get_validation_score()
         return self.report
 
     def get_fp_edges(self):

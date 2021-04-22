@@ -20,6 +20,7 @@ def evaluate_setup(
         from_scratch=True,
         sparse=True,
         data_dir='../01_data',
+        validation_score=True,
         **kwargs):
 
     parameters = linajea.tracking.TrackingParameters(**kwargs)
@@ -94,7 +95,8 @@ def evaluate_setup(
             gt_track_graph,
             track_graph,
             matching_threshold=matching_threshold,
-            sparse=sparse)
+            sparse=sparse,
+            validation_score=validation_score)
 
     logger.info("Done evaluating results for %d. Saving results to mongo."
                 % parameters_id)
