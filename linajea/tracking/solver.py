@@ -344,7 +344,7 @@ class Solver(object):
         if self.parameters.cell_cycle_key is None:
             if self.write_struct_svm:
                 file_weight_or_constant.write("{} 1\n".format(
-                    self.node_child[node]))
+                    self.node_continuation[node]))
             return 0
         continuation_costs = (
             # self.graph.nodes[node][self.parameters.cell_cycle_key][2] *
