@@ -20,8 +20,7 @@ def get_sample_from_setup(setup):
 
 
 def get_result(
-        setup,
-        region,
+        db_name,
         tracking_parameters,
         db_host,
         frames=None,
@@ -33,9 +32,6 @@ def get_result(
     object.
 
     tracking_parameters can be a dict or a TrackingParameters object'''
-    if not sample:
-        sample = get_sample_from_setup(setup)
-    db_name = '_'.join(['linajea', sample, setup, region, iteration])
     candidate_db = CandidateDatabase(db_name, db_host, 'r')
     if isinstance(tracking_parameters, dict):
         tracking_parameters = TrackingParameters(**tracking_parameters)
@@ -46,15 +42,23 @@ def get_result(
     return result
 
 
-def get_tgmm_results(
-        region,
+def get_greedy(
+        db_name,
         db_host,
-        sample,
+        key="selected_greedy",
         frames=None):
-    if region is None:
-        db_name = '_'.join(['linajea', sample, 'tgmm'])
-    else:
-        db_name = '_'.join(['linajea', sample, 'tgmm', region])
+
+    candidate_db = CandidateDatabase(db_name, db_host, 'r')
+    result = candidate_db.get_score(key, frames=frames)
+    if result is None:
+        logger.error("Greedy result for db %d is None", db_name)
+    return result
+
+
+def get_tgmm_results(
+        db_name,
+        db_host,
+        frames=None):
     candidate_db = CandidateDatabase(db_name, db_host, 'r')
     results = candidate_db.get_scores(frames=frames)
     if results is None or len(results) == 0:
@@ -64,9 +68,8 @@ def get_tgmm_results(
 
 
 def get_best_tgmm_result(
-        region,
+        db_name,
         db_host,
-        sample,
         frames=None,
         score_columns=None,
         score_weights=None):
@@ -75,10 +78,10 @@ def get_best_tgmm_result(
                          'fp_divisions', 'fn_divisions']
     if not score_weights:
         score_weights = [1.]*len(score_columns)
-    results_df = get_tgmm_results(region, db_host, sample, frames=frames)
+    results_df = get_tgmm_results(db_name, db_host, frames=frames)
     if results_df is None:
-        logger.warn("No TGMM results for region %s, sample %s, and frames %s"
-                    % (region, sample, str(frames)))
+        logger.warn("No TGMM results for db %s, and frames %s"
+                    % (db_name, str(frames)))
         return None
     results_df['sum_errors'] = sum([results_df[col]*weight for col, weight
                                    in zip(score_columns, score_weights)])
@@ -89,8 +92,7 @@ def get_best_tgmm_result(
 
 
 def get_results(
-        setup,
-        region,
+        db_name,
         db_host,
         sample=None,
         iteration='400000',
@@ -99,9 +101,6 @@ def get_results(
     ''' Gets the scores, statistics, and parameters for all
     grid search configurations run for the given setup and region.
     Returns a pandas dataframe with one row per configuration.'''
-    if not sample:
-        sample = get_sample_from_setup(setup)
-    db_name = '_'.join(['linajea', sample, setup, region, iteration])
     candidate_db = CandidateDatabase(db_name, db_host, 'r')
     scores = candidate_db.get_scores(frames=frames, filters=filter_params)
     dataframe = pandas.DataFrame(scores)
@@ -113,7 +112,7 @@ def get_results(
     return dataframe
 
 
-def get_best_result(setup, region, db_host,
+def get_best_result(db_name, db_host,
                     sample=None,
                     iteration='400000',
                     frames=None,
@@ -129,7 +128,7 @@ def get_best_result(setup, region, db_host,
                          'fp_divisions', 'fn_divisions']
     if not score_weights:
         score_weights = [1.]*len(score_columns)
-    results_df = get_results(setup, region, db_host,
+    results_df = get_results(db_name, db_host,
                              frames=frames,
                              sample=sample, iteration=iteration,
                              filter_params=filter_params)
@@ -142,20 +141,19 @@ def get_best_result(setup, region, db_host,
             best_result[key] = value.item()
         except AttributeError:
             pass
-    best_result['setup'] = setup
     return best_result
 
 
-def get_best_result_per_setup(setups, region, db_host,
+def get_best_result_per_setup(db_names, db_host,
                               frames=None, sample=None, iteration='400000',
                               filter_params=None,
                               score_columns=None, score_weights=None):
-    ''' Returns the best result for each setup in setups
+    ''' Returns the best result for each db in db_names
     according to the sum of errors in score_columns, with optional weighting,
     sorted from best to worst (lowest to highest sum errors)'''
     best_results = []
-    for setup in setups:
-        best = get_best_result(setup, region, db_host,
+    for db_name in db_names:
+        best = get_best_result(db_name, db_host,
                                frames=frames,
                                sample=sample, iteration=iteration,
                                filter_params=filter_params,
