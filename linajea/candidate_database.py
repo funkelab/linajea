@@ -274,8 +274,8 @@ class CandidateDatabase(MongoDbGraphProvider):
         scores collection, along with the associated parameters'''
         parameters = self.get_parameters(parameters_id)
         if parameters is None:
-            logger.warning("No parameters with id %d. Saving with key only",
-                           parameters_id)
+            logger.warning("No parameters with id %s. Saving with key only",
+                           str(parameters_id))
 
         self._MongoDbGraphProvider__connect()
         self._MongoDbGraphProvider__open_db()
