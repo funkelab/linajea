@@ -1,4 +1,5 @@
 from .mamut_reader import MamutReader
+from linajea import parse_tracks_file
 import networkx as nx
 import logging
 
@@ -8,15 +9,14 @@ logger = logging.getLogger(__name__)
 class MamutFileReader(MamutReader):
     def read_data(self, data):
         filename = data['filename']
+        locations, track_info = parse_tracks_file(filename)
         graph = nx.DiGraph()
-        with open(filename, 'r') as f:
-            for line in f.readlines():
-                tokens = line.strip().split()
-                tokens = [int(t) for t in tokens]
-                t, z, y, x, node_id, parent_id, track_id = tokens
-                graph.add_node(node_id, position=[t, z, y, x])
-                if parent_id != -1:
-                    graph.add_edge(node_id, parent_id)
+        for loc, info in zip(locations, track_info):
+            node_id = info[0]
+            parent_id = info[1]
+            graph.add_node(node_id, position=loc.astype(int))
+            if parent_id != -1:
+                graph.add_edge(node_id, parent_id)
 
         logger.info("Graph has %d nodes and %d edges"
                     % (len(graph.nodes), len(graph.edges)))
