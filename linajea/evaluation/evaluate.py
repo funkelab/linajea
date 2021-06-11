@@ -10,7 +10,8 @@ def evaluate(
         rec_track_graph,
         matching_threshold,
         sparse,
-        validation_score=True):
+        validation_score=True,
+        window_size=50):
     ''' Performs both matching and evaluation on the given
     gt and reconstructed tracks, and returns a Report
     with the results.
@@ -32,5 +33,6 @@ def evaluate(
             edge_matches,
             unselected_potential_matches,
             sparse=sparse,
-            validation_score=validation_score)
+            validation_score=validation_score,
+            window_size=window_size)
     return evaluator.evaluate()
