@@ -78,7 +78,9 @@ def evaluate_setup(linajea_config):
             gt_track_graph,
             track_graph,
             matching_threshold=linajea_config.evaluate.parameters.matching_threshold,
-            sparse=linajea_config.general.sparse)
+            sparse=linajea_config.general.sparse,
+            validation_score=linajea_config.evaluate.parameters.validation_score,
+            window_size=linajea_config.evaluate.parameters.window_size)
 
     logger.info("Done evaluating results for %d. Saving results to mongo."
                 % parameters_id)

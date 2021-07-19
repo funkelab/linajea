@@ -31,6 +31,7 @@ class Report:
         self.f_score = None
         self.aeftl = None
         self.erl = None
+        self.correct_segments = None
         self.validation_score = None
 
         # FAILURE POINTS

@@ -41,7 +41,9 @@ class Evaluator:
             rec_track_graph,
             edge_matches,
             unselected_potential_matches,
-            sparse=True
+            sparse=True,
+            validation_score=False,
+            window_size=50,
             ):
         self.report = Report()
 
@@ -50,6 +52,8 @@ class Evaluator:
         self.edge_matches = edge_matches
         self.unselected_potential_matches = unselected_potential_matches
         self.sparse = sparse
+        self.validation_score = validation_score
+        self.window_size = window_size
 
         # get tracks
         self.gt_tracks = gt_track_graph.get_tracks()
@@ -97,7 +101,9 @@ class Evaluator:
         self.get_fn_divisions()
         self.get_f_score()
         self.get_aeftl_and_erl()
-        self.get_validation_score()
+        self.get_perfect_segments(self.window_size)
+        if self.validation_score:
+            self.get_validation_score()
         return self.report
 
     def get_fp_edges(self):
@@ -364,6 +370,53 @@ class Evaluator:
                 segment_lengths
             )) / self.gt_track_graph.number_of_edges()
         self.report.set_aeftl_and_erl(aeftl, erl)
+
+    def get_perfect_segments(self, window_size):
+        ''' Compute the percent of gt track segments that are correctly
+        reconstructed using a sliding window of each size from 1 to t. Store
+        the dictionary from window size to (# correct, total #) in self.report
+        '''
+        logger.info("Getting perfect segments")
+        total_segments = {}
+        correct_segments = {}
+        for i in range(1, window_size + 1):
+            total_segments[i] = 0
+            correct_segments[i] = 0
+
+        for gt_track in self.gt_tracks:
+            for start_node in gt_track.nodes():
+                start_edges = gt_track.next_edges(start_node)
+                for start_edge in start_edges:
+                    frames = 1
+                    correct = True
+                    current_nodes = [start_node]
+                    next_edges = [start_edge]
+                    while len(next_edges) > 0:
+                        if correct:
+                            # check current node and next edge
+                            for current_node in current_nodes:
+                                if current_node != start_node:
+                                    if 'IS' in self.gt_track_graph.nodes[current_node] or\
+                                            'FP_D' in self.gt_track_graph.nodes[current_node]:
+                                        correct = False
+                            for next_edge in next_edges:
+                                if 'FN' in self.gt_track_graph.get_edge_data(*next_edge):
+                                    correct = False
+                        # update segment counts
+                        total_segments[frames] += 1
+                        if correct:
+                            correct_segments[frames] += 1
+                        # update loop variables
+                        frames += 1
+                        current_nodes = [u for u, v in next_edges]
+                        next_edges = gt_track.next_edges(current_nodes)
+                        if frames > window_size:
+                            break
+
+        result = {}
+        for i in range(1, window_size + 1):
+            result[str(i)] = (correct_segments[i], total_segments[i])
+        self.report.correct_segments = result
 
     @staticmethod
     def check_track_validity(track_graph):
