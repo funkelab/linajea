@@ -10,7 +10,8 @@ from .analyze_results import (
         get_results_sorted, get_best_result_with_config, get_result_id,
         get_best_result_per_setup,
         get_tgmm_results,
-        get_best_tgmm_result)
+        get_best_tgmm_result,
+        get_greedy)
 from .analyze_candidates import (
         get_node_recall,
         get_edge_recall,
