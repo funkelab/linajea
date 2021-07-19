@@ -11,6 +11,9 @@ from .utils import ensure_cls
 class EvaluateParametersConfig:
     matching_threshold = attr.ib(type=int)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
+    validation_score = attr.ib(type=bool, default=False)
+    window_size = attr.ib(type=int, default=50)
+
     # deprecated
     frames = attr.ib(type=List[int], default=None)
     # deprecated

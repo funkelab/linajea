@@ -86,6 +86,9 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 1.0)
         self.assertAlmostEqual(scores.f_score, 1.0)
+        self.assertEqual(scores.correct_segments[1], (3, 3))
+        self.assertEqual(scores.correct_segments[2], (2, 2))
+        self.assertEqual(scores.correct_segments[3], (1, 1))
         self.delete_db()
 
     def test_imperfect_evaluation(self):
@@ -115,6 +118,9 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 2./3)
         self.assertAlmostEqual(scores.f_score, 4./5)
+        self.assertEqual(scores.correct_segments[1], (2, 3))
+        self.assertEqual(scores.correct_segments[2], (0, 2))
+        self.assertEqual(scores.correct_segments[3], (0, 1))
         self.delete_db()
 
     def test_fn_division_evaluation(self):
@@ -146,6 +152,10 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.fp_divisions, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 5./6)
+        self.assertEqual(scores.correct_segments[1], (5, 6))
+        self.assertEqual(scores.correct_segments[2], (2, 4))
+        self.assertEqual(scores.correct_segments[3], (0, 2))
+        self.assertEqual(scores.correct_segments[4], (0, 1))
         self.delete_db()
 
     def test_fn_division_evaluation2(self):
@@ -179,6 +189,9 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.fp_divisions, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 4./5)
+        self.assertEqual(scores.correct_segments[1], (4, 5))
+        self.assertEqual(scores.correct_segments[2], (2, 3))
+        self.assertEqual(scores.correct_segments[3], (0, 1))
         self.delete_db()
 
     def test_fn_division_evaluation3(self):
@@ -239,6 +252,9 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.fp_divisions, 1)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 1.0)
+        self.assertEqual(scores.correct_segments[1], (5, 5))
+        self.assertEqual(scores.correct_segments[2], (2, 3))
+        self.assertEqual(scores.correct_segments[3], (0, 1))
         self.delete_db()
 
     def test_fp_division_evaluation_at_beginning_of_gt(self):
