@@ -176,10 +176,16 @@ def predict_worker(linajea_config):
         path_to_script = linajea_config.predict.path_to_script_db_from_zarr
     else:
         path_to_script = linajea_config.predict.path_to_script
-    cmd = run(
-            command='python -u %s --config %s' % (
-                path_to_script,
-                linajea_config.path),
+
+    command = 'python -u %s --config %s' % (
+        path_to_script,
+        linajea_config.path)
+
+    if job.local:
+        cmd = [command]
+    else:
+        cmd = run(
+            command=command,
             queue=job.queue,
             num_gpus=1,
             num_cpus=linajea_config.predict.processes_per_worker,
@@ -188,9 +194,11 @@ def predict_worker(linajea_config):
             execute=False,
             expand=False,
             flags=['-P ' + job.lab] if job.lab is not None else None
-            )
+        )
+
     logger.info("Starting predict worker...")
     logger.info("Command: %s" % str(cmd))
+    os.makedirs('logs', exist_ok=True)
     daisy.call(
         cmd,
         log_out='logs/predict_%s_%d_%d.out' % (linajea_config.general.setup,
