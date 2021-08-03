@@ -28,13 +28,13 @@ def predict_blockwise(
     master_config = load_config(config_file)
     config.update(master_config['general'])
     config.update(master_config['predict'])
-    sample = config['sample']
+    data_file = config['data_file']
     data_dir = config['data_dir']
     setup = config['setup']
     # solve_context = daisy.Coordinate(master_config['solve']['context'])
     setup_dir = os.path.abspath(
             os.path.join(config['setups_dir'], setup))
-    voxel_size, source_roi = get_source_roi(data_dir, sample)
+    voxel_size, source_roi = get_source_roi(data_dir, data_file)
     predict_roi = source_roi
 
     # limit to specific frames, if given
@@ -155,10 +155,12 @@ def predict_worker(
     config.update(master_config['general'])
     config.update(master_config['predict'])
     singularity_image = config['singularity_image']
-    queue = config['queue']
+    local = config.get('local', False)
     setups_dir = config['setups_dir']
     setup = config['setup']
-    chargeback = config['lab']
+    if not local:
+        queue = config['queue']
+        chargeback = config['lab']
 
     worker_id = daisy.Context.from_env().worker_id
     worker_time = time.time()
@@ -168,22 +170,29 @@ def predict_worker(
         logger.debug("Using singularity image %s" % image)
     else:
         image = None
-    cmd = run(
-            command='python -u %s --config %s --iteration %d' % (
-                os.path.join(setups_dir, 'predict.py'),
-                config_file,
-                iteration),
-            queue=queue,
-            num_gpus=1,
-            num_cpus=5,
-            singularity_image=image,
-            mount_dirs=['/groups', '/nrs'],
-            execute=False,
-            expand=False,
-            flags=['-P ' + chargeback]
-            )
+
+    command = 'python -u %s --config %s --iteration %d' % (
+        os.path.join(setups_dir, 'predict.py'),
+        config_file,
+        iteration)
+
+    if local:
+        cmd = [command]
+    else:
+        cmd = run(
+                command=command,
+                queue=queue,
+                num_gpus=1,
+                num_cpus=5,
+                singularity_image=image,
+                mount_dirs=['/groups', '/nrs'],
+                execute=False,
+                expand=False,
+                flags=['-P ' + chargeback]
+                )
     logger.info("Starting predict worker...")
     logger.info("Command: %s" % str(cmd))
+    os.makedirs('logs', exist_ok=True)
     daisy.call(
         cmd,
         log_out='logs/predict_%s_%d_%d.out' % (setup, worker_time, worker_id),
