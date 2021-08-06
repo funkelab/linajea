@@ -73,7 +73,7 @@ def extract_edges_in_block(
         linajea_config,
         block):
 
-    logger.info(
+    logger.debug(
         "Finding edges in %s, reading from %s",
         block.write_roi, block.read_roi)
 
@@ -88,12 +88,12 @@ def extract_edges_in_block(
     graph = graph_provider[block.read_roi]
 
     if graph.number_of_nodes() == 0:
-        logger.info("No cells in roi %s. Skipping", block.read_roi)
+        logger.debug("No cells in roi %s. Skipping", block.read_roi)
         write_done(block, 'extract_edges', data.db_name,
                    linajea_config.general.db_host)
         return 0
 
-    logger.info(
+    logger.debug(
         "Read %d cells in %.3fs",
         graph.number_of_nodes(),
         time.time() - start)
@@ -181,9 +181,9 @@ def extract_edges_in_block(
                     distance=distance,
                     prediction_distance=prediction_distance)
 
-    logger.info("Found %d edges", graph.number_of_edges())
+    logger.debug("Found %d edges", graph.number_of_edges())
 
-    logger.info(
+    logger.debug(
         "Extracted edges in %.3fs",
         time.time() - start)
 
@@ -191,7 +191,7 @@ def extract_edges_in_block(
 
     graph.write_edges(block.write_roi)
 
-    logger.info(
+    logger.debug(
         "Wrote edges in %.3fs",
         time.time() - start)
     write_done(block, 'extract_edges', data.db_name,
