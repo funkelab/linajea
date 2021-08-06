@@ -48,13 +48,13 @@ def extract_edges_blockwise(
     input_roi = source_roi.grow(neg_context, pos_context)
     block_read_roi = block_write_roi.grow(neg_context, pos_context)
 
-    print("Following ROIs in world units:")
-    print("Input ROI       = %s" % input_roi)
-    print("Block read  ROI = %s" % block_read_roi)
-    print("Block write ROI = %s" % block_write_roi)
-    print("Output ROI      = %s" % source_roi)
+    logger.info("Following ROIs in world units:")
+    logger.info("Input ROI       = %s" % input_roi)
+    logger.info("Block read  ROI = %s" % block_read_roi)
+    logger.info("Block write ROI = %s" % block_write_roi)
+    logger.info("Output ROI      = %s" % source_roi)
 
-    print("Starting block-wise processing...")
+    logger.info("Starting block-wise processing...")
 
     # process block-wise
     daisy.run_blockwise(
@@ -85,7 +85,7 @@ def extract_edges_in_block(
         block,
         use_pv_distance=False):
 
-    logger.info(
+    logger.debug(
         "Finding edges in %s, reading from %s",
         block.write_roi, block.read_roi)
 
@@ -98,11 +98,11 @@ def extract_edges_in_block(
     graph = graph_provider[block.read_roi]
 
     if graph.number_of_nodes() == 0:
-        logger.info("No cells in roi %s. Skipping", block.read_roi)
+        logger.debug("No cells in roi %s. Skipping", block.read_roi)
         write_done(block, 'extract_edges', db_name, db_host)
         return 0
 
-    logger.info(
+    logger.debug(
         "Read %d cells in %.3fs",
         graph.number_of_nodes(),
         time.time() - start)
@@ -186,9 +186,9 @@ def extract_edges_in_block(
                     distance=distance,
                     prediction_distance=prediction_distance)
 
-    logger.info("Found %d edges", graph.number_of_edges())
+    logger.debug("Found %d edges", graph.number_of_edges())
 
-    logger.info(
+    logger.debug(
         "Extracted edges in %.3fs",
         time.time() - start)
 
@@ -196,7 +196,7 @@ def extract_edges_in_block(
 
     graph.write_edges(block.write_roi)
 
-    logger.info(
+    logger.debug(
         "Wrote edges in %.3fs",
         time.time() - start)
     write_done(block, 'extract_edges', db_name, db_host)
