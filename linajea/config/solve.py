@@ -223,6 +223,7 @@ class SolveConfig:
     write_struct_svm = attr.ib(type=bool, default=False)
     check_node_close_to_roi = attr.ib(type=bool, default=True)
     add_node_density_constraints = attr.ib(type=bool, default=False)
+    timeout = attr.ib(type=int, default=120)
 
     def __attrs_post_init__(self):
         assert self.parameters is not None or \

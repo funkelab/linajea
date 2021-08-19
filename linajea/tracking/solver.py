@@ -14,7 +14,7 @@ class Solver(object):
     '''
     def __init__(self, track_graph, parameters, selected_key, frames=None,
                  write_struct_svm=False, block_id=None,
-                 check_node_close_to_roi=True,
+                 check_node_close_to_roi=True, timeout=120,
                  add_node_density_constraints=False):
         # frames: [start_frame, end_frame] where start_frame is inclusive
         # and end_frame is exclusive. Defaults to track_graph.begin,
@@ -27,6 +27,7 @@ class Solver(object):
         self.graph = track_graph
         self.start_frame = frames[0] if frames else self.graph.begin
         self.end_frame = frames[1] if frames else self.graph.end
+        self.timeout = timeout
 
         self.node_selected = {}
         self.edge_selected = {}
@@ -67,9 +68,9 @@ class Solver(object):
         self.solver = pylp.LinearSolver(
                 self.num_vars,
                 pylp.VariableType.Binary,
-                preference=pylp.Preference.Gurobi)
+                preference=pylp.Preference.Any)
         self.solver.set_num_threads(1)
-        self.solver.set_timeout(120)
+        self.solver.set_timeout(self.timeout)
 
     def solve(self):
         solution, message = self.solver.solve()

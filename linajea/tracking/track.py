@@ -95,6 +95,7 @@ def track(graph, config, selected_key, frame_key='t', frames=None,
                 write_struct_svm=config.solve.write_struct_svm,
                 block_id=block_id,
                 check_node_close_to_roi=config.solve.check_node_close_to_roi,
+                timeout=config.solve.timeout,
                 add_node_density_constraints=config.solve.add_node_density_constraints)
         else:
             solver.update_objective(parameter, key)
