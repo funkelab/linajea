@@ -67,6 +67,7 @@ def nm_track(graph, config, selected_key, frame_key='t', frames=None):
             solver = NMSolver(
                 track_graph, parameter, key, frames=frames,
                 check_node_close_to_roi=config.solve.check_node_close_to_roi,
+                timeout=config.solve.timeout,
                 add_node_density_constraints=config.solve.add_node_density_constraints)
         else:
             solver.update_objective(parameter, key)
