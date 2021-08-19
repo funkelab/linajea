@@ -157,6 +157,7 @@ def write_ctc(graph, start_frame, end_frame, shape,
             sphere = rg.ellipsoid(sphere_shape, sphere_rad)
             spheres[th] = [sphere, zh, yh, xh]
     for f in range(start_frame, end_frame):
+        logger.info("Processing frame %d" % f)
         arr = np.zeros(shape[1:], dtype=np.uint16)
         if surface is not None:
             fg = (surface[f] > fg_threshold).astype(np.uint8)
@@ -274,7 +275,7 @@ def write_ctc(graph, start_frame, end_frame, shape,
                 for v in tmp2:
                     arr_tmp[tuple(vs[v][0])] = u
             arr = arr_tmp
-
+        logger.info("Writing tiff tile for frame %d" % f)
         tifffile.imwrite(os.path.join(
             out_dir, tif_fn.format(f)), arr,
                          compress=3)
