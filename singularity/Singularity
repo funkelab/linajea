@@ -21,10 +21,10 @@ mkdir -p ${SINGULARITY_ROOTFS}/src/linajea
 maintainer funkej@janelia.hhmi.org
 
 %post
-
 PATH="/miniconda/bin:$PATH"
 
 pip install zarr
+pip install imagecodecs
 
 # install gunpowder
 
@@ -97,6 +97,10 @@ git checkout ${FUNLIB_RUN_REVISION}
 pip install -r requirements.txt
 PYTHONPATH=${FUNLIB_RUN_ROOT}:$PYTHONPATH
 
+# install CTC dependencies
+pip install raster_geometry
+pip install mahotas
+pip install tifffile
 
 %environment
 export DAISY_ROOT=/src/daisy
