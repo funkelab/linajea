@@ -4,7 +4,6 @@ From: ubuntu:18.04
 %labels
 Maintainer jfunke@iri.upc.edu
 Name pylb_base
-Version v1.5
 
 %post
 
