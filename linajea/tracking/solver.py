@@ -13,7 +13,7 @@ class Solver(object):
     number of hyperparamters
     '''
     def __init__(self, track_graph, parameters, selected_key,
-                 vgg_key=None, frames=None):
+                 vgg_key=None, frames=None, timeout=120):
         # frames: [start_frame, end_frame] where start_frame is inclusive
         # and end_frame is exclusive. Defaults to track_graph.begin,
         # track_graph.end
@@ -24,6 +24,7 @@ class Solver(object):
         self.vgg_key = vgg_key
         self.start_frame = frames[0] if frames else self.graph.begin
         self.end_frame = frames[1] if frames else self.graph.end
+        self.timeout = timeout
 
         self.node_selected = {}
         self.edge_selected = {}
@@ -64,14 +65,14 @@ class Solver(object):
         self.solver = pylp.LinearSolver(
                 self.num_vars,
                 pylp.VariableType.Binary,
-                preference=pylp.Preference.Gurobi)
+                preference=pylp.Preference.Any)
         self.solver.set_objective(self.objective)
         all_constraints = pylp.LinearConstraints()
         for c in self.main_constraints + self.pin_constraints:
             all_constraints.add(c)
         self.solver.set_constraints(all_constraints)
         self.solver.set_num_threads(1)
-        self.solver.set_timeout(120)
+        self.solver.set_timeout(self.timeout)
 
     def solve(self):
         solution, message = self.solver.solve()
