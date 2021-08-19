@@ -17,6 +17,7 @@ setup(
             'linajea.process_blockwise',
             'linajea.visualization',
             'linajea.visualization.mamut',
+            'linajea.visualization.ctc',
         ],
         python_requires="<3.8"
 )
