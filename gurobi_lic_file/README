@@ -1,5 +1,0 @@
-README: Gurobi License File
-
-The gurobi license file here is for the Janelia CPU cluster.
-It will be copied by the Singularity file onto the images
-so that we can use gurobi on the cluster.
