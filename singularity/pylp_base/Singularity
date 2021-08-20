@@ -1,9 +1,6 @@
 Bootstrap: docker
 From: ubuntu:18.04
 
-%files
-../../gurobi_lic_file/gurobi.lic /opt/
-
 %labels
 Maintainer jfunke@iri.upc.edu
 Name pylb_base
