@@ -3,7 +3,7 @@ README: Linajea
 This is the main software repository for the linajea cell tracking project.
 Includes tools and infrastructure for running a pipeline that starts from light
 sheet data and ends in extracted cell lineage tracks.  The linajea_experiments
-repository (https://github.com/linajea/linajea_experiments) contains example
+repository (https://github.com/funkelab/linajea_experiments) contains example
 scripts, network setups, and data folders, and is the location to
 actually run training and inference scripts. This library contains all the
 supporting code to run those experiments, and is where most of the interesting
