@@ -201,8 +201,10 @@ def get_results_sorted(config,
 
     results_df['sum_errors'] = sum([results_df[col]*weight for col, weight
                                    in zip(score_columns, score_weights)])
-    results_df['sum_divs'] = sum([results_df[col]*weight for col, weight
-                                   in zip(score_columns[-2:], score_weights[-2:])])
+    results_df['sum_divs'] = sum(
+        [results_df[col]*weight for col, weight
+         in zip(score_columns[-2:], score_weights[-2:])])
+    results_df = results_df.astype({"sum_errors": int, "sum_divs": int})
     ascending = True
     if sort_by == "matched_edges":
         ascending = False
@@ -230,6 +232,46 @@ def get_best_result_with_config(config,
         except AttributeError:
             pass
     return best_result
+
+
+def get_results_sorted_db(db_name,
+                          db_host,
+                          filter_params=None,
+                          score_columns=None,
+                          score_weights=None,
+                          sort_by="sum_errors"):
+    if not score_columns:
+        score_columns = ['fn_edges', 'identity_switches',
+                         'fp_divisions', 'fn_divisions']
+    if not score_weights:
+        score_weights = [1.]*len(score_columns)
+
+    logger.info("checking db: %s", db_name)
+
+    candidate_db = CandidateDatabase(db_name, db_host, 'r')
+    scores = candidate_db.get_scores(filters=filter_params)
+
+    if len(scores) == 0:
+        raise RuntimeError("no scores found!")
+
+    results_df = pandas.DataFrame(scores)
+    logger.debug("data types of results_df dataframe columns: %s"
+                 % str(results_df.dtypes))
+    if 'param_id' in results_df:
+        results_df['_id'] = results_df['param_id']
+        results_df.set_index('param_id', inplace=True)
+
+    results_df['sum_errors'] = sum([results_df[col]*weight for col, weight
+                                   in zip(score_columns, score_weights)])
+    results_df['sum_divs'] = sum(
+        [results_df[col]*weight for col, weight
+         in zip(score_columns[-2:], score_weights[-2:])])
+    results_df = results_df.astype({"sum_errors": int, "sum_divs": int})
+    ascending = True
+    if sort_by == "matched_edges":
+        ascending = False
+    results_df.sort_values(sort_by, ascending=ascending, inplace=True)
+    return results_df
 
 
 def get_result_id(
