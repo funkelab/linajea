@@ -1,9 +1,11 @@
 from copy import deepcopy
+import itertools
 import logging
 import math
 import networkx as nx
 from .report import Report
 from .validation_metric import validation_score
+from .analyze_candidates import get_node_recall, get_edge_recall
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +106,14 @@ class Evaluator:
         self.get_perfect_segments(self.window_size)
         if self.validation_score:
             self.get_validation_score()
+        self.get_div_topology_stats()
+
+        num_matches, num_gt_nodes = get_node_recall(
+                self.rec_track_graph, self.gt_track_graph, 15)
+        self.report.node_recall = num_matches / num_gt_nodes
+        num_matches, num_gt_edges = get_edge_recall(
+                self.rec_track_graph, self.gt_track_graph, 15, 35)
+        self.report.edge_recall = num_matches / num_gt_edges
         return self.report
 
     def get_fp_edges(self):
@@ -112,9 +122,17 @@ class Evaluator:
         If dense, this is the total number of unmatched rec edges.
         '''
         if self.sparse:
-            fp_edges = self.unselected_potential_matches
+            num_fp_edges = self.unselected_potential_matches
         else:
-            fp_edges = self.report.rec_edges - self.report.matched_edges
+            num_fp_edges = self.report.rec_edges - self.report.matched_edges
+
+        matched_edges = set([match[1] for match in self.edge_matches])
+        rec_edges = set(self.rec_track_graph.edges)
+        fp_edges = list(rec_edges - matched_edges)
+        assert len(fp_edges) == num_fp_edges, "List of fp edges "\
+            "has %d edges, but calculated %d fp edges"\
+            % (len(fp_edges), num_fp_edges)
+
         self.report.set_fp_edges(fp_edges)
 
     def get_fn_edges(self):
@@ -178,7 +196,7 @@ class Evaluator:
         previous match is the end of a gt track.
         '''
 
-        fp_div_nodes = []
+        self.fp_div_nodes = []
         for rec_parent in self.rec_parents:
             next_edges = self.rec_track_graph.next_edges(rec_parent)
             assert len(next_edges) == 2,\
@@ -212,13 +230,18 @@ class Evaluator:
                 # and will be taken care of below
 
             if not self.__div_match_node_equality(c1_t, c2_t):
-                logger.debug("FP division at rec node %d" % rec_parent)
-                fp_div_nodes.append(rec_parent)
+                node = [self.rec_track_graph.nodes[rec_parent]['t'],
+                        self.rec_track_graph.nodes[rec_parent]['z'],
+                        self.rec_track_graph.nodes[rec_parent]['y'],
+                        self.rec_track_graph.nodes[rec_parent]['x']]
+                logger.debug("FP division at rec node %d %s %s" % (
+                    rec_parent, node, next_edge_matches))
+                self.fp_div_nodes.append(rec_parent)
                 if c1_t is not None:
                     self.gt_track_graph.nodes[c1_t]['FP_D'] = True
                 if c2_t is not None:
                     self.gt_track_graph.nodes[c2_t]['FP_D'] = True
-        self.report.set_fp_divisions(fp_div_nodes)
+        self.report.set_fp_divisions(self.fp_div_nodes)
 
     def __div_match_node_equality(self, n1, n2):
         if n1 is None or n2 is None:
@@ -257,10 +280,10 @@ class Evaluator:
         c1_t and c2_t. If c1_t = c2_t, no error.
         If c1_t != c2_t, no connections.
         '''
-        fn_div_no_connection_nodes = []
-        fn_div_unconnected_child_nodes = []
-        fn_div_unconnected_parent_nodes = []
-        tp_div_nodes = []
+        self.fn_div_no_connection_nodes = []
+        self.fn_div_unconnected_child_nodes = []
+        self.fn_div_unconnected_parent_nodes = []
+        self.tp_div_nodes = []
 
         for gt_parent in self.gt_parents:
             next_edges = self.gt_track_graph.next_edges(gt_parent)
@@ -288,12 +311,12 @@ class Evaluator:
                 if self.__div_match_node_equality(c1_t, c2_t):
                     # TP - children are connected
                     logger.debug("TP division - no gt parent")
-                    tp_div_nodes.append(gt_parent)
+                    self.tp_div_nodes.append(gt_parent)
                     continue
                 else:
                     # FN - No connections
                     logger.debug("FN - no connections")
-                    fn_div_no_connection_nodes.append(gt_parent)
+                    self.fn_div_no_connection_nodes.append(gt_parent)
                     continue
             prev_edge = prev_edges[0]
             prev_edge_match = self.gt_edges_to_rec_edges.get(prev_edge)
@@ -301,29 +324,38 @@ class Evaluator:
                 is not None else None
             logger.debug("prev_s: %s" % str(prev_s))
 
+            is_tp_div = False
             if self.__div_match_node_equality(c1_t, c2_t):
-                if self.__div_match_node_equality(c1_t, prev_s):
-                    # TP
-                    logger.debug("TP div")
-                    tp_div_nodes.append(gt_parent)
-                else:
+                # TP
+                logger.debug("TP div")
+                self.tp_div_nodes.append(gt_parent)
+                is_tp_div = True
+                if not self.__div_match_node_equality(c1_t, prev_s):
                     # FN - Unconnected parent
                     logger.debug("FN div - unconnected parent")
-                    fn_div_unconnected_parent_nodes.append(gt_parent)
+                    self.fn_div_unconnected_parent_nodes.append(gt_parent)
             else:
                 if self.__div_match_node_equality(c1_t, prev_s)\
                         or self.__div_match_node_equality(c2_t, prev_s):
                     # FN - one unconnected child
                     logger.debug("FN div - one unconnected child")
-                    fn_div_unconnected_child_nodes.append(gt_parent)
+                    self.fn_div_unconnected_child_nodes.append(gt_parent)
                 else:
                     # FN - no connections
                     logger.debug("FN div - no connections")
-                    fn_div_no_connection_nodes.append(gt_parent)
-        self.report.set_fn_divisions(fn_div_no_connection_nodes,
-                                     fn_div_unconnected_child_nodes,
-                                     fn_div_unconnected_parent_nodes,
-                                     tp_div_nodes)
+                    self.fn_div_no_connection_nodes.append(gt_parent)
+
+            if not is_tp_div:
+                node = [self.gt_track_graph.nodes[gt_parent]['t'],
+                        self.gt_track_graph.nodes[gt_parent]['z'],
+                        self.gt_track_graph.nodes[gt_parent]['y'],
+                        self.gt_track_graph.nodes[gt_parent]['x']]
+                logger.debug("FN division at gt node %d %s %s" % (
+                    gt_parent, node, next_edge_matches))
+        self.report.set_fn_divisions(self.fn_div_no_connection_nodes,
+                                     self.fn_div_unconnected_child_nodes,
+                                     self.fn_div_unconnected_parent_nodes,
+                                     self.tp_div_nodes)
 
     def get_f_score(self):
         self.report.set_f_score()
@@ -397,7 +429,7 @@ class Evaluator:
                             for current_node in current_nodes:
                                 if current_node != start_node:
                                     if 'IS' in self.gt_track_graph.nodes[current_node] or\
-                                            'FP_D' in self.gt_track_graph.nodes[current_node]:
+                                       'FP_D' in self.gt_track_graph.nodes[current_node]:
                                         correct = False
                             for next_edge in next_edges:
                                 if 'FN' in self.gt_track_graph.get_edge_data(*next_edge):
@@ -457,3 +489,178 @@ class Evaluator:
                 deepcopy(self.gt_track_graph),
                 deepcopy(self.rec_track_graph))
         self.report.set_validation_score(vald_score)
+
+    def get_div_topology_stats(self):
+        self.iso_fn_div_nodes = []
+        for fn_div_node in itertools.chain(
+                self.fn_div_no_connection_nodes,
+                self.fn_div_unconnected_child_nodes,
+                self.fn_div_unconnected_parent_nodes):
+
+            gt_tmp_grph, rec_tmp_grph = self.get_local_graphs(
+                fn_div_node,
+                self.gt_track_graph, self.rec_track_graph)
+
+            if len(gt_tmp_grph.nodes()) == 0 or len(rec_tmp_grph) == 0:
+                continue
+            if nx.is_isomorphic(gt_tmp_grph, rec_tmp_grph):
+                fp_div_node = None
+                for node, degree in rec_tmp_grph.degree():
+                    if degree == 3:
+                        fp_div_node = node
+                logger.debug("found isomorphic fn division: %d/%s",
+                             fp_div_node, fn_div_node)
+                self.iso_fn_div_nodes.append(fn_div_node)
+            else:
+                logger.debug("not-isomorphic fn division: %d", fn_div_node)
+        self.iso_fp_div_nodes = []
+        for fp_div_node in self.fp_div_nodes:
+            fp_div_node = int(fp_div_node)
+            rec_tmp_grph, gt_tmp_grph = self.get_local_graphs(
+                fp_div_node,
+                self.rec_track_graph, self.gt_track_graph, rec_to_gt=True)
+            if len(gt_tmp_grph.nodes()) == 0 or len(rec_tmp_grph) == 0:
+                continue
+            if nx.is_isomorphic(gt_tmp_grph, rec_tmp_grph):
+                fn_div_node = None
+                for node, degree in gt_tmp_grph.degree():
+                    if degree == 3:
+                        fn_div_node = node
+                logger.debug("found isomorphic fp division: %d/%s",
+                             fp_div_node, fn_div_node)
+                self.iso_fp_div_nodes.append(fp_div_node)
+            else:
+                logger.debug("not-isomorphic fp division: %d", fp_div_node)
+
+        self.report.set_iso_fn_divisions(self.iso_fn_div_nodes)
+        self.report.set_iso_fp_divisions(self.iso_fp_div_nodes)
+
+    def get_local_graphs(self, div_node, g1, g2, rec_to_gt=False):
+
+        g1_nodes = []
+        try:
+            for n1 in g1.successors(div_node):
+                g1_nodes.append(n1)
+                for n2 in g1.successors(n1):
+                    g1_nodes.append(n2)
+                for n2 in g1.predecessors(n1):
+                    g1_nodes.append(n2)
+            for n1 in g1.predecessors(div_node):
+                g1_nodes.append(n1)
+                for n2 in g1.successors(n1):
+                    g1_nodes.append(n2)
+                for n2 in g1.predecessors(n1):
+                    g1_nodes.append(n2)
+        except:
+            raise RuntimeError("Overlooked edge case in get_local_graph?")
+
+        prev_edge = list(g1.prev_edges(div_node))
+        prev_edge = prev_edge[0] if len(prev_edge) > 0 else None
+        next_edges = list(g1.next_edges(div_node))
+        prev_edge_match = None
+        next_edge_match = None
+        if not rec_to_gt:
+            if prev_edge is not None:
+                prev_edge_match = self.gt_edges_to_rec_edges.get(prev_edge)
+            if prev_edge_match is None:
+                for next_edge in next_edges:
+                    next_edge_match = self.gt_edges_to_rec_edges.get(next_edge)
+                    if next_edge_match is not None:
+                        break
+        else:
+            if prev_edge is not None:
+                prev_edge_match = self.rec_edges_to_gt_edges.get(prev_edge)
+            if prev_edge_match is None:
+                for next_edge in next_edges:
+                    next_edge_match = self.rec_edges_to_gt_edges.get(next_edge)
+                    if next_edge_match is not None:
+                        break
+
+        g2_nodes = []
+        if prev_edge_match is not None or next_edge_match is not None:
+            if prev_edge_match is not None:
+                div_node_match = prev_edge_match[0]
+            else:
+                div_node_match = next_edge_match[0]
+
+            for n1 in g2.successors(div_node_match):
+                g2_nodes.append(n1)
+                for n2 in g2.successors(n1):
+                    g2_nodes.append(n2)
+                for n2 in g2.predecessors(n1):
+                    g2_nodes.append(n2)
+            for n1 in g2.predecessors(div_node_match):
+                g2_nodes.append(n1)
+                for n2 in g2.successors(n1):
+                    g2_nodes.append(n2)
+                for n2 in g2.predecessors(n1):
+                    g2_nodes.append(n2)
+
+        g1_tmp_grph = g1.subgraph(g1_nodes).to_undirected()
+        g2_tmp_grph = g2.subgraph(g2_nodes).to_undirected()
+
+        if len(g1_tmp_grph.nodes()) != 0 and len(g2_tmp_grph.nodes()) != 0:
+            g1_tmp_grph = contract(g1_tmp_grph)
+            g2_tmp_grph = contract(g2_tmp_grph)
+        return g1_tmp_grph, g2_tmp_grph
+
+
+def contract(g):
+    """
+    Contract chains of neighbouring vertices with degree 2 into one hypernode.
+    Arguments:
+    ----------
+    g -- networkx.Graph instance
+    Returns:
+    --------
+    h -- networkx.Graph instance
+        the contracted graph
+    hypernode_to_nodes -- dict: int hypernode -> [v1, v2, ..., vn]
+        dictionary mapping hypernodes to nodes
+    TODO: cite source
+    """
+
+    # create subgraph of all nodes with degree 2
+    is_chain = [node for node, degree in g.degree() if degree <= 2]
+    chains = g.subgraph(is_chain)
+
+    # contract connected components (which should be chains of variable length)
+    # into single node
+    components = [chains.subgraph(c).copy()
+                  for c in nx.connected_components(chains)]
+    hypernode = max(g.nodes()) + 1
+    hypernodes = []
+    hyperedges = []
+    hypernode_to_nodes = dict()
+    false_alarms = []
+    for component in components:
+        if component.number_of_nodes() > 1:
+
+            hypernodes.append(hypernode)
+            vs = [node for node in component.nodes()]
+            hypernode_to_nodes[hypernode] = vs
+
+            # create new edges from the neighbours of the chain ends to the
+            # hypernode
+            component_edges = [e for e in component.edges()]
+            for v, w in [e for e in g.edges(vs)
+                         if not ((e in component_edges) or
+                                 (e[::-1] in component_edges))]:
+                if v in component:
+                    hyperedges.append([hypernode, w])
+                else:
+                    hyperedges.append([v, hypernode])
+
+            hypernode += 1
+
+        # nothing to collapse as there is only a single node in component:
+        else:
+            false_alarms.extend([node for node in component.nodes()])
+
+    # initialise new graph with all other nodes
+    not_chain = [node for node in g.nodes() if node not in is_chain]
+    h = g.subgraph(not_chain + false_alarms).copy()
+    h.add_nodes_from(hypernodes)
+    h.add_edges_from(hyperedges)
+
+    return h
