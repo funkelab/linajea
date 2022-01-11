@@ -237,7 +237,7 @@ class SolveConfig:
     parameters = attr.ib(converter=convert_solve_params_list(), default=None)
     parameters_search = attr.ib(converter=convert_solve_search_params(), default=None)
     non_minimal = attr.ib(type=bool, default=False)
-    write_struct_svm = attr.ib(type=bool, default=False)
+    write_struct_svm = attr.ib(type=str, default=None)
     check_node_close_to_roi = attr.ib(type=bool, default=True)
     add_node_density_constraints = attr.ib(type=bool, default=False)
     timeout = attr.ib(type=int, default=120)

@@ -87,7 +87,7 @@ def solve_blockwise(linajea_config):
         # Note: in the case of a set of parameters,
         # we are assuming that none of the individual parameters are
         # half done and only checking the hash for each block
-        check_function=lambda b: check_function(
+        check_function=None if linajea_config.solve.write_struct_svm else lambda b: check_function(
             b,
             step_name,
             db_name,
@@ -195,6 +195,11 @@ def solve_in_block(linajea_config,
     else:
         track(graph, linajea_config, selected_keys,
               frames=frames, block_id=block.block_id)
+
+    if linajea_config.solve.write_struct_svm:
+        logger.info("wrote struct svm data, database not updated")
+        return 0
+
     start_time = time.time()
     graph.update_edge_attrs(
             roi=write_roi,

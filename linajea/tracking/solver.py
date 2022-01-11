@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
+import os
+import time
 
 import numpy as np
 
@@ -23,6 +25,9 @@ class Solver(object):
         # and end_frame is exclusive. Defaults to track_graph.begin,
         # track_graph.end
         self.write_struct_svm = write_struct_svm
+        if self.write_struct_svm:
+            assert isinstance(self.write_struct_svm, str)
+            os.makedirs(self.write_struct_svm, exist_ok=True)
         self.check_node_close_to_roi = check_node_close_to_roi
         self.add_node_density_constraints = add_node_density_constraints
         self.block_id = block_id
@@ -107,12 +112,12 @@ class Solver(object):
         #   3. disappear
         #   4. split
         if self.write_struct_svm:
-            node_selected_file = open(f"node_selected_b{self.block_id}", 'w')
-            node_appear_file = open(f"node_appear_b{self.block_id}", 'w')
-            node_disappear_file = open(f"node_disappear_b{self.block_id}", 'w')
-            node_split_file = open(f"node_split_b{self.block_id}", 'w')
-            node_child_file = open(f"node_child_b{self.block_id}", 'w')
-            node_continuation_file = open(f"node_continuation_b{self.block_id}", 'w')
+            node_selected_file = open(f"{self.write_struct_svm}/node_selected_b{self.block_id}", 'w')
+            node_appear_file = open(f"{self.write_struct_svm}/node_appear_b{self.block_id}", 'w')
+            node_disappear_file = open(f"{self.write_struct_svm}/node_disappear_b{self.block_id}", 'w')
+            node_split_file = open(f"{self.write_struct_svm}/node_split_b{self.block_id}", 'w')
+            node_child_file = open(f"{self.write_struct_svm}/node_child_b{self.block_id}", 'w')
+            node_continuation_file = open(f"{self.write_struct_svm}/node_continuation_b{self.block_id}", 'w')
         else:
             node_selected_file = None
             node_appear_file = None
@@ -146,7 +151,7 @@ class Solver(object):
             node_continuation_file.close()
 
         if self.write_struct_svm:
-            edge_selected_file = open(f"edge_selected_b{self.block_id}", 'w')
+            edge_selected_file = open(f"{self.write_struct_svm}/edge_selected_b{self.block_id}", 'w')
         for edge in self.graph.edges():
             if self.write_struct_svm:
                 edge_selected_file.write("{} {} {}\n".format(edge[0], edge[1], self.num_vars))
@@ -166,17 +171,17 @@ class Solver(object):
         # node selection and cell cycle costs
         if self.write_struct_svm:
             node_selected_weight_file = open(
-                f"features_node_selected_weight_b{self.block_id}", 'w')
+                f"{self.write_struct_svm}/features_node_selected_weight_b{self.block_id}", 'w')
             node_selected_constant_file = open(
-                f"features_node_selected_constant_b{self.block_id}", 'w')
+                f"{self.write_struct_svm}/features_node_selected_constant_b{self.block_id}", 'w')
             node_split_weight_file = open(
-                f"features_node_split_weight_b{self.block_id}", 'w')
+                f"{self.write_struct_svm}/features_node_split_weight_b{self.block_id}", 'w')
             node_split_constant_file = open(
-                f"features_node_split_constant_b{self.block_id}", 'w')
+                f"{self.write_struct_svm}/features_node_split_constant_b{self.block_id}", 'w')
             node_child_weight_or_constant_file = open(
-                f"features_node_child_weight_or_constant_b{self.block_id}", 'w')
+                f"{self.write_struct_svm}/features_node_child_weight_or_constant_b{self.block_id}", 'w')
             node_continuation_weight_or_constant_file = open(
-                f"features_node_continuation_weight_or_constant_b{self.block_id}", 'w')
+                f"{self.write_struct_svm}/features_node_continuation_weight_or_constant_b{self.block_id}", 'w')
         else:
             node_selected_weight_file = None
             node_selected_constant_file = None
@@ -218,9 +223,10 @@ class Solver(object):
         # edge selection costs
         if self.write_struct_svm:
             edge_selected_weight_file = open(
-                f"features_edge_selected_weight_b{self.block_id}", 'w')
+                f"{self.write_struct_svm}/features_edge_selected_weight_b{self.block_id}", 'w')
         else:
             edge_selected_weight_file = None
+
         for edge in self.graph.edges():
             objective.set_coefficient(
                 self.edge_selected[edge],
@@ -231,8 +237,8 @@ class Solver(object):
 
         # node appear (skip first frame)
         if self.write_struct_svm:
-            appear_file = open(f"features_node_appear_b{self.block_id}", 'w')
-            disappear_file = open(f"features_node_disappear_b{self.block_id}", 'w')
+            appear_file = open(f"{self.write_struct_svm}/features_node_appear_b{self.block_id}", 'w')
+            disappear_file = open(f"{self.write_struct_svm}/features_node_disappear_b{self.block_id}", 'w')
         for t in range(self.start_frame + 1, self.end_frame):
             for node in self.graph.cells_by_frame(t):
                 objective.set_coefficient(
@@ -443,7 +449,7 @@ class Solver(object):
         logger.debug("setting edge constraints")
 
         if self.write_struct_svm:
-            edge_constraint_file = open(f"constraints_edge_b{self.block_id}", 'w')
+            edge_constraint_file = open(f"{self.write_struct_svm}/constraints_edge_b{self.block_id}", 'w')
             cnstr = "2*{} -1*{} -1*{} <= 0\n"
         for e in self.graph.edges():
 
@@ -478,7 +484,7 @@ class Solver(object):
         # one or two to the next frame. This includes the special "appear" and
         # "disappear" edges.
         if self.write_struct_svm:
-            node_edge_constraint_file = open(f"constraints_node_edge_b{self.block_id}", 'a')
+            node_edge_constraint_file = open(f"{self.write_struct_svm}/constraints_node_edge_b{self.block_id}", 'a')
         for node in self.graph.cells_by_frame(t):
             # we model this as three constraints:
             #  sum(prev) -   node  = 0 # exactly one prev edge,
@@ -574,7 +580,7 @@ class Solver(object):
         # Ensure that the split indicator is set for every cell that splits
         # into two daughter cells.
         if self.write_struct_svm:
-            node_split_constraint_file = open(f"constraints_node_split_b{self.block_id}", 'a')
+            node_split_constraint_file = open(f"{self.write_struct_svm}/constraints_node_split_b{self.block_id}", 'a')
         for node in self.graph.cells_by_frame(t):
 
             # I.e., each node with two forwards edges is a split node.
@@ -643,7 +649,7 @@ class Solver(object):
         # split(v) + selected(e) - child(u) <= 1
 
         if self.write_struct_svm:
-            edge_split_constraint_file = open(f"constraints_edge_split_b{self.block_id}", 'a')
+            edge_split_constraint_file = open(f"{self.write_struct_svm}/constraints_edge_split_b{self.block_id}", 'a')
         for e in self.graph.edges():
 
             # if e is selected, u and v have to be selected
@@ -693,7 +699,7 @@ class Solver(object):
         # Constraint for each node:
         # split + child + continuation - selected = 0
         if self.write_struct_svm:
-            node_cell_cycle_constraint_file = open(f"constraints_node_cell_cycle_b{self.block_id}", 'a')
+            node_cell_cycle_constraint_file = open(f"{self.write_struct_svm}/constraints_node_cell_cycle_b{self.block_id}", 'a')
         for node in self.graph.nodes():
             cycle_set_constraint = pylp.LinearConstraint()
             cycle_set_constraint.set_coefficient(self.node_split[node], 1)
@@ -743,7 +749,7 @@ class Solver(object):
         r = filter_sz/2
         radius = {30: 35, 60: 25, 100: 15, 1000:10}
         if self.write_struct_svm:
-            node_density_constraint_file = open(f"constraints_node_density_b{self.block_id}", 'w')
+            node_density_constraint_file = open(f"{self.write_struct_svm}/constraints_node_density_b{self.block_id}", 'w')
         for t in range(self.start_frame, self.end_frame):
             kd_data = [pos for _, pos in nodes_by_t[t]]
             kd_tree = cKDTree(kd_data)
