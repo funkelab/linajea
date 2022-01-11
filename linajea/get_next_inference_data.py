@@ -54,7 +54,8 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
                     config.general.setup_dir,
                     sample.datafile.filename,
                     checkpoint,
-                    inference.cell_score_threshold)
+                    inference.cell_score_threshold,
+                    tag=config.general.tag)
             inference_data['data_source'] = sample
             config.inference = InferenceDataTrackingConfig(**inference_data) # type: ignore
             if is_solve:
