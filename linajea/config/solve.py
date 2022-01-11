@@ -166,8 +166,8 @@ def write_solve_parameters_configs(parameters_search, non_minimal):
     params = {k:v
               for k,v in attr.asdict(parameters_search).items()
               if v is not None}
-    del params['random_search']
-    del params['num_random_configs']
+    params.pop('random_search', None)
+    params.pop('num_random_configs', None)
 
     if parameters_search.random_search:
         search_configs = []
@@ -178,14 +178,15 @@ def write_solve_parameters_configs(parameters_search, non_minimal):
             conf = {}
             for k, v in params.items():
                 if not isinstance(v, list):
-                    conf[k] = v
+                    value = v
                 elif len(v) == 1:
-                    conf[k] = v[0]
-                elif isinstance(v[0], str):
-                    rnd = random.choice(v)
-                    if rnd == "":
-                        rnd = None
-                    conf[k] = rnd
+                    value = v[0]
+                elif isinstance(v[0], str) or len(v) > 2:
+                    value = random.choice(v)
+                elif len(v) == 2 and isinstance(v[0], list) and isinstance(v[1], list) and \
+                     isinstance(v[0][0], str) and isinstance(v[1][0], str):
+                    subset = random.choice(v)
+                    value = random.choice(subset)
                 else:
                     assert len(v) == 2, \
                         "possible options per parameter for random search: " \
@@ -193,14 +194,28 @@ def write_solve_parameters_configs(parameters_search, non_minimal):
                         "set of string values ({})".format(v)
                     if isinstance(v[0], list):
                         idx = random.randrange(len(v[0]))
-                        conf[k] = random.uniform(v[0][idx], v[1][idx])
+                        value = random.uniform(v[0][idx], v[1][idx])
                     else:
-                        conf[k] = random.uniform(v[0], v[1])
+                        value = random.uniform(v[0], v[1])
+                if value == "":
+                    value = None
+                conf[k] = value
             search_configs.append(conf)
     else:
+        if params.get('cell_cycle_key') == '':
+            params['cell_cycle_key'] = None
+        elif isinstance(params.get('cell_cycle_key'), list) and \
+             '' in params['cell_cycle_key']:
+            params['cell_cycle_key'] = [k if k != '' else None
+                                        for k in params['cell_cycle_key']]
+
         search_configs = [
             dict(zip(params.keys(), x))
             for x in itertools.product(*params.values())]
+
+        if parameters_search.num_random_configs:
+            random.shuffle(search_configs)
+            search_configs = search_configs[:parameters_search.num_random_configs]
 
     configs = []
     for config_vals in search_configs:
