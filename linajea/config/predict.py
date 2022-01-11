@@ -7,6 +7,7 @@ from .utils import ensure_cls
 class PredictConfig:
     job = attr.ib(converter=ensure_cls(JobConfig))
     path_to_script = attr.ib(type=str)
+    use_swa = attr.ib(type=bool, default=None)
 
 @attr.s(kw_only=True)
 class PredictTrackingConfig(PredictConfig):
