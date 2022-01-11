@@ -35,8 +35,11 @@ class NormalizeMinMax(gp.Normalize):
             array,
             mn,
             mx,
+            interpolatable=True,
             dtype=np.float32,
             clip=False):
+
+        super(NormalizeMinMax, self).__init__(array, interpolatable=interpolatable)
 
         self.array = array
         self.mn = mn
