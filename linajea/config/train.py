@@ -32,6 +32,7 @@ class TrainConfig:
     swa_every_it = attr.ib(type=bool, default=False)
     swa_start_it = attr.ib(type=int, default=None)
     swa_freq_it = attr.ib(type=int, default=None)
+    use_grad_norm = attr.ib(type=bool, default=False)
     val_log_step = attr.ib(type=int, default=None)
 
     def __attrs_post_init__(self):
