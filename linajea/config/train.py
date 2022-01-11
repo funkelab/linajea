@@ -45,6 +45,8 @@ class TrainConfig:
 class TrainTrackingConfig(TrainConfig):
     # (radius for binary map -> *2) (optional)
     parent_radius = attr.ib(type=List[float])
+    # context to be able to get location of parents during add_parent_vectors
+    move_radius = attr.ib(type=float, default=None)
     # (sigma for Gauss -> ~*4 (5 in z -> in 3 slices)) (optional)
     rasterize_radius = attr.ib(type=List[float])
     augment = attr.ib(converter=ensure_cls(AugmentTrackingConfig))
