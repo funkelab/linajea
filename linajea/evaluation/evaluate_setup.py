@@ -146,13 +146,21 @@ def evaluate_setup(linajea_config):
         gt_subgraph, frame_key='t', roi=gt_subgraph.roi)
 
     logger.info("Matching edges for parameters with id %d" % parameters_id)
+    matching_threshold = linajea_config.evaluate.parameters.matching_threshold
+    validation_score = linajea_config.evaluate.parameters.validation_score
+    ignore_one_off_div_errors = \
+        linajea_config.evaluate.parameters.ignore_one_off_div_errors
+    fn_div_count_unconnected_parent = \
+        linajea_config.evaluate.parameters.fn_div_count_unconnected_parent
     report = evaluate(
             gt_track_graph,
             track_graph,
-            matching_threshold=linajea_config.evaluate.parameters.matching_threshold,
+            matching_threshold=matching_threshold,
             sparse=linajea_config.general.sparse,
-            validation_score=linajea_config.evaluate.parameters.validation_score,
-            window_size=linajea_config.evaluate.parameters.window_size)
+            validation_score=validation_score,
+            window_size=linajea_config.evaluate.parameters.window_size,
+            ignore_one_off_div_errors=ignore_one_off_div_errors,
+            fn_div_count_unconnected_parent=fn_div_count_unconnected_parent)
 
     logger.info("Done evaluating results for %d. Saving results to mongo."
                 % parameters_id)

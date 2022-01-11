@@ -46,8 +46,12 @@ class Evaluator:
             sparse=True,
             validation_score=False,
             window_size=50,
+            ignore_one_off_div_errors=False,
+            fn_div_count_unconnected_parent=True
             ):
         self.report = Report()
+        self.report.fn_div_count_unconnected_parent = \
+            fn_div_count_unconnected_parent
 
         self.gt_track_graph = gt_track_graph
         self.rec_track_graph = rec_track_graph
@@ -56,6 +60,7 @@ class Evaluator:
         self.sparse = sparse
         self.validation_score = validation_score
         self.window_size = window_size
+        self.ignore_one_off_div_errors = ignore_one_off_div_errors
 
         # get tracks
         self.gt_tracks = gt_track_graph.get_tracks()
@@ -106,7 +111,8 @@ class Evaluator:
         self.get_perfect_segments(self.window_size)
         if self.validation_score:
             self.get_validation_score()
-        self.get_div_topology_stats()
+        if self.ignore_one_off_div_errors:
+            self.get_div_topology_stats()
 
         num_matches, num_gt_nodes = get_node_recall(
                 self.rec_track_graph, self.gt_track_graph, 15)

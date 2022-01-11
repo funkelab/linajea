@@ -1,4 +1,8 @@
 from copy import deepcopy
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class Report:
     def __init__(self):
@@ -20,7 +24,9 @@ class Report:
         self.fn_edges = None
         self.identity_switches = None
         self.fp_divisions = None
+        self.iso_fp_division = None
         self.fn_divisions = None
+        self.iso_fn_division = None
         self.fn_divs_no_connections = None
         self.fn_divs_unconnected_child = None
         self.fn_divs_unconnected_parent = None
@@ -42,6 +48,8 @@ class Report:
         self.unconnected_child_gt_nodes = None
         self.unconnected_parent_gt_nodes = None
         self.tp_div_gt_nodes = None
+
+        self.fn_div_count_unconnected_parent = False
 
     def set_track_stats(
             self,
@@ -113,8 +121,9 @@ class Report:
         self.fn_edges = len(fn_edges)
         self.fn_edge_list = [(int(s), int(t)) for s, t in fn_edges]
 
-    def set_fp_edges(self, num_fp_edges):
-        self.fp_edges = num_fp_edges
+    def set_fp_edges(self, fp_edges):
+        self.fp_edges = len(fp_edges)
+        self.fp_edge_list = [(int(s), int(t)) for s, t in fp_edges]
 
     def set_identity_switches(self, identity_switches):
         '''
@@ -144,9 +153,10 @@ class Report:
         self.fn_divs_no_connections = len(fn_divs_no_connections)
         self.fn_divs_unconnected_child = len(fn_divs_unconnected_child)
         self.fn_divs_unconnected_parent = len(fn_divs_unconnected_parent)
-        self.fn_divisions = self.fn_divs_no_connections +\
-            self.fn_divs_unconnected_child +\
-            self.fn_divs_unconnected_parent
+        self.fn_divisions = self.fn_divs_no_connections + \
+            self.fn_divs_unconnected_child
+        if self.fn_div_count_unconnected_parent:
+            self.fn_divisions += self.fn_divs_unconnected_parent
 
         self.no_connection_gt_nodes = [int(n) for n in fn_divs_no_connections]
         self.unconnected_child_gt_nodes = [
@@ -188,13 +198,88 @@ class Report:
     def set_validation_score(self, validation_score):
         self.validation_score = validation_score
 
+    def set_iso_fn_divisions(self, iso_fn_div_nodes):
+        self.iso_fn_division = len(iso_fn_div_nodes)
+        fn_div_gt_nodes = (self.no_connection_gt_nodes +
+                           self.unconnected_child_gt_nodes)
+        if self.fn_div_count_unconnected_parent:
+            fn_div_gt_nodes += self.unconnected_parent_gt_nodes
+        fn_div_gt_nodes = [f for f in fn_div_gt_nodes
+                           if f not in iso_fn_div_nodes]
+        self.fn_divisions = len(fn_div_gt_nodes)
+
+        # remove fp/fn edges directly involved in iso fn div
+        logger.debug("fn edges before iso_fn_div: %d", self.fn_edges)
+        logger.debug("fp edges before iso_fn_div: %d", self.fp_edges)
+        edges = self.fn_edge_list
+        self.fn_edge_list = []
+        for u, v in edges:
+            found = False
+            for d in iso_fn_div_nodes:
+                if int(d) == u or int(d) == v:
+                    found = True
+            if not found:
+                self.fn_edge_list.append((u, v))
+        self.fn_edge_list = list(self.fn_edge_list)
+        self.fn_edges = len(self.fn_edge_list)
+
+        edges = self.fp_edge_list
+        self.fp_edge_list = []
+        for u, v in edges:
+            found = False
+            for d in iso_fn_div_nodes:
+                if int(d) == u or int(d) == v:
+                    found = True
+            if not found:
+                self.fp_edge_list.append((u, v))
+        self.fp_edge_list = list(self.fp_edge_list)
+        self.fp_edges = len(self.fp_edge_list)
+        logger.debug("fn edges after iso_fn_div: %d", self.fn_edges)
+        logger.debug("fp edges after iso_fn_div: %d", self.fp_edges)
+
+    def set_iso_fp_divisions(self, iso_fp_div_nodes):
+        self.iso_fp_division = len(iso_fp_div_nodes)
+        self.fp_div_rec_nodes = [f for f in self.fp_div_rec_nodes
+                                 if f not in iso_fp_div_nodes]
+        self.fp_divisions = len(self.fp_div_rec_nodes)
+
+        # remove fp/fn edges directly involved in iso fp div
+        logger.debug("fp edges before iso_fp_div: %d", self.fp_edges)
+        logger.debug("fn edges before iso_fp_div: %d", self.fn_edges)
+        edges = self.fp_edge_list
+        self.fp_edge_list = []
+        for u, v in edges:
+            found = False
+            for d in iso_fp_div_nodes:
+                if int(d) == u or int(d) == v:
+                    found = True
+            if not found:
+                self.fp_edge_list.append((u, v))
+        self.fp_edge_list = list(self.fp_edge_list)
+        self.fp_edges = len(self.fp_edge_list)
+
+        edges = self.fn_edge_list
+        self.fn_edge_list = []
+        for u, v in edges:
+            found = False
+            for d in iso_fp_div_nodes:
+                if int(d) == u or int(d) == v:
+                    found = True
+            if not found:
+                self.fn_edge_list.append((u, v))
+        self.fn_edge_list = list(self.fn_edge_list)
+        self.fn_edges = len(self.fn_edge_list)
+        logger.debug("fp edges after iso_fp_div: %d", self.fp_edges)
+        logger.debug("fn edges after iso_fp_div: %d", self.fn_edges)
+
     def get_report(self):
         return self.__dict__
 
     def get_short_report(self):
         report = deepcopy(self.__dict__)
-                # STATISTICS
+        # STATISTICS
         del report['fn_edge_list']
+        del report['fp_edge_list']
         del report['identity_switch_gt_nodes']
         del report['fp_div_rec_nodes']
         del report['no_connection_gt_nodes']
