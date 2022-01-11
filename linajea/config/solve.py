@@ -237,6 +237,7 @@ class SolveConfig:
     parameters = attr.ib(converter=convert_solve_params_list(), default=None)
     parameters_search = attr.ib(converter=convert_solve_search_params(), default=None)
     non_minimal = attr.ib(type=bool, default=False)
+    greedy = attr.ib(type=bool, default=False)
     write_struct_svm = attr.ib(type=str, default=None)
     check_node_close_to_roi = attr.ib(type=bool, default=True)
     add_node_density_constraints = attr.ib(type=bool, default=False)
@@ -255,6 +256,22 @@ class SolveConfig:
             self.parameters = write_solve_parameters_configs(
                 self.parameters_search, non_minimal=self.non_minimal)
 
+        if self.greedy:
+            config_vals = {
+                "weight_node_score": 0,
+                "selection_constant": 0,
+                "track_cost": 0,
+                "weight_division": 0,
+                "division_constant": 0,
+                "weight_child": 0,
+                "weight_continuation": 0,
+                "weight_edge_score":  0,
+                "block_size": [15, 512, 512, 712],
+                "context": [2, 100, 100, 100]
+            }
+            if self.parameters[0].cell_cycle_key is not None:
+                config_vals['cell_cycle_key'] = self.parameters[0].cell_cycle_key
+            self.parameters = [SolveParametersMinimalConfig(**config_vals)]
         # block size and context must be the same for all parameters!
         block_size = self.parameters[0].block_size
         context = self.parameters[0].context

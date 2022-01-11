@@ -6,7 +6,7 @@ from linajea import CandidateDatabase
 from .daisy_check_functions import (
         check_function, write_done,
         check_function_all_blocks, write_done_all_blocks)
-from linajea.tracking import track, nm_track
+from linajea.tracking import track, nm_track, greedy_track
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +190,10 @@ def solve_in_block(linajea_config,
 
     frames = [read_roi.get_offset()[0],
               read_roi.get_offset()[0] + read_roi.get_shape()[0]]
-    if linajea_config.solve.non_minimal:
+    if linajea_config.solve.greedy:
+        greedy_track(graph, selected_keys[0],
+                     cell_indicator_threshold=0.2)
+    elif linajea_config.solve.non_minimal:
         nm_track(graph, linajea_config, selected_keys, frames=frames)
     else:
         track(graph, linajea_config, selected_keys,
