@@ -69,6 +69,16 @@ _list_int_list_validator = attr.validators.deep_iterable(
     member_validator=_int_list_validator,
     iterable_validator=attr.validators.instance_of(list))
 
+def _check_possible_nested_lists(self, attribute, value):
+    try:
+        attr.validators.deep_iterable(
+            member_validator=_int_list_validator,
+            iterable_validator=attr.validators.instance_of(list))(self,attribute, value)
+    except:
+        attr.validators.deep_iterable(
+            member_validator=_list_int_list_validator,
+            iterable_validator=attr.validators.instance_of(list))(self, attribute, value)
+
 def maybe_fix_config_paths_to_machine_and_load(config):
     config_dict = toml.load(config)
     config_dict["path"] = config
