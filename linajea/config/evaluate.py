@@ -15,6 +15,8 @@ class EvaluateParametersConfig:
     window_size = attr.ib(type=int, default=50)
     filter_polar_bodies = attr.ib(type=bool, default=None)
     filter_polar_bodies_key = attr.ib(type=str, default=None)
+    ignore_one_off_div_errors = attr.ib(type=bool, default=False)
+    fn_div_count_unconnected_parent = attr.ib(type=bool, default=True)
     # deprecated
     frames = attr.ib(type=List[int], default=None)
     # deprecated
