@@ -177,6 +177,15 @@ def solve_in_block(linajea_config,
     ]
     graph.remove_nodes_from(dangling_nodes)
 
+    if linajea_config.solve.clip_low_score:
+        logger.info("Dropping low score nodes")
+        low_score_nodes = [
+            n
+            for n, data in graph.nodes(data=True)
+            if data['score'] < linajea_config.solve.clip_low_score
+        ]
+        graph.remove_nodes_from(low_score_nodes)
+
     num_nodes = graph.number_of_nodes()
     num_edges = graph.number_of_edges()
     logger.info("Reading graph with %d nodes and %d edges took %s seconds",
