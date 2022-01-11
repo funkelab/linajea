@@ -156,6 +156,11 @@ def solve_in_block(linajea_config,
 
     logger.debug("Write roi: %s", str(write_roi))
 
+    if write_roi.empty():
+        logger.info("Write roi empty, skipping block %d", block.block_id)
+        write_done(block, step_name, db_name, db_host)
+        return 0
+
     graph_provider = CandidateDatabase(
         db_name,
         db_host,
