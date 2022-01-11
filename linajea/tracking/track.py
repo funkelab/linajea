@@ -100,7 +100,10 @@ def track(graph, config, selected_key, frame_key='t', frames=None,
         else:
             solver.update_objective(parameter, key)
 
-        logger.debug("Solving for key %s", str(key))
+        if config.solve.write_struct_svm:
+            logger.info("wrote struct svm data, skipping solving")
+            break
+        logger.info("Solving for key %s", str(key))
         start_time = time.time()
         solver.solve()
         end_time = time.time()
