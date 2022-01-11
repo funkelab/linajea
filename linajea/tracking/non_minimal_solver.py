@@ -503,15 +503,18 @@ class NMSolver(object):
         dia = 2*rad
         filter_sz = 1*dia
         r = filter_sz/2
-        radius = {30: 35, 60: 25, 100: 15, 1000:10}
+        if isinstance(self.add_node_density_constraints, dict):
+            radius = self.add_node_density_constraints
+        else:
+            radius = {30: 35, 60: 25, 100: 15, 1000:10}
         for t in range(self.start_frame, self.end_frame):
             kd_data = [pos for _, pos in nodes_by_t[t]]
             kd_tree = cKDTree(kd_data)
 
             if isinstance(radius, dict):
-                for th, val in radius.items():
+                for th in sorted(list(radius.keys())):
                     if t < int(th):
-                        r = val
+                        r = radius[th]
                         break
             nn_nodes = kd_tree.query_ball_point(kd_data, r, p=np.inf,
                                                 return_length=False)
@@ -527,7 +530,13 @@ class NMSolver(object):
                         continue
                     nn = nodes_by_t[t][nn_id][0]
                     constraint.set_coefficient(self.node_selected[nn], 1)
-                    logger.debug("   neighbor pos %s %s", kd_data[nn_id], np.linalg.norm(np.array(kd_data[idx])-np.array(kd_data[nn_id]), ord=np.inf))
+                    logger.debug(
+                        "neighbor pos %s %s (node %s)",
+                        kd_data[nn_id],
+                        np.linalg.norm(np.array(kd_data[idx]) -
+                                       np.array(kd_data[nn_id]),
+                                       ),
+                        nn)
                 constraint.set_coefficient(self.node_selected[node], 1)
                 constraint.set_relation(pylp.Relation.LessEqual)
                 constraint.set_value(1)
