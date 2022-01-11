@@ -28,13 +28,18 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
         inference = deepcopy(config.test_data)
         checkpoints = [config.test_data.checkpoint]
 
+    if args.validate_on_train:
+        inference.data_sources = deepcopy(config.train_data.data_sources)
+
     if args.checkpoint > 0:
         checkpoints = [args.checkpoint]
 
-    if is_solve and args.val_param_id is not None:
-        config = fix_solve_pid(args, config, checkpoints, inference)
-    if is_evaluate and args.param_id is not None:
-        config = fix_evaluate_pid(args, config, checkpoints, inference)
+    if (is_solve or is_evaluate) and args.val_param_id is not None:
+        config = fix_val_param_pid(args, config, checkpoints, inference)
+    if (is_solve or is_evaluate) and \
+       (args.param_id is not None or
+        (hasattr(args, "param_ids") and args.param_ids is not None)):
+        config = fix_param_pid(args, config, checkpoints, inference)
 
     max_cell_move = max(config.extract.edge_move_threshold.values())
     for pid in range(len(config.solve.parameters)):
@@ -42,6 +47,15 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
             config.solve.parameters[pid].max_cell_move = max_cell_move
 
     os.makedirs("tmp_configs", exist_ok=True)
+    if hasattr(args, "param_list_idx") and \
+       args.param_list_idx is not None:
+        param_list_idx = int(args.param_list_idx[1:-1])
+        assert param_list_idx <= len(config.solve.parameters), \
+            ("invalid index into parameter set list of config, "
+             "too large ({}, {})").format(
+                 param_list_idx, len(config.solve.parameters))
+        solve_parameters = deepcopy(config.solve.parameters[param_list_idx-1])
+        config.solve.parameters = [solve_parameters]
     solve_parameters_sets = deepcopy(config.solve.parameters)
     for checkpoint in checkpoints:
         inference_data = {
@@ -63,11 +77,10 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
                 config = fix_solve_roi(config)
 
             if is_evaluate:
-                config = fix_evaluate_roi(config)
                 for solve_parameters in solve_parameters_sets:
                     solve_parameters = deepcopy(solve_parameters)
-                    solve_parameters.roi = config.inference.data_source.roi
                     config.solve.parameters = [solve_parameters]
+                    config = fix_solve_roi(config)
                     yield config
                 continue
 
@@ -78,19 +91,32 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
             yield config
 
 
-def fix_solve_pid(args, config, checkpoints, inference):
-    if args.param_id is not None:
-        assert len(checkpoints) == 1, "use param_id to reevaluate a single instance"
-        sample_name = inference.data_sources[0].datafile.filename,
-        pid = args.param_id
+def fix_val_param_pid(args, config, checkpoints, inference):
+    if args.validation:
+        sample_name = config.test_data.data_sources[0].datafile.filename
+        threshold = config.test_data.cell_score_threshold
     else:
-        assert not args.validation, "use val_param_id to apply validation parameters with that ID to test set not validation set"
         sample_name = config.validate_data.data_sources[0].datafile.filename
-        pid = args.val_param_id
+        threshold = config.validate_data.cell_score_threshold
+    pid = args.val_param_id
 
-    config = fix_solve_parameters_with_pid(config, sample_name, checkpoints[0],
-                                           inference, pid)
+    config = fix_solve_parameters_with_pids(
+        config, sample_name, checkpoints[0], inference, [pid],
+        threshold=threshold)
+    config.solve.parameters[0].val = False
+    return config
 
+
+def fix_param_pid(args, config, checkpoints, inference):
+    assert len(checkpoints) == 1, "use param_id to reevaluate a single instance"
+    sample_name = inference.data_sources[0].datafile.filename
+    if hasattr(args, "param_ids") and args.param_ids is not None:
+        pids = list(range(int(args.param_ids[0]), int(args.param_ids[1])+1))
+    else:
+        pids = [args.param_id]
+
+    config = fix_solve_parameters_with_pids(config, sample_name,
+                                            checkpoints[0], inference, pids)
     return config
 
 
@@ -100,42 +126,43 @@ def fix_solve_roi(config):
     return config
 
 
-def fix_evaluate_pid(args, config, checkpoints, inference):
-    assert len(checkpoints) == 1, "use param_id to reevaluate a single instance"
-    sample_name = inference.data_sources[0].datafile.filename
-    pid = args.param_id
+def fix_solve_parameters_with_pids(config, sample_name, checkpoint, inference,
+                                   pids, threshold=None):
+    if inference.data_sources[0].db_name is not None:
+        db_name = inference.data_sources[0].db_name
+    else:
+        db_name = checkOrCreateDB(
+            config.general.db_host,
+            config.general.setup_dir,
+            sample_name,
+            checkpoint,
+            threshold if threshold is not None
+            else inference.cell_score_threshold,
+            tag=config.general.tag,
+            create_if_not_found=False)
+    assert db_name is not None, "db for pid {} not found".format(pids)
+    pids_t = []
+    for pid in pids:
+        if isinstance(pid, str):
+            if pid[0] in ("\"", "'"):
+                pid = int(pid[1:-1])
+            else:
+                pid = int(pid)
+        pids_t.append(pid)
+    pids = pids_t
 
-    config = fix_solve_parameters_with_pid(config, sample_name, checkpoints[0],
-                                           inference, pid)
-    return config
-
-def fix_evaluate_roi(config):
-    if config.evaluate.parameters.roi is not None:
-        assert config.evaluate.parameters.roi.shape[0] < \
-            config.inference.data_source.roi.shape[0], \
-            "your evaluation ROI is larger than your data roi!"
-        config.inference.data_source.roi = config.evaluate.parameters.roi
-    return config
-
-
-
-def fix_solve_parameters_with_pid(config, sample_name, checkpoint, inference,
-                                  pid):
-    db_name = checkOrCreateDB(
-        config.general.db_host,
-        config.general.setup_dir,
-        sample_name,
-        checkpoint,
-        inference.cell_score_threshold)
     db = CandidateDatabase(db_name, config.general.db_host)
-    parameters = db.get_parameters(pid)
-    logger.info("getting params %s (id: %s) from database %s (sample: %s)",
-                parameters, pid, db_name, sample_name)
-    try:
-        solve_parameters = [SolveParametersMinimalConfig(**parameters)] # type: ignore
-        config.solve.non_minimal = False
-    except TypeError:
-        solve_parameters = [SolveParametersNonMinimalConfig(**parameters)] # type: ignore
-        config.solve.non_minimal = True
-    config.solve.parameters = solve_parameters
+    config.solve.parameters = []
+    for pid in pids:
+        # pid -= 1
+        parameters = db.get_parameters(pid)
+        logger.info("getting params %s (id: %s) from database %s (sample: %s)",
+                    parameters, pid, db_name, sample_name)
+        try:
+            solve_parameters = SolveParametersMinimalConfig(**parameters) # type: ignore
+            config.solve.non_minimal = False
+        except TypeError:
+            solve_parameters = SolveParametersNonMinimalConfig(**parameters) # type: ignore
+            config.solve.non_minimal = True
+        config.solve.parameters.append(solve_parameters)
     return config
