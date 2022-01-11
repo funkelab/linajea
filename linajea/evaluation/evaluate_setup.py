@@ -22,6 +22,12 @@ def evaluate_setup(linajea_config):
     data = linajea_config.inference.data_source
     db_name = data.db_name
     db_host = linajea_config.general.db_host
+    if linajea_config.evaluate.parameters.roi is not None:
+        assert linajea_config.evaluate.parameters.roi.shape[0] <= data.roi.shape[0], \
+            "your evaluation ROI is larger than your data roi!"
+        data.roi = linajea_config.evaluate.parameters.roi
+    else:
+        linajea_config.evaluate.parameters.roi = data.roi
     evaluate_roi = daisy.Roi(offset=data.roi.offset,
                              shape=data.roi.shape)
 
