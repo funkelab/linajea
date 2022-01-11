@@ -13,7 +13,8 @@ class EvaluateParametersConfig:
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
     validation_score = attr.ib(type=bool, default=False)
     window_size = attr.ib(type=int, default=50)
-
+    filter_polar_bodies = attr.ib(type=bool, default=None)
+    filter_polar_bodies_key = attr.ib(type=str, default=None)
     # deprecated
     frames = attr.ib(type=List[int], default=None)
     # deprecated

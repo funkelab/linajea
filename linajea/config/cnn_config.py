@@ -29,11 +29,13 @@ class CNNConfig:
     num_classes = attr.ib(type=int, default=3)
     classes = attr.ib(type=List[str])
     class_ids = attr.ib(type=List[int])
+    class_sampling_weights = attr.ib(type=List[int], default=[6, 2, 2, 2])
     network_type = attr.ib(
         type=str,
         validator=attr.validators.in_(["vgg", "resnet", "efficientnet"]))
     make_isotropic = attr.ib(type=int, default=False)
     regularizer_weight = attr.ib(type=float, default=None)
+    with_polar = attr.ib(type=int, default=False)
 
 @attr.s(kw_only=True)
 class VGGConfig(CNNConfig):

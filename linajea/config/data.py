@@ -35,8 +35,18 @@ class DataFileConfig:
             self.file_roi = DataROIConfig(offset=attributes.offset,
                                           shape=attributes.shape)  # type: ignore
         else:
-            data_config = load_config(os.path.join(self.filename,
-                                                   "data_config.toml"))
+            filename = self.filename
+            is_polar = "polar" in filename
+            if is_polar:
+                filename = filename.replace("_polar", "")
+            print(filename)
+            if os.path.isdir(filename):
+                data_config = load_config(os.path.join(filename,
+                                                       "data_config.toml"))
+            else:
+                data_config = load_config(
+                    os.path.join(os.path.dirname(filename),
+                                 "data_config.toml"))
             self.file_voxel_size = data_config['general']['resolution']
             self.file_roi = DataROIConfig(
                 offset=data_config['general']['offset'],
@@ -60,5 +70,6 @@ class DataSourceConfig:
     datafile = attr.ib(converter=ensure_cls(DataFileConfig))
     db_name = attr.ib(type=str, default=None)
     gt_db_name = attr.ib(type=str, default=None)
+    gt_db_name_polar = attr.ib(type=str, default=None)
     voxel_size = attr.ib(type=List[int], default=None)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
