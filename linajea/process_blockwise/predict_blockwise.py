@@ -124,7 +124,7 @@ def predict_blockwise(linajea_config):
         block_read_roi,
         block_write_roi,
         process_function=lambda: predict_worker(linajea_config),
-        check_function=lambda b: all([f(b) for f in cf]),
+        check_function=None if linajea_config.predict.no_db_access else lambda b: all([f(b) for f in cf]),
         num_workers=linajea_config.predict.job.num_workers,
         read_write_conflict=False,
         max_retries=0,

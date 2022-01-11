@@ -49,7 +49,7 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
             'cell_score_threshold': inference.cell_score_threshold}
         for sample in inference.data_sources:
             sample = deepcopy(sample)
-            if sample.db_name is None:
+            if sample.db_name is None and not config.predict.no_db_access:
                 sample.db_name = checkOrCreateDB(
                     config.general.db_host,
                     config.general.setup_dir,
