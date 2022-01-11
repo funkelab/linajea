@@ -6,7 +6,10 @@ from .cnn_config import (EfficientNetConfig,
                          VGGConfig)
 from .evaluate import EvaluateCellCycleConfig
 from .general import GeneralConfig
-from .optimizer import OptimizerConfig
+from .optimizer import (OptimizerTF1Config,
+                        OptimizerTF2Config,
+                        OptimizerTorchConfig)
+
 from .predict import PredictCellCycleConfig
 from .train_test_validate_data import (TestDataCellCycleConfig,
                                        TrainDataCellCycleConfig,
@@ -34,7 +37,9 @@ class CellCycleConfig:
     path = attr.ib(type=str)
     general = attr.ib(converter=ensure_cls(GeneralConfig))
     model = attr.ib(converter=model_converter())
-    optimizer = attr.ib(converter=ensure_cls(OptimizerConfig))
+    optimizerTF1 = attr.ib(converter=ensure_cls(OptimizerTF1Config), default=None)
+    optimizerTF2 = attr.ib(converter=ensure_cls(OptimizerTF2Config), default=None)
+    optimizerTorch = attr.ib(converter=ensure_cls(OptimizerTorchConfig), default=None)
     train = attr.ib(converter=ensure_cls(TrainCellCycleConfig))
     train_data = attr.ib(converter=ensure_cls(TrainDataCellCycleConfig))
     test_data = attr.ib(converter=ensure_cls(TestDataCellCycleConfig))
@@ -45,4 +50,20 @@ class CellCycleConfig:
     @classmethod
     def from_file(cls, path):
         config_dict = load_config(path)
+        # if 'path' in config_dict:
+        #     assert path == config_dict['path'], "{} {}".format(path, config_dict['path'])
+        #     del config_dict['path']
+        try:
+            del config_dict['path']
+        except:
+            pass
         return cls(path=path, **config_dict) # type: ignore
+
+    def __attrs_post_init__(self):
+        assert (int(bool(self.optimizerTF1)) +
+                int(bool(self.optimizerTF2)) +
+                int(bool(self.optimizerTorch))) == 1, \
+                "please specify exactly one optimizer config (tf1, tf2, torch)"
+
+        if self.predict.use_swa is None:
+            self.predict.use_swa = self.train.use_swa
