@@ -64,8 +64,8 @@ def get_edge_recall(
     num_matches = 0
     num_gt_edges = 0
     for source_id, target_id in gt_graph.edges():
-        source_node = gt_graph.nodes(source_id).data()
-        target_node = gt_graph.nodes(target_id).data()
+        source_node = gt_graph.nodes[source_id]
+        target_node = gt_graph.nodes[target_id]
         if 't' not in target_node:
             logger.warn("Target node %s is not in roi" % target_id)
             continue
@@ -73,7 +73,13 @@ def get_edge_recall(
         source_frame = source_node['t']
         target_frame = target_node['t']
         assert source_frame - 1 == target_frame
+        if source_frame not in cand_kd_trees:
+            logger.warn("Frame %s not in candidate graph" % source_frame)
+            break
         source_kd_tree = cand_kd_trees[source_frame]
+        if target_frame not in cand_kd_trees:
+            logger.warn("Frame %s not in candidate graph" % target_frame)
+            break
         target_kd_tree = cand_kd_trees[target_frame]
         source_neighbors = source_kd_tree.query_ball_point(
                 [source_node[dim] for dim in ['z', 'y', 'x']], match_distance)
