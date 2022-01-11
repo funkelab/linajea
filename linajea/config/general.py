@@ -13,6 +13,7 @@ class GeneralConfig:
     db_name = attr.ib(type=str, default=None)
     singularity_image = attr.ib(type=str, default=None)
     sparse = attr.ib(type=bool, default=True)
+    tag = attr.ib(type=str, default=None)
     seed = attr.ib(type=int)
     logging = attr.ib(type=int)
 

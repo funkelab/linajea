@@ -6,7 +6,7 @@ import pymongo
 
 def checkOrCreateDB(db_host, setup_dir, sample, checkpoint,
                     cell_score_threshold, prefix="linajea_",
-                    create_if_not_found=True):
+                    tag=None, create_if_not_found=True):
     db_host = db_host
 
     info = {}
@@ -14,6 +14,8 @@ def checkOrCreateDB(db_host, setup_dir, sample, checkpoint,
     info["iteration"] = checkpoint
     info["cell_score_threshold"] = cell_score_threshold
     info["sample"] = os.path.basename(sample)
+    if tag is not None:
+        info["tag"] = tag
 
     return checkOrCreateDBMeta(db_host, info, prefix=prefix,
                                create_if_not_found=create_if_not_found)
