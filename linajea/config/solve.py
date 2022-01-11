@@ -66,6 +66,7 @@ class SolveParametersMinimalConfig:
     # max_cell_move: currently use edge_move_threshold from extract
     max_cell_move = attr.ib(type=int, default=None)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
+    feature_func = attr.ib(type=str, default="noop")
 
     def valid(self):
         return {key: val
@@ -96,6 +97,7 @@ class SolveParametersMinimalSearchConfig:
     context = attr.ib(type=List[List[int]])
     # max_cell_move: currently use edge_move_threshold from extract
     max_cell_move = attr.ib(type=List[int], default=None)
+    feature_func = attr.ib(type=List[str], default=["noop"])
     random_search = attr.ib(type=bool, default=False)
     num_random_configs = attr.ib(type=int, default=None)
 
