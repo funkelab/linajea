@@ -74,4 +74,5 @@ class EvaluateCellCycleConfig(EvaluateConfig):
     prob_threshold = attr.ib(type=float)
     dry_run = attr.ib(type=bool)
     find_fn = attr.ib(type=bool)
+    force_eval = attr.ib(type=bool, default=False)
     parameters = attr.ib(converter=ensure_cls(EvaluateParametersCellCycleConfig))

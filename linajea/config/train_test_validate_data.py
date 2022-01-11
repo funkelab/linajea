@@ -93,6 +93,8 @@ class ValidateDataTrackingConfig(DataConfig):
 class DataCellCycleConfig(DataConfig):
     use_database = attr.ib(type=bool)
     db_meta_info = attr.ib(converter=ensure_cls(DataDBMetaConfig), default=None)
+    skip_predict = attr.ib(type=bool, default=False)
+    force_predict = attr.ib(type=bool, default=False)
 
 
 @attr.s(kw_only=True)
@@ -104,14 +106,12 @@ class TrainDataCellCycleConfig(DataCellCycleConfig):
 class TestDataCellCycleConfig(DataCellCycleConfig):
     checkpoint = attr.ib(type=int)
     prob_threshold = attr.ib(type=float, default=None)
-    skip_predict = attr.ib(type=bool)
 
 
 @attr.s(kw_only=True)
 class ValidateDataCellCycleConfig(DataCellCycleConfig):
     checkpoints = attr.ib(type=List[int])
     prob_thresholds = attr.ib(type=List[float], default=None)
-    skip_predict = attr.ib(type=bool)
 
 
 @attr.s(kw_only=True)
@@ -121,3 +121,4 @@ class InferenceDataCellCycleConfig():
     prob_threshold = attr.ib(type=float)
     use_database = attr.ib(type=bool)
     db_meta_info = attr.ib(converter=ensure_cls(DataDBMetaConfig), default=None)
+    force_predict = attr.ib(type=bool, default=False)
