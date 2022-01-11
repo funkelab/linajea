@@ -50,7 +50,7 @@ class AddParentVectors(BatchFilter):
         self.enable_autoskip()
 
     def prepare(self, request):
-        context = np.ceil(self.radius).astype(np.int)
+        context = np.ceil(self.radius).astype(int)
 
         dims = self.array_spec.roi.dims()
         if len(context) == 1:
@@ -103,7 +103,8 @@ class AddParentVectors(BatchFilter):
             data_roi,
             voxel_size,
             enlarged_vol_roi.get_begin(),
-            self.radius)
+            self.radius,
+            request[self.points].roi)
 
         # create array and crop it to requested roi
         spec = self.spec[self.array].copy()
@@ -136,7 +137,7 @@ class AddParentVectors(BatchFilter):
                                % (self.points, request_roi))
 
     def __draw_parent_vectors(
-            self, points, data_roi, voxel_size, offset, radius):
+            self, points, data_roi, voxel_size, offset, radius, final_roi):
 
         # 4D: t, z, y, x
         shape = data_roi.get_shape()
@@ -164,17 +165,28 @@ class AddParentVectors(BatchFilter):
         coords[2, :] += offset[3]
 
         parent_vectors = np.zeros_like(coords)
-        mask = np.zeros(shape, dtype=np.bool)
+        mask = np.zeros(shape, dtype=bool)
 
         logger.debug(
             "Adding parent vectors for %d points...",
             points.num_vertices())
 
+        if points.num_vertices() == 0:
+            return parent_vectors, mask.astype(np.float32)
+
         empty = True
         cnt = 0
         total = 0
-        for point in points.nodes:
 
+        avg_radius = []
+        for point in points.nodes:
+            if point.attrs.get('value') is not None:
+                r = point.attrs['value'][0]
+                avg_radius.append(point.attrs['value'][0])
+        avg_radius = (int(np.ceil(np.mean(avg_radius)))
+                      if len(avg_radius) > 0 else radius)
+
+        for point in points.nodes:
             # get the voxel coordinate, 'Coordinate' ensures integer
             v = Coordinate(point.location/voxel_size)
 
@@ -184,17 +196,63 @@ class AddParentVectors(BatchFilter):
                     v)
                 continue
 
-            total += 1
             if point.attrs.get("parent_id") is None:
                 logger.warning("Skipping point without parent")
                 continue
 
             if not points.contains(point.attrs["parent_id"]):
-                logger.warning(
-                    "parent %d of %d not in %s",
-                    point.attrs["parent_id"],
-                    point.id, self.points)
-                logger.debug("request roi: %s" % data_roi)
+                if final_roi.contains(point.location):
+                    logger.warning(
+                        "parent %d of %d not in %s",
+                        point.attrs["parent_id"],
+                        point.id, self.points)
+                    logger.debug("request roi: %s" % data_roi)
+                if not self.dense:
+                    continue
+            empty = False
+            # get the voxel coordinate relative to output array start
+            v -= data_roi.get_begin()
+
+            mask[v] = 1
+
+        enlarge_binary_map(
+            mask,
+            avg_radius,
+            voxel_size,
+            in_place=True)
+
+        mask_tmp = np.zeros(shape, dtype=bool)
+        mask_tmp[shape//2] = 1
+        enlarge_binary_map(
+            mask_tmp,
+            avg_radius,
+            voxel_size,
+            in_place=True)
+
+        coords = np.argwhere(mask_tmp)
+        _, z_min, y_min, x_min = coords.min(axis=0)
+        _, z_max, y_max, x_max = coords.max(axis=0)
+        mask_cut = mask_tmp[:,
+                            z_min:z_max+1,
+                            y_min:y_max+1,
+                            x_min:x_max+1]
+        logger.info("mask cut %s", mask_cut.shape)
+
+        point_mask = np.zeros(shape, dtype=bool)
+
+        for point in points.nodes:
+
+            # get the voxel coordinate, 'Coordinate' ensures integer
+            v = Coordinate(point.location/voxel_size)
+
+            if not data_roi.contains(v):
+                continue
+
+            total += 1
+            if point.attrs.get("parent_id") is None:
+                continue
+
+            if not points.contains(point.attrs["parent_id"]):
                 if not self.dense:
                     continue
             empty = False
@@ -202,29 +260,47 @@ class AddParentVectors(BatchFilter):
             v -= data_roi.get_begin()
 
             logger.debug(
-                "Rasterizing point %s at %s",
+                "Rasterizing point %s at %s, shape %s",
                 point.location,
-                point.location/voxel_size - data_roi.get_begin())
+                point.location/voxel_size - data_roi.get_begin(), shape)
 
-            point_mask = np.zeros(shape, dtype=np.bool)
-            point_mask[v] = 1
-
-            r = radius
-            if point.attrs.get('value') is not None:
-                r = point.attrs['value'][0]
-
-            enlarge_binary_map(
-                point_mask,
-                r,
-                voxel_size,
-                in_place=True)
-
-            mask = np.logical_or(mask, point_mask)
             if not points.contains(point.attrs["parent_id"]) and self.dense:
                 continue
 
             cnt += 1
             parent = points.node(point.attrs["parent_id"])
+
+            s_begin = []
+            s_end = []
+            mc_begin = []
+            mc_end = []
+            for c, ms, s in zip(v, mask_cut.shape, shape):
+                b = c-ms//2
+                if b < 0:
+                    s_begin.append(0)
+                    mc_begin.append(-b)
+                else:
+                    s_begin.append(b)
+                    mc_begin.append(0)
+                e = c+ms//2+1
+                if e > s:
+                    s_end.append(s)
+                    mc_end.append(s-e)
+                else:
+                    s_end.append(e)
+                    mc_end.append(ms)
+
+            slices = (slice(None),
+                      slice(s_begin[1], s_end[1]),
+                      slice(s_begin[2], s_end[2]),
+                      slice(s_begin[3], s_end[3]))
+            mc_slices = (slice(None),
+                         slice(mc_begin[1], mc_end[1]),
+                         slice(mc_begin[2], mc_end[2]),
+                         slice(mc_begin[3], mc_end[3]))
+
+            point_mask[:] = 0
+            point_mask[slices] = mask_cut[mc_slices]
 
             parent_vectors[0][point_mask] = (parent.location[1]
                                              - coords[0][point_mask])
@@ -232,6 +308,10 @@ class AddParentVectors(BatchFilter):
                                              - coords[1][point_mask])
             parent_vectors[2][point_mask] = (parent.location[3]
                                              - coords[2][point_mask])
+
+        parent_vectors[0][np.logical_not(mask)] = 0
+        parent_vectors[1][np.logical_not(mask)] = 0
+        parent_vectors[2][np.logical_not(mask)] = 0
 
         if empty:
             logger.warning("No parent vectors written for points %s"
