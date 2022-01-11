@@ -19,11 +19,15 @@ class WriteCells(gp.BatchFilter):
             db_host,
             db_name,
             edge_length=1,
+            mask=None,
+            z_range=None,
             volume_shape=None):
         '''Edge length indicates the length of the edge of the cube
         from which parent vectors will be read. The cube will be centered
         around the maxima, and predictions within the cube of voxels
         will be averaged to get the parent vector to store in the db
+        If (binary) mask or z_range is provided, only cells within mask
+        or range will be written
         '''
 
         self.maxima = maxima
@@ -35,6 +39,8 @@ class WriteCells(gp.BatchFilter):
         self.client = None
         assert edge_length % 2 == 1, "Edge length should be odd"
         self.edge_length = edge_length
+        self.mask = mask
+        self.z_range = z_range
         self.volume_shape = volume_shape
 
     def process(self, batch, request):
@@ -83,6 +89,18 @@ class WriteCells(gp.BatchFilter):
                    position,
                    gp.Coordinate(self.volume_shape) * voxel_size)):
                 continue
+
+            if self.mask is not None:
+                tmp_pos = position // voxel_size
+                if self.mask[tmp_pos[-self.mask.ndim:]] == 0:
+                    logger.info("skipping cell mask {}".format(tmp_pos))
+                    continue
+            if self.z_range is not None:
+                tmp_pos = position // voxel_size
+                if tmp_pos[1] < self.z_range[0] or \
+                   tmp_pos[1] > self.z_range[1]:
+                    logger.info("skipping cell zrange {}".format(tmp_pos))
+                    continue
 
             cell_id = int(math.cantor_number(
                 roi.get_begin()/voxel_size + index))
