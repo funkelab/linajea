@@ -747,7 +747,10 @@ class Solver(object):
         dia = 2*rad
         filter_sz = 1*dia
         r = filter_sz/2
-        radius = {30: 35, 60: 25, 100: 15, 1000:10}
+        if isinstance(self.add_node_density_constraints, dict):
+            radius = self.add_node_density_constraints
+        else:
+            radius = {30: 35, 60: 25, 100: 15, 1000:10}
         if self.write_struct_svm:
             node_density_constraint_file = open(f"{self.write_struct_svm}/constraints_node_density_b{self.block_id}", 'w')
         for t in range(self.start_frame, self.end_frame):
@@ -755,11 +758,11 @@ class Solver(object):
             kd_tree = cKDTree(kd_data)
 
             if isinstance(radius, dict):
-                for th, val in radius.items():
+                for th in sorted(list(radius.keys())):
                     if t < int(th):
-                        r = val
+                        r = radius[th]
                         break
-            nn_nodes = kd_tree.query_ball_point(kd_data, r, p=np.inf,
+            nn_nodes = kd_tree.query_ball_point(kd_data, r,
                                                 return_length=False)
 
             for idx, (node, _) in enumerate(nodes_by_t[t]):
@@ -768,8 +771,8 @@ class Solver(object):
                 constraint = pylp.LinearConstraint()
                 if self.write_struct_svm:
                     cnstr = ""
-                logger.debug("new constraint (frame %s) node pos %s",
-                             t, kd_data[idx])
+                logger.debug("new constraint (frame %s) node pos %s (node %s)",
+                             t, kd_data[idx], node)
                 for nn_id in nn_nodes[idx]:
                     if nn_id == idx:
                         continue
@@ -777,7 +780,13 @@ class Solver(object):
                     constraint.set_coefficient(self.node_selected[nn], 1)
                     if self.write_struct_svm:
                         cnstr += "1*{} ".format(self.node_selected[nn])
-                    logger.debug("   neighbor pos %s %s", kd_data[nn_id], np.linalg.norm(np.array(kd_data[idx])-np.array(kd_data[nn_id]), ord=np.inf))
+                    logger.debug(
+                        "neighbor pos %s %s (node %s)",
+                        kd_data[nn_id],
+                        np.linalg.norm(np.array(kd_data[idx]) -
+                                       np.array(kd_data[nn_id]),
+                                       ),
+                        nn)
                 constraint.set_coefficient(self.node_selected[node], 1)
                 constraint.set_relation(pylp.Relation.LessEqual)
                 constraint.set_value(1)
