@@ -33,3 +33,4 @@ class PredictCellCycleConfig(PredictConfig):
     batch_size = attr.ib(type=int)
     max_samples = attr.ib(type=int, default=None)
     prefix = attr.ib(type=str, default="")
+    test_time_reps = attr.ib(type=int, default=1)
