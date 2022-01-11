@@ -68,3 +68,38 @@ _int_list_validator = attr.validators.deep_iterable(
 _list_int_list_validator = attr.validators.deep_iterable(
     member_validator=_int_list_validator,
     iterable_validator=attr.validators.instance_of(list))
+
+def maybe_fix_config_paths_to_machine_and_load(config):
+    config_dict = toml.load(config)
+    config_dict["path"] = config
+
+    if os.path.isfile(os.path.join(os.environ['HOME'], "linajea_paths.toml")):
+        paths = load_config(os.path.join(os.environ['HOME'], "linajea_paths.toml"))
+        # if paths["DATA"] == "TMPDIR":
+            # paths["DATA"] = os.environ['TMPDIR']
+        config_dict["general"]["setup_dir"] = config_dict["general"]["setup_dir"].replace(
+            "/groups/funke/home/hirschp/linajea_experiments",
+            paths["HOME"])
+        config_dict["model"]["path_to_script"] = config_dict["model"]["path_to_script"].replace(
+            "/groups/funke/home/hirschp/linajea_experiments",
+            paths["HOME"])
+        config_dict["train"]["path_to_script"] = config_dict["train"]["path_to_script"].replace(
+            "/groups/funke/home/hirschp/linajea_experiments",
+            paths["HOME"])
+        config_dict["predict"]["path_to_script"] = config_dict["predict"]["path_to_script"].replace(
+            "/groups/funke/home/hirschp/linajea_experiments",
+            paths["HOME"])
+        config_dict["predict"]["path_to_script_db_from_zarr"] = config_dict["predict"]["path_to_script_db_from_zarr"].replace(
+            "/groups/funke/home/hirschp/linajea_experiments",
+            paths["HOME"])
+        config_dict["predict"]["output_zarr_prefix"] = config_dict["predict"]["output_zarr_prefix"].replace(
+            "/nrs/funke/hirschp/linajea_experiments",
+            paths["DATA"])
+        for dt in [config_dict["train_data"]["data_sources"],
+                   config_dict["test_data"]["data_sources"],
+                   config_dict["validate_data"]["data_sources"]]:
+            for ds in dt:
+                ds["datafile"]["filename"] = ds["datafile"]["filename"].replace(
+                    "/nrs/funke/hirschp",
+                    paths["DATA"])
+    return config_dict

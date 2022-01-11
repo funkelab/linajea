@@ -11,14 +11,15 @@ from linajea import (CandidateDatabase,
 from linajea.config import (InferenceDataTrackingConfig,
                             SolveParametersMinimalConfig,
                             SolveParametersNonMinimalConfig,
-                            TrackingConfig)
+                            TrackingConfig,
+                            maybe_fix_config_paths_to_machine_and_load)
 
 logger = logging.getLogger(__name__)
 
 
-# TODO: better name maybe?
 def getNextInferenceData(args, is_solve=False, is_evaluate=False):
-    config = TrackingConfig.from_file(args.config)
+    config = maybe_fix_config_paths_to_machine_and_load(args.config)
+    config = TrackingConfig(**config)
 
     if args.validation:
         inference = deepcopy(config.validate_data)
