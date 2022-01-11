@@ -3,7 +3,9 @@ import json
 import logging
 import os
 import time
+
 import numpy as np
+from numcodecs import Blosc
 
 import daisy
 from funlib.run import run
@@ -66,31 +68,38 @@ def predict_blockwise(linajea_config):
         cell_indicator_ds = 'volumes/cell_indicator'
         maxima_ds = 'volumes/maxima'
         output_path = os.path.join(setup_dir, output_zarr)
-        logger.debug("Preparing zarr at %s" % output_path)
+        logger.info("Preparing zarr at %s" % output_path)
+        compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
+        file_roi = daisy.Roi(offset=data.datafile.file_roi.offset,
+                             shape=data.datafile.file_roi.shape)
+
         daisy.prepare_ds(
                 output_path,
                 parent_vectors_ds,
-                output_roi,
+                file_roi,
                 voxel_size,
                 dtype=np.float32,
                 write_size=net_output_size,
-                num_channels=3)
+                num_channels=3,
+                compressor_object=compressor)
         daisy.prepare_ds(
                 output_path,
                 cell_indicator_ds,
-                output_roi,
+                file_roi,
                 voxel_size,
                 dtype=np.float32,
                 write_size=net_output_size,
-                num_channels=1)
+                num_channels=1,
+                compressor_object=compressor)
         daisy.prepare_ds(
                 output_path,
                 maxima_ds,
-                output_roi,
+                file_roi,
                 voxel_size,
                 dtype=np.float32,
                 write_size=net_output_size,
-                num_channels=1)
+                num_channels=1,
+                compressor_object=compressor)
 
     logger.info("Following ROIs in world units:")
     logger.info("Input ROI       = %s", input_roi)
