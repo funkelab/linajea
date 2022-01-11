@@ -1,8 +1,9 @@
-import daisy
-
+from copy import deepcopy
+import os
 from typing import List
 
 import attr
+import daisy
 
 from .data import (DataSourceConfig,
                    DataDBMetaConfig,
@@ -19,18 +20,31 @@ class DataConfig():
             if d.roi is None:
                 if self.roi is None:
                     # if roi/voxelsize not set, use info from file
-                    d.roi = d.datafile.file_roi
+                    d.roi = deepcopy(d.datafile.file_roi)
                 else:
                     # if data sample specific roi/voxelsize not set,
                     # use general one
-                    d.roi = self.roi
+                    d.roi = deepcopy(self.roi)
             file_roi = daisy.Roi(offset=d.datafile.file_roi.offset,
                                  shape=d.datafile.file_roi.shape)
             roi = daisy.Roi(offset=d.roi.offset,
                             shape=d.roi.shape)
             roi = roi.intersect(file_roi)
             if d.datafile.file_track_range is not None:
-                begin_frame, end_frame = d.datafile.file_track_range
+                if isinstance(d.datafile.file_track_range, dict):
+                    if os.path.isdir(d.datafile.filename):
+                        # TODO check this for training
+                        begin_frame, end_frame = list(d.datafile.file_track_range.values())[0]
+                        for _, v in d.datafile.file_track_range.items():
+                            if v[0] < begin_frame:
+                                begin_frame = v[0]
+                            if v[1] > end_frame:
+                                end_frame = v[1]
+                    else:
+                        begin_frame, end_frame = d.datafile.file_track_range[
+                            os.path.basename(d.datafile.filename)]
+                else:
+                    begin_frame, end_frame = d.datafile.file_track_range
                 track_range_roi = daisy.Roi(
                     offset=[begin_frame, None, None, None],
                     shape=[end_frame-begin_frame+1, None, None, None])
