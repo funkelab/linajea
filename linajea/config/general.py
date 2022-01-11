@@ -7,7 +7,7 @@ import attr
 class GeneralConfig:
     # set via post_init hook
     # setup = attr.ib(type=str)
-    setup_dir = attr.ib(type=str)
+    setup_dir = attr.ib(type=str, default=None)
     db_host = attr.ib(type=str)
     # sample = attr.ib(type=str)
     db_name = attr.ib(type=str, default=None)
@@ -18,4 +18,5 @@ class GeneralConfig:
     logging = attr.ib(type=int)
 
     def __attrs_post_init__(self):
-        self.setup = os.path.basename(self.setup_dir)
+        if self.setup_dir is not None:
+            self.setup = os.path.basename(self.setup_dir)
