@@ -53,8 +53,6 @@ class NMSolver(object):
         self.update_objective(parameters, selected_key)
 
     def update_objective(self, parameters, selected_key):
-        assert self.parameters.use_cell_state == parameters.use_cell_state, \
-            "cannot switch between w/ and w/o cell cycle within one run"
         self.parameters = parameters
         self.selected_key = selected_key
 

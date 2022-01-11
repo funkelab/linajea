@@ -46,6 +46,15 @@ def nm_track(graph, config, selected_key, frame_key='t', frames=None):
     if graph.number_of_nodes() == 0:
         return
 
+    use_cell_state = [p.use_cell_state + "mother"
+                      if p.use_cell_state is not None
+                      else None
+                      for p in config.solve.parameters]
+    if any(use_cell_state):
+        assert None not in use_cell_state,
+        ("mixture of with and without use_cell_state in concurrent "
+         "solving not supported yet")
+
     parameters = config.solve.parameters
     if not isinstance(selected_key, list):
         selected_key = [selected_key]
