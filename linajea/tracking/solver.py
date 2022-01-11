@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
+
+import numpy as np
+
 import pylp
 
 logger = logging.getLogger(__name__)
@@ -23,6 +26,15 @@ class Solver(object):
         self.check_node_close_to_roi = check_node_close_to_roi
         self.add_node_density_constraints = add_node_density_constraints
         self.block_id = block_id
+
+        if parameters.feature_func == "noop":
+            self.feature_func = lambda x: x
+        elif parameters.feature_func == "log":
+            self.feature_func = np.log
+        elif parameters.feature_func == "square":
+            self.feature_func = np.square
+        else:
+            raise RuntimeError("invalid feature_func parameters %s", parameters.feature_func)
 
         self.graph = track_graph
         self.start_frame = frames[0] if frames else self.graph.begin
@@ -284,14 +296,18 @@ class Solver(object):
 
     def _node_costs(self, node, file_weight, file_constant):
         # node score times a weight plus a threshold
-        score_costs = ((self.graph.nodes[node]['score'] *
+        feature = self.graph.nodes[node]['score']
+        if self.feature_func == np.log:
+            feature += 0.001
+        feature = self.feature_func(feature)
+        score_costs = ((feature *
                         self.parameters.weight_node_score) +
                        self.parameters.selection_constant)
 
         if self.write_struct_svm:
             file_weight.write("{} {}\n".format(
                 self.node_selected[node],
-                self.graph.nodes[node]['score']))
+                feature))
             file_constant.write("{} 1\n".format(self.node_selected[node]))
 
         return score_costs
@@ -301,11 +317,16 @@ class Solver(object):
         if self.parameters.cell_cycle_key is None:
             if self.write_struct_svm:
                 file_constant.write("{} 1\n".format(self.node_split[node]))
+                file_weight.write("{} 0\n".format(self.node_split[node]))
             return 1
+        feature = self.graph.nodes[node][self.parameters.cell_cycle_key+"mother"]
+        if self.feature_func == np.log:
+            feature += 0.001
+        feature = self.feature_func(feature)
         split_costs = (
             (
                 # self.graph.nodes[node][self.parameters.cell_cycle_key][0] *
-                self.graph.nodes[node][self.parameters.cell_cycle_key+"mother"] *
+                feature *
              self.parameters.weight_division) +
             self.parameters.division_constant)
 
@@ -313,7 +334,7 @@ class Solver(object):
             file_weight.write("{} {}\n".format(
                 self.node_split[node],
                 # self.graph.nodes[node][self.parameters.cell_cycle_key][0]
-                self.graph.nodes[node][self.parameters.cell_cycle_key+"mother"]
+                feature
             ))
             file_constant.write("{} 1\n".format(self.node_split[node]))
 
@@ -323,19 +344,23 @@ class Solver(object):
         # split score times a weight
         if self.parameters.cell_cycle_key is None:
             if self.write_struct_svm:
-                file_weight_or_constant.write("{} 1\n".format(
+                file_weight_or_constant.write("{} 0\n".format(
                     self.node_child[node]))
             return 0
+        feature = self.graph.nodes[node][self.parameters.cell_cycle_key+"daughter"]
+        if self.feature_func == np.log:
+            feature += 0.001
+        feature = self.feature_func(feature)
         split_costs = (
             # self.graph.nodes[node][self.parameters.cell_cycle_key][1] *
-            self.graph.nodes[node][self.parameters.cell_cycle_key+"daughter"] *
+            feature *
             self.parameters.weight_child)
 
         if self.write_struct_svm:
             file_weight_or_constant.write("{} {}\n".format(
                 self.node_child[node],
                 # self.graph.nodes[node][self.parameters.cell_cycle_key][1]
-                self.graph.nodes[node][self.parameters.cell_cycle_key+"daughter"]
+                feature
             ))
 
         return split_costs
@@ -344,19 +369,23 @@ class Solver(object):
         # split score times a weight
         if self.parameters.cell_cycle_key is None:
             if self.write_struct_svm:
-                file_weight_or_constant.write("{} 1\n".format(
+                file_weight_or_constant.write("{} 0\n".format(
                     self.node_continuation[node]))
             return 0
+        feature = self.graph.nodes[node][self.parameters.cell_cycle_key+"normal"]
+        if self.feature_func == np.log:
+            feature += 0.001
+        feature = self.feature_func(feature)
         continuation_costs = (
             # self.graph.nodes[node][self.parameters.cell_cycle_key][2] *
-            self.graph.nodes[node][self.parameters.cell_cycle_key+"normal"] *
+            feature *
             self.parameters.weight_continuation)
 
         if self.write_struct_svm:
             file_weight_or_constant.write("{} {}\n".format(
                 self.node_continuation[node],
                 # self.graph.nodes[node][self.parameters.cell_cycle_key][2]
-                self.graph.nodes[node][self.parameters.cell_cycle_key+"normal"]
+                feature
             ))
 
         return continuation_costs
@@ -365,13 +394,17 @@ class Solver(object):
         # edge score times a weight
         # TODO: normalize node and edge scores to a specific range and
         # ordinality?
-        edge_costs = (self.graph.edges[edge]['prediction_distance'] *
+        feature = self.graph.edges[edge]['prediction_distance']
+        if self.feature_func == np.log:
+            feature += 0.001
+        feature = self.feature_func(feature)
+        edge_costs = (feature *
                       self.parameters.weight_edge_score)
 
         if self.write_struct_svm:
             file_weight.write("{} {}\n".format(
                 self.edge_selected[edge],
-                self.graph.edges[edge]['prediction_distance']))
+                feature))
 
         return edge_costs
 
