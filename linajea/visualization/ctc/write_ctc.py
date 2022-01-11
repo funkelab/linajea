@@ -41,6 +41,7 @@ def write_ctc(graph, start_frame, end_frame, shape,
     #     assert end_frame <= graph.get_frames()[1]
     track_cntr = 1
 
+    # dict, key: node, value: (trackID, parent trackID, current frame)
     node_to_track = {}
     curr_cells = set(graph.cells_by_frame(start_frame))
     for c in curr_cells:
@@ -48,32 +49,58 @@ def write_ctc(graph, start_frame, end_frame, shape,
         track_cntr += 1
     prev_cells = curr_cells
 
+    # dict, key: frames, values: list of cells in frame k
     cells_by_t_data = {}
+
+    # for all frames except first one (handled before)
     for f in range(start_frame+1, end_frame):
         cells_by_t_data[f] = []
         curr_cells = set(graph.cells_by_frame(f))
+
+        for c in curr_cells:
+            node_to_track[c] = (track_cntr, 0, f)
+            track_cntr += 1
+        # for all cells in previous frame
         for c in prev_cells:
+            # get edges for cell
             edges = list(graph.next_edges(c))
             assert len(edges) <= 2, "more than two children"
+
+            # no division
             if len(edges) == 1:
+                # get single edge
                 e = edges[0]
-                assert e[0] in curr_cells, "cell missing"
-                assert e[1] in prev_cells, "cell missing"
+                # assert source in curr_cells, target in prev_cells
+                assert e[0] in curr_cells, "cell missing {}".format(e)
+                assert e[1] in prev_cells, "cell missing {}".format(e)
+
+                # add source to node_to_track
+                # get trackID from target node
+                # get parent trackID from target node
+                # set frame of node
                 node_to_track[e[0]] = (
                     node_to_track[e[1]][0],
                     node_to_track[e[1]][1],
                     f)
-                curr_cells.remove(e[0])
+                # curr_cells.remove(e[0])
+            # division
             elif len(edges) == 2:
+                # get both edges
                 for e in edges:
+                    # assert endpoints exist
                     assert e[0] in curr_cells, "cell missing"
                     assert e[1] in prev_cells, "cell missing"
+                    # add source to node_to_track
+                    # insert as new track/trackID
+                    # get parent trackID from target node
                     node_to_track[e[0]] = (
                         track_cntr,
                         node_to_track[e[1]][0],
                         f)
+
+                    # inc trackID
                     track_cntr += 1
-                    curr_cells.remove(e[0])
+                    # curr_cells.remove(e[0])
 
             if gt:
                 for e in edges:
@@ -87,9 +114,7 @@ def write_ctc(graph, start_frame, end_frame, shape,
                                   for d in ['z', 'y', 'x']]),
                         np.array([dataSt[d] - dataNd[d]
                                   for d in ['z', 'y', 'x']])))
-        for c in curr_cells:
-            node_to_track[c] = (track_cntr, 0, f)
-            track_cntr += 1
+
         prev_cells = set(graph.cells_by_frame(f))
 
     tracks = {}
@@ -115,8 +140,8 @@ def write_ctc(graph, start_frame, end_frame, shape,
     with open(os.path.join(out_dir, "parent_vectors.txt"), 'w') as of:
         for t, cs in cells_by_t_data.items():
             for c in cs:
-                of.write("{} {} {} {} {} {} {}\n".format(
-                    t, c[1][0], c[1][1], c[1][2],
+                of.write("{} {} {} {} {} {} {} {} {}\n".format(
+                    t, c[0], node_to_track[c[0]][0], c[1][0], c[1][1], c[1][2],
                     c[2][0], c[2][1], c[2][2]))
 
     with open(os.path.join(out_dir, txt_fn), 'w') as of:
@@ -244,6 +269,15 @@ def write_ctc(graph, start_frame, end_frame, shape,
         if surface is not None:
             radii = {10000: 12,
                      }
+            # radii = {
+            #     30: 20,
+            #     70: 15,
+            #     100: 13,
+            #     130: 11,
+            #     180: 10,
+            #     270: 8,
+            #     9999: 7,
+            # }
             for th in sorted(radii.keys()):
                 if f < th:
                     d = radii[th]
