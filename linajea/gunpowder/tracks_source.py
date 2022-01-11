@@ -109,7 +109,7 @@ class TracksSource(BatchProvider):
             "CSV points source got request for %s",
             request[self.points].roi)
 
-        point_filter = np.ones((self.locations.shape[0],), dtype=np.bool)
+        point_filter = np.ones((self.locations.shape[0],), dtype=bool)
         for d in range(self.locations.shape[1]):
             point_filter = np.logical_and(point_filter,
                                           self.locations[:, d] >= min_bb[d])
@@ -138,11 +138,23 @@ class TracksSource(BatchProvider):
                                         filtered_track_info):
             t = location[0]
             if isinstance(self.use_radius, dict):
-                for th in sorted(self.use_radius.keys()):
-                    if t < int(th):
-                        value = track_info[3]
-                        value[0] = self.use_radius[th]
-                        break
+                if len(self.use_radius.keys()) > 1:
+                    value = None
+                    for th in sorted(self.use_radius.keys()):
+                        if t < int(th):
+                            value = track_info[3]
+
+                            try:
+                                value[0] = self.use_radius[th]
+                            except TypeError as e:
+                                print(value, self.use_radius, track_info,
+                                      self.filename)
+                                raise e
+                            break
+                    assert value is not None, "verify use_radius in config"
+                else:
+                    value = (track_info[3] if list(self.use_radius.values())[0]
+                             else None)
             else:
                 value = track_info[3] if self.use_radius else None
             node = TrackNode(
