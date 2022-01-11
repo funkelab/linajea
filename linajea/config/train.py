@@ -28,7 +28,16 @@ class TrainConfig:
     profiling_stride = attr.ib(type=int)
     use_tf_data = attr.ib(type=bool, default=False)
     use_auto_mixed_precision = attr.ib(type=bool, default=False)
-    val_log_step = attr.ib(type=int)
+    use_swa = attr.ib(type=bool, default=False)
+    swa_every_it = attr.ib(type=bool, default=False)
+    swa_start_it = attr.ib(type=int, default=None)
+    swa_freq_it = attr.ib(type=int, default=None)
+    val_log_step = attr.ib(type=int, default=None)
+
+    def __attrs_post_init__(self):
+        if self.use_swa:
+            assert self.swa_start_it is not None and self.swa_freq_it is not None, \
+                "if swa is used, please set start and freq it"
 
 
 @attr.s(kw_only=True)
