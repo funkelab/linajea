@@ -50,7 +50,8 @@ class TrainTrackingConfig(TrainConfig):
     # (sigma for Gauss -> ~*4 (5 in z -> in 3 slices)) (optional)
     rasterize_radius = attr.ib(type=List[float])
     augment = attr.ib(converter=ensure_cls(AugmentTrackingConfig))
-    parent_vectors_loss_transition = attr.ib(type=int, default=50000)
+    parent_vectors_loss_transition_factor = attr.ib(type=float, default=0.01)
+    parent_vectors_loss_transition_offset = attr.ib(type=int, default=20000)
     use_radius = attr.ib(type=Dict[int, int], default=None,
                          converter=use_radius_converter())
     cell_density = attr.ib(default=None)
