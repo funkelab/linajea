@@ -240,10 +240,9 @@ class NMSolver(object):
             return 0
         elif self.parameters.use_cell_state == 'v1' or \
            self.parameters.use_cell_state == 'v2':
-            # TODO cost_split -> cost_daughter
             return ((self.parameters.threshold_split_score -
                      self.graph.nodes[node][self.parameters.prefix+'daughter']) *
-                    self.parameters.cost_split)
+                    self.parameters.cost_daughter)
         elif self.parameters.use_cell_state == 'v3' or \
              self.parameters.use_cell_state == 'v4':
             if self.graph.nodes[node][self.parameters.prefix+'daughter'] > \
@@ -260,10 +259,9 @@ class NMSolver(object):
            self.parameters.use_cell_state == 'v3':
             return 0
         elif self.parameters.use_cell_state == 'v2':
-            # TODO cost_split -> cost_normal
             return ((self.parameters.threshold_is_normal_score -
                      self.graph.nodes[node][self.parameters.prefix+'normal']) *
-                    self.parameters.cost_split)
+                    self.parameters.cost_normal)
         elif self.parameters.use_cell_state == 'v4':
             if self.graph.nodes[node][self.parameters.prefix+'normal'] > \
                self.parameters.threshold_is_normal_score:
