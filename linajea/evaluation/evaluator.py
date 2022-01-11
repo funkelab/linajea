@@ -113,6 +113,7 @@ class Evaluator:
             self.get_validation_score()
         if self.ignore_one_off_div_errors:
             self.get_div_topology_stats()
+        self.get_error_free_tracks()
 
         num_matches, num_gt_nodes = get_node_recall(
                 self.rec_track_graph, self.gt_track_graph, 15)
@@ -609,6 +610,47 @@ class Evaluator:
             g1_tmp_grph = contract(g1_tmp_grph)
             g2_tmp_grph = contract(g2_tmp_grph)
         return g1_tmp_grph, g2_tmp_grph
+
+    def get_error_free_tracks(self):
+
+        roi = self.gt_track_graph.roi
+        start_frame = roi.get_offset()[0]
+        end_frame = start_frame + roi.get_shape()[0]
+
+        rec_nodes_last_frame = self.rec_track_graph.cells_by_frame(end_frame-1)
+
+        cnt_rec_nodes_last_frame = len(rec_nodes_last_frame)
+        cnt_gt_nodes_last_frame = len(self.gt_track_graph.cells_by_frame(
+            end_frame-1))
+        cnt_error_free_tracks = cnt_rec_nodes_last_frame
+
+        nodes_prev_frame = rec_nodes_last_frame
+        logger.info("track range %s %s", end_frame-1, start_frame)
+        for i in range(end_frame-1, start_frame, -1):
+            nodes_curr_frame = []
+            logger.debug("nodes in frame %s: %s ", i, len(nodes_prev_frame))
+            for n in nodes_prev_frame:
+                prev_edges = list(self.rec_track_graph.prev_edges(n))
+                if len(prev_edges) == 0:
+                    logger.debug("no predecessor")
+                    cnt_error_free_tracks -= 1
+                    continue
+                else:
+                    assert len(prev_edges) == 1, \
+                        "node can only have single predecessor!"
+                    if prev_edges[0] in self.rec_edges_to_gt_edges:
+                        nodes_curr_frame.append(prev_edges[0][1])
+                    else:
+                        logger.debug("predecessor not matched")
+                        cnt_error_free_tracks -=1
+            nodes_prev_frame = list(set(nodes_curr_frame))
+
+        logger.info("error free tracks: %s/%s %s",
+                    cnt_error_free_tracks, cnt_rec_nodes_last_frame,
+                    cnt_error_free_tracks/cnt_gt_nodes_last_frame)
+        self.report.set_error_free_tracks(cnt_error_free_tracks,
+                                          cnt_rec_nodes_last_frame,
+                                          cnt_gt_nodes_last_frame)
 
 
 def contract(g):
