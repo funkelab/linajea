@@ -53,15 +53,17 @@ def track(graph, config, selected_key, frame_key='t', frames=None,
                        else None
                        for p in config.solve.parameters]
     if any(cell_cycle_keys):
+        assert None not in cell_cycle_keys, \
+            ("mixture of with and without cell_cycle key in concurrent "
+             "solving not supported yet")
         # remove nodes that don't have a cell cycle key, with warning
         to_remove = []
         for node, data in graph.nodes(data=True):
             for key in cell_cycle_keys:
                 if key not in data:
-                    logger.warning("Node %d does not have cell cycle key %s",
-                                   node, key)
-                    to_remove.append(node)
-                    break
+                    raise RuntimeError(
+                        "Node %d does not have cell cycle key %s",
+                        node, key)
 
         for node in to_remove:
             logger.debug("Removing node %d", node)
