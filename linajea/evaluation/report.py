@@ -272,6 +272,11 @@ class Report:
         logger.debug("fp edges after iso_fp_div: %d", self.fp_edges)
         logger.debug("fn edges after iso_fp_div: %d", self.fn_edges)
 
+    def set_error_free_tracks(self, cnt_error_free, cnt_total_rec, cnt_total_gt):
+        self.num_error_free_tracks = cnt_error_free
+        self.num_rec_cells_last_frame = cnt_total_rec
+        self.num_gt_cells_last_frame = cnt_total_gt
+
     def get_report(self):
         return self.__dict__
 
