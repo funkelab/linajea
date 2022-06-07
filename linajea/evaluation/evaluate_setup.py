@@ -1,3 +1,4 @@
+from linajea.tracking import TrackingParameters
 import linajea.tracking
 from .evaluate import evaluate
 from ..datasets import get_source_roi
@@ -27,7 +28,8 @@ def evaluate_setup(
         subsampling_seed=42,
         **kwargs):
 
-    parameters = linajea.tracking.TrackingParameters(**kwargs)
+    if not isinstance(parameters, TrackingParameters):
+        parameters = linajea.tracking.TrackingParameters(**kwargs)
     if matching_threshold is None:
         logger.error("No matching threshold for evaluation")
         sys.exit()
