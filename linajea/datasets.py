@@ -8,9 +8,13 @@ def get_source_roi(data_dir, sample):
     sample_path = os.path.join(data_dir, sample)
 
     # get absolute paths
-    if os.path.isfile(sample_path) or sample.endswith((".zarr", ".n5")):
+    if os.path.isfile(sample_path):
         sample_dir = os.path.abspath(os.path.join(data_dir,
                                                   os.path.dirname(sample)))
+    elif sample.endswith((".zarr", ".n5")):
+        sample_dir = os.path.abspath(
+            os.path.join(data_dir,
+                         os.path.splitext(sample)[0]))
     else:
         sample_dir = os.path.abspath(os.path.join(data_dir, sample))
 
