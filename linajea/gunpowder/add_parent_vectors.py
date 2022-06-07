@@ -15,7 +15,8 @@ class AddParentVectors(BatchFilter):
 
     def __init__(
             self, points, array, mask, radius,
-            move_radius=0, array_spec=None, dense=False):
+            move_radius=0, array_spec=None, dense=False,
+            subsampling=None):
 
         self.points = points
         self.array = array
@@ -28,6 +29,7 @@ class AddParentVectors(BatchFilter):
             self.array_spec = array_spec
 
         self.dense = dense
+        self.subsampling = subsampling
 
     def setup(self):
 
@@ -172,6 +174,10 @@ class AddParentVectors(BatchFilter):
         cnt = 0
         total = 0
         for point_id, point in points.data.items():
+            if self.subsampling is not None and point.value > self.subsampling:
+                logger.debug("skipping point %s %s due to subsampling %s",
+                             point, point.value, self.subsampling)
+                continue
 
             # get the voxel coordinate, 'Coordinate' ensures integer
             v = Coordinate(point.location/voxel_size)

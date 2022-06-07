@@ -22,6 +22,9 @@ def evaluate_setup(
         data_dir='../01_data',
         validation_score=True,
         window_size=50,
+        parameters=None,
+        subsampling=None,
+        subsampling_seed=42,
         **kwargs):
 
     parameters = linajea.tracking.TrackingParameters(**kwargs)
@@ -83,7 +86,8 @@ def evaluate_setup(
     logger.info("Reading ground truth cells and edges in db %s"
                 % gt_db_name)
     start_time = time.time()
-    gt_subgraph = gt_db[source_roi]
+    gt_subgraph = gt_db.get_graph(source_roi, subsampling=subsampling,
+                                  subsampling_seed=subsampling_seed)
     logger.info("Read %d cells and %d edges in %s seconds"
                 % (gt_subgraph.number_of_nodes(),
                    gt_subgraph.number_of_edges(),
