@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 
 
 def track(graph, parameters, selected_key,
-          frame_key='t', frames=None, cell_cycle_key=None):
+          frame_key='t', frames=None, cell_cycle_key=None,
+          check_node_close_to_roi=True):
     ''' A wrapper function that takes a daisy subgraph and input parameters,
     creates and solves the ILP to create tracks, and updates the daisy subgraph
     to reflect the selected nodes and edges.
@@ -84,6 +85,7 @@ def track(graph, parameters, selected_key,
     for parameter, key in zip(parameters, selected_key):
         if not solver:
             solver = Solver(track_graph, parameter, key, frames=frames,
+                            check_node_close_to_roi=check_node_close_to_roi,
                             vgg_key=cell_cycle_key)
         else:
             solver.update_objective(parameter, key)

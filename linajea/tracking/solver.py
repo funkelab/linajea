@@ -13,7 +13,8 @@ class Solver(object):
     number of hyperparamters
     '''
     def __init__(self, track_graph, parameters, selected_key,
-                 vgg_key=None, frames=None, timeout=120):
+                 vgg_key=None, frames=None,
+                 check_node_close_to_roi=True, timeout=120):
         # frames: [start_frame, end_frame] where start_frame is inclusive
         # and end_frame is exclusive. Defaults to track_graph.begin,
         # track_graph.end
@@ -25,6 +26,7 @@ class Solver(object):
         self.start_frame = frames[0] if frames else self.graph.begin
         self.end_frame = frames[1] if frames else self.graph.end
         self.timeout = timeout
+        self.check_node_close_to_roi = check_node_close_to_roi
 
         self.node_selected = {}
         self.edge_selected = {}
@@ -148,12 +150,13 @@ class Solver(object):
                 0)
 
         # remove node appear costs at edge of roi
-        for node, data in self.graph.nodes(data=True):
-            if self._check_node_close_to_roi_edge(
-                    node,
-                    data,
-                    self.parameters.max_cell_move):
-                objective.set_coefficient(
+        if self.check_node_close_to_roi:
+            for node, data in self.graph.nodes(data=True):
+                if self._check_node_close_to_roi_edge(
+                        node,
+                        data,
+                        self.parameters.max_cell_move):
+                    objective.set_coefficient(
                         self.node_appear[node],
                         0)
 
