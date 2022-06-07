@@ -67,7 +67,7 @@ class TracksSource(BatchProvider):
     '''
 
     def __init__(self, filename, points, points_spec=None, scale=1.0,
-                 use_radius=False):
+                 use_radius=False, subsampling_seed=42):
 
         self.filename = filename
         self.points = points
@@ -79,6 +79,7 @@ class TracksSource(BatchProvider):
             self.use_radius = use_radius
         self.locations = None
         self.track_info = None
+        self.subsampling_seed = subsampling_seed
 
     def setup(self):
 
@@ -176,3 +177,20 @@ class TracksSource(BatchProvider):
             self.filename,
             scale=self.scale,
             limit_to_roi=roi)
+        cnt_points = len(self.locations)
+        rng = np.random.default_rng(self.subsampling_seed)
+        shuffled_norm_idcs = rng.permutation(cnt_points)/(cnt_points-1)
+        logger.debug("permutation (seed %s): %s (min %s, max %s, cnt %s)",
+                     self.subsampling_seed,
+                     shuffled_norm_idcs,
+                     np.min(shuffled_norm_idcs),
+                     np.max(shuffled_norm_idcs),
+                     len(shuffled_norm_idcs))
+        if self.track_info.dtype == object:
+            for idx, tri in zip(shuffled_norm_idcs, self.track_info):
+                tri[3].append(idx)
+        else:
+            self.track_info = np.concatenate(
+                (self.track_info, np.reshape(shuffled_norm_idcs,
+                                             shuffled_norm_idcs.shape + (1,))),
+                 axis=1, dtype=object)

@@ -15,13 +15,15 @@ class RandomLocationExcludeTime(gp.RandomLocation):
             min_masked=0,
             mask=None,
             ensure_nonempty=None,
-            p_nonempty=1.0):
+            p_nonempty=1.0,
+            subsampling=None):
 
         super(RandomLocationExcludeTime, self).__init__(
             min_masked,
             mask,
             ensure_nonempty,
-            p_nonempty)
+            p_nonempty,
+            subsampling=subsampling)
 
         self.raw = raw
         if isinstance(time_interval, list) and \

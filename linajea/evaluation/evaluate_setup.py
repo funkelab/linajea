@@ -123,7 +123,10 @@ def evaluate_setup(linajea_config):
     logger.info("Reading ground truth cells and edges in db %s"
                 % linajea_config.inference.data_source.gt_db_name)
     start_time = time.time()
-    gt_subgraph = gt_db[evaluate_roi]
+    gt_subgraph = gt_db.get_graph(
+        evaluate_roi,
+        subsampling=linajea_config.general.subsampling,
+        subsampling_seed=linajea_config.general.subsampling_seed)
     logger.info("Read %d cells and %d edges in %s seconds"
                 % (gt_subgraph.number_of_nodes(),
                    gt_subgraph.number_of_edges(),
