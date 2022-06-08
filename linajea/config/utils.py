@@ -99,12 +99,14 @@ def maybe_fix_config_paths_to_machine_and_load(config):
         config_dict["predict"]["path_to_script"] = config_dict["predict"]["path_to_script"].replace(
             "/groups/funke/home/hirschp/linajea_experiments",
             paths["HOME"])
-        config_dict["predict"]["path_to_script_db_from_zarr"] = config_dict["predict"]["path_to_script_db_from_zarr"].replace(
-            "/groups/funke/home/hirschp/linajea_experiments",
-            paths["HOME"])
-        config_dict["predict"]["output_zarr_prefix"] = config_dict["predict"]["output_zarr_prefix"].replace(
-            "/nrs/funke/hirschp/linajea_experiments",
-            paths["DATA"])
+        if "path_to_script_db_from_zarr" in config_dict["predict"]:
+            config_dict["predict"]["path_to_script_db_from_zarr"] = config_dict["predict"]["path_to_script_db_from_zarr"].replace(
+                "/groups/funke/home/hirschp/linajea_experiments",
+                paths["HOME"])
+        if "output_zarr_prefix" in config_dict["predict"]:
+            config_dict["predict"]["output_zarr_prefix"] = config_dict["predict"]["output_zarr_prefix"].replace(
+                "/nrs/funke/hirschp",
+                paths["DATA"])
         for dt in [config_dict["train_data"]["data_sources"],
                    config_dict["test_data"]["data_sources"],
                    config_dict["validate_data"]["data_sources"]]:

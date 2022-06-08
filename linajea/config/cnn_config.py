@@ -37,6 +37,7 @@ class CNNConfig:
     regularizer_weight = attr.ib(type=float, default=None)
     with_polar = attr.ib(type=int, default=False)
     focal_loss = attr.ib(type=bool, default=False)
+    classify_dataset = attr.ib(type=bool, default=False)
 
 @attr.s(kw_only=True)
 class VGGConfig(CNNConfig):

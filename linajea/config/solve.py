@@ -67,6 +67,7 @@ class SolveParametersMinimalConfig:
     max_cell_move = attr.ib(type=int, default=None)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
     feature_func = attr.ib(type=str, default="noop")
+    val = attr.ib(type=bool, default=False)
 
     def valid(self):
         return {key: val
@@ -98,9 +99,8 @@ class SolveParametersMinimalSearchConfig:
     # max_cell_move: currently use edge_move_threshold from extract
     max_cell_move = attr.ib(type=List[int], default=None)
     feature_func = attr.ib(type=List[str], default=["noop"])
-    random_search = attr.ib(type=bool, default=False)
-    num_random_configs = attr.ib(type=int, default=None)
-
+    num_configs = attr.ib(type=int, default=None)
+    val = attr.ib(type=List[bool], default=[True])
 
 @attr.s(kw_only=True)
 class SolveParametersNonMinimalConfig:
@@ -159,22 +159,20 @@ class SolveParametersNonMinimalSearchConfig:
     context = attr.ib(type=List[List[int]])
     # max_cell_move: currently use edge_move_threshold from extract
     max_cell_move = attr.ib(type=List[int], default=None)
-    random_search = attr.ib(type=bool, default=False)
-    num_random_configs = attr.ib(type=int, default=None)
+    num_configs = attr.ib(type=int, default=None)
 
-def write_solve_parameters_configs(parameters_search, non_minimal):
+def write_solve_parameters_configs(parameters_search, non_minimal, grid):
     params = {k:v
               for k,v in attr.asdict(parameters_search).items()
               if v is not None}
-    params.pop('random_search', None)
-    params.pop('num_random_configs', None)
+    params.pop('num_configs', None)
 
-    if parameters_search.random_search:
+    if not grid:
         search_configs = []
-        assert parameters_search.num_random_configs is not None, \
-            "set number_configs kwarg when using random search!"
+        assert parameters_search.num_configs is not None, \
+            "set num_configs kwarg when using random search!"
 
-        for _ in range(parameters_search.num_random_configs):
+        for _ in range(parameters_search.num_configs):
             conf = {}
             for k, v in params.items():
                 if not isinstance(v, list):
@@ -213,9 +211,9 @@ def write_solve_parameters_configs(parameters_search, non_minimal):
             dict(zip(params.keys(), x))
             for x in itertools.product(*params.values())]
 
-        if parameters_search.num_random_configs:
+        if parameters_search.num_configs:
             random.shuffle(search_configs)
-            search_configs = search_configs[:parameters_search.num_random_configs]
+            search_configs = search_configs[:parameters_search.num_configs]
 
     configs = []
     for config_vals in search_configs:
@@ -235,27 +233,47 @@ class SolveConfig:
     job = attr.ib(converter=ensure_cls(JobConfig))
     from_scratch = attr.ib(type=bool, default=False)
     parameters = attr.ib(converter=convert_solve_params_list(), default=None)
-    parameters_search = attr.ib(converter=convert_solve_search_params(), default=None)
+    parameters_search_grid = attr.ib(converter=convert_solve_search_params(),
+                                     default=None)
+    parameters_search_random = attr.ib(converter=convert_solve_search_params(),
+                                       default=None)
     non_minimal = attr.ib(type=bool, default=False)
     greedy = attr.ib(type=bool, default=False)
     write_struct_svm = attr.ib(type=str, default=None)
     check_node_close_to_roi = attr.ib(type=bool, default=True)
     add_node_density_constraints = attr.ib(type=bool, default=False)
     timeout = attr.ib(type=int, default=120)
+    masked_nodes = attr.ib(type=str, default=None)
     clip_low_score = attr.ib(type=float, default=None)
+    grid_search = attr.ib(type=bool, default=False)
+    random_search = attr.ib(type=bool, default=False)
 
     def __attrs_post_init__(self):
         assert self.parameters is not None or \
-            self.parameters_search is not None, \
+            self.parameters_search_grid is not None or \
+            self.parameters_search_random is not None, \
             "provide either solve parameters or grid/random search values " \
             "for solve parameters!"
 
-        if self.parameters_search is not None:
+        if self.grid_search or self.random_search:
+            assert self.grid_search != self.random_search, \
+                "choose either grid or random search!"
             if self.parameters is not None:
                 logger.warning("overwriting explicit solve parameters with "
                                "grid/random search parameters!")
+            if self.grid_search:
+                assert self.parameters_search_grid is not None, \
+                    "provide grid search values for solve parameters " \
+                    "if grid search activated"
+                parameters_search = self.parameters_search_grid
+            else: #if self.random_search:
+                assert self.parameters_search_random is not None, \
+                    "provide random search values for solve parameters " \
+                    "if random search activated"
+                parameters_search = self.parameters_search_random
             self.parameters = write_solve_parameters_configs(
-                self.parameters_search, non_minimal=self.non_minimal)
+                parameters_search, non_minimal=self.non_minimal,
+                grid=self.grid_search)
 
         if self.greedy:
             config_vals = {
