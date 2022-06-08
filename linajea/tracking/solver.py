@@ -61,6 +61,9 @@ class Solver(object):
         self.pin_constraints = []  # list of LinearConstraint objects
         self.solver = None
 
+        logger.debug("cell cycle key? %s", parameters.cell_cycle_key)
+        logger.debug("write ssvm? %s", self.write_struct_svm)
+
         self._create_indicators()
         self._create_solver()
         self._create_constraints()
@@ -724,6 +727,7 @@ class Solver(object):
             node_cell_cycle_constraint_file.close()
 
     def _add_node_density_constraints_objective(self):
+        logger.debug("adding cell density constraints")
         from scipy.spatial import cKDTree
         import numpy as np
         try:

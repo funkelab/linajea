@@ -51,9 +51,9 @@ def nm_track(graph, config, selected_key, frame_key='t', frames=None):
                       else None
                       for p in config.solve.parameters]
     if any(use_cell_state):
-        assert None not in use_cell_state,
-        ("mixture of with and without use_cell_state in concurrent "
-         "solving not supported yet")
+        assert None not in use_cell_state, \
+            ("mixture of with and without use_cell_state in concurrent "
+             "solving not supported yet")
 
     parameters = config.solve.parameters
     if not isinstance(selected_key, list):
