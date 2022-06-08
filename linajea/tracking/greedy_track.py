@@ -33,23 +33,36 @@ def load_graph(
 
 
 def greedy_track(
-        db_name,
-        db_host,
-        selected_key,
-        cell_indicator_threshold,
+        graph=None,
+        db_name=None,
+        db_host=None,
+        selected_key=None,
+        cell_indicator_threshold=None,
         metric='prediction_distance',
         frame_key='t',
         allow_new_tracks=True,
         roi=None):
-    cand_db = CandidateDatabase(db_name, db_host, 'r+')
-    total_roi = cand_db.get_nodes_roi()
+    if graph is None:
+        cand_db = CandidateDatabase(db_name, db_host, 'r+')
+        total_roi = cand_db.get_nodes_roi()
+    else:
+        if graph.number_of_nodes() == 0:
+            logger.info("No nodes in graph - skipping solving step")
+            return
+        cand_db = None
+        total_roi = graph.roi
+
     if roi is not None:
         total_roi = roi.intersect(total_roi)
 
     start_frame = total_roi.get_offset()[0]
     end_frame = start_frame + total_roi.get_shape()[0]
     logger.info("Tracking from frame %d to frame %d", end_frame, start_frame)
-    step = 10
+    if graph is None:
+        step = 10
+    else:
+        step = end_frame - start_frame
+
     selected_prev_nodes = set()
     first = True
     for section_end in range(end_frame, start_frame, -1*step):
@@ -59,6 +72,7 @@ def greedy_track(
         section_roi = total_roi.intersect(frames_roi)
         logger.info("Greedy tracking in section %s", str(section_roi))
         selected_prev_nodes = track_section(
+                graph,
                 cand_db,
                 section_roi,
                 selected_key,
@@ -73,6 +87,7 @@ def greedy_track(
 
 
 def track_section(
+        graph,
         cand_db,
         roi,
         selected_key,
@@ -85,8 +100,10 @@ def track_section(
     # this function solves this whole section and stores the result, and
     # returns the node ids in the preceeding frame (before roi!) that were
     # selected
-
-    graph = load_graph(cand_db, roi, selected_key)
+    if graph is None:
+        graph = load_graph(cand_db, roi, selected_key)
+    else:
+        nx.set_edge_attributes(graph, False, selected_key)
     track_graph = TrackGraph(graph_data=graph, frame_key=frame_key, roi=roi)
     start_frame = roi.get_offset()[0]
     end_frame = start_frame + roi.get_shape()[0] - 1
@@ -107,7 +124,7 @@ def track_section(
         seeds = seeds - selected_prev_nodes
         logger.debug("Found %d seeds in frame %d", len(seeds), frame)
 
-        if first:
+        if first and frame == end_frame:
             # in this special case, all seeds are treated as selected
             selected_prev_nodes = seeds
             seeds = set()
