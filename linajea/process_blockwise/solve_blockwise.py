@@ -35,9 +35,12 @@ def solve_blockwise(linajea_config):
             graph_provider.database.drop_collection(
                 'solve_' + str(hash(frozenset(parameters_id))) + '_daisy')
 
-    block_write_roi = daisy.Roi(
-        (0, 0, 0, 0),
-        block_size)
+    if linajea_config.solve.greedy:
+        block_write_roi = solve_roi
+    else:
+        block_write_roi = daisy.Roi(
+            (0, 0, 0, 0),
+            block_size)
     block_read_roi = block_write_roi.grow(
         context,
         context)
@@ -128,21 +131,7 @@ def solve_in_block(linajea_config,
     else:
         _id = hash(frozenset(parameters_id))
         step_name = 'solve_' + str(_id)
-    logger.debug("Solving in block %s", block)
-
-    done_indices = []
-    for index, pid in enumerate(parameters_id):
-        name = 'solve_' + str(pid)
-        if check_function_all_blocks(name, db_name, db_host):
-            logger.info("Params with id %d already completed. Removing", pid)
-            done_indices.append(index)
-    for index in done_indices[::-1]:
-        del parameters_id[index]
-        del parameters[index]
-
-    if len(parameters) == 0:
-        logger.info("All parameters already completed. Exiting")
-        return 0
+    logger.info("Solving in block %s", block)
 
     if solution_roi:
         # Limit block to source_roi
@@ -205,7 +194,7 @@ def solve_in_block(linajea_config,
     frames = [read_roi.get_offset()[0],
               read_roi.get_offset()[0] + read_roi.get_shape()[0]]
     if linajea_config.solve.greedy:
-        greedy_track(graph, selected_keys[0],
+        greedy_track(graph=graph, selected_key=selected_keys[0],
                      cell_indicator_threshold=0.2)
     elif linajea_config.solve.non_minimal:
         nm_track(graph, linajea_config, selected_keys, frames=frames)
