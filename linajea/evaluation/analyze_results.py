@@ -278,14 +278,34 @@ def get_result_id(
         config,
         parameters_id):
     ''' Get the scores, statistics, and parameters for given
-    setup, region, and parameters.
+    config and parameters_id.
     Returns a dictionary containing the keys and values of the score
     object.
-
-    tracking_parameters can be a dict or a TrackingParameters object'''
+    '''
     db_name = config.inference.data_source.db_name
     candidate_db = CandidateDatabase(db_name, config.general.db_host, 'r')
 
     result = candidate_db.get_score(parameters_id,
                                     eval_params=config.evaluate.parameters)
+    return result
+
+
+def get_result_params(
+        config,
+        parameters):
+    ''' Get the scores and statistics for a given config and set of
+    parameters.
+    Returns a dictionary containing the keys and values of the score
+    object.
+    '''
+    db_name = config.inference.data_source.db_name
+    candidate_db = CandidateDatabase(db_name, config.general.db_host, 'r')
+    if config.evaluate.parameters.roi is None:
+        config.evaluate.parameters.roi = config.inference.data_source.roi
+
+    result = candidate_db.get_score(
+        candidate_db.get_parameters_id_round(
+            parameters,
+            fail_if_not_exists=True),
+        eval_params=config.evaluate.parameters)
     return result
