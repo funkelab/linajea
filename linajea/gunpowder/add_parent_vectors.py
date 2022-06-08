@@ -1,6 +1,7 @@
 from gunpowder import BatchFilter
 from gunpowder.array import Array
 from gunpowder.array_spec import ArraySpec
+from gunpowder.batch_request import BatchRequest
 from gunpowder.coordinate import Coordinate
 from gunpowder.morphology import enlarge_binary_map
 from gunpowder.graph_spec import GraphSpec
@@ -75,7 +76,9 @@ class AddParentVectors(BatchFilter):
         # however, restrict the request to the points actually provided
         points_roi = points_roi.intersect(self.spec[self.points].roi)
         logger.debug("Requesting points in roi %s" % points_roi)
-        request[self.points] = GraphSpec(roi=points_roi)
+        deps = BatchRequest()
+        deps[self.points] = GraphSpec(roi=points_roi)
+        return deps
 
     def process(self, batch, request):
 
@@ -236,9 +239,9 @@ class AddParentVectors(BatchFilter):
             voxel_size,
             in_place=True)
 
-        coords = np.argwhere(mask_tmp)
-        _, z_min, y_min, x_min = coords.min(axis=0)
-        _, z_max, y_max, x_max = coords.max(axis=0)
+        mask_coords = np.argwhere(mask_tmp)
+        _, z_min, y_min, x_min = mask_coords.min(axis=0)
+        _, z_max, y_max, x_max = mask_coords.max(axis=0)
         mask_cut = mask_tmp[:,
                             z_min:z_max+1,
                             y_min:y_max+1,
