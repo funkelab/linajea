@@ -172,6 +172,82 @@ class CandidateDatabase(MongoDbGraphProvider):
 
         return int(params_id)
 
+    def get_parameters_id_round(
+            self,
+            parameters,
+            fail_if_not_exists=False):
+        '''Get id for parameter set from mongo collection.
+        If fail_if_not_exists, fail if the parameter set isn't already there.
+        The default is to assign a new id and write it to the collection.
+        If parameters are read from a text file there might be some floating
+        point inaccuracies compared to values stored in the database.
+        '''
+        self._MongoDbGraphProvider__connect()
+        self._MongoDbGraphProvider__open_db()
+        params_id = None
+        try:
+            params_collection = self.database['parameters']
+            query = parameters.query()
+            del query['roi']
+            entries = []
+            params = list(query.keys())
+            for entry in params_collection.find({}):
+                if "context" not in entry:
+                    continue
+                for param in params:
+                    if isinstance(query[param], float) or \
+                       (isinstance(query[param], int) and
+                        not isinstance(query[param], bool)):
+                        if round(entry[param], 10) != round(query[param], 10):
+                            break
+                    elif isinstance(query[param], dict):
+                        if param == 'roi' and \
+                           (entry['roi']['offset'] != query['roi']['offset'] or \
+                           entry['roi']['shape'] != query['roi']['shape']):
+                            break
+                        elif param == 'cell_cycle_key':
+                            if '$exists' in query['cell_cycle_key'] and \
+                               query['cell_cycle_key']['$exists'] == False and \
+                               'cell_cycle_key' in entry:
+                                break
+                    elif isinstance(query[param], str):
+                        if param not in entry or \
+                           entry[param] != query[param]:
+                            break
+                    elif isinstance(query[param], list):
+                        if entry[param] != query[param]:
+                            break
+                    elif isinstance(query[param], bool):
+                        if param not in entry or \
+                           entry[param] != query[param]:
+                            break
+                else:
+                    entries.append(entry)
+            cnt = len(entries)
+            if fail_if_not_exists:
+                assert cnt > 0, "Did not find id for parameters %s in %s"\
+                    " and fail_if_not_exists set to True" % (
+                        query, self.db_name)
+            assert cnt <= 1, RuntimeError("multiple documents found in db"
+                                          " for these parameters: %s: %s",
+                                          query,
+                                          entries)
+            if cnt == 1:
+                find_result = entries[0]
+                logger.info("Parameters %s already in collection with id %d"
+                            % (query, find_result['_id']))
+                params_id = find_result['_id']
+            else:
+                params_id = self.insert_with_next_id(parameters.valid(),
+                                                     params_collection)
+                logger.info("Parameters %s not yet in collection,"
+                            " adding with id %d",
+                            query, params_id)
+        finally:
+            self._MongoDbGraphProvider__disconnect()
+
+        return int(params_id)
+
     def insert_with_next_id(self, document, collection):
         '''Inserts a new set of parameters into the database, assigning
         the next sequential int id
