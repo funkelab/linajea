@@ -39,7 +39,6 @@ class DataFileConfig:
             is_polar = "polar" in filename
             if is_polar:
                 filename = filename.replace("_polar", "")
-            print(filename)
             if os.path.isdir(filename):
                 data_config = load_config(os.path.join(filename,
                                                        "data_config.toml"))
