@@ -153,9 +153,11 @@ def fix_solve_parameters_with_pids(config, sample_name, checkpoint, inference,
 
     db = CandidateDatabase(db_name, config.general.db_host)
     config.solve.parameters = []
-    for pid in pids:
-        # pid -= 1
-        parameters = db.get_parameters(pid)
+    parameters_sets = db.get_parameters_many(pids)
+
+    for pid, parameters in zip(pids, parameters_sets):
+        if parameters is None:
+            continue
         logger.info("getting params %s (id: %s) from database %s (sample: %s)",
                     parameters, pid, db_name, sample_name)
         try:

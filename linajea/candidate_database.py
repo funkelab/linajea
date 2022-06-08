@@ -212,6 +212,23 @@ class CandidateDatabase(MongoDbGraphProvider):
             self._MongoDbGraphProvider__disconnect()
         return params
 
+    def get_parameters_many(self, params_ids):
+        '''Gets the parameters associated with the given ids.
+        Returns None per id if there are no parameters with the given id'''
+        self._MongoDbGraphProvider__connect()
+        self._MongoDbGraphProvider__open_db()
+        try:
+            params_collection = self.database['parameters']
+            params_sets = []
+            for pid in params_ids:
+                params = params_collection.find_one({'_id': pid})
+                if params:
+                    del params['_id']
+                params_sets.append(params)
+        finally:
+            self._MongoDbGraphProvider__disconnect()
+        return params_sets
+
     def set_parameters_id(self, parameters_id):
         '''Sets the parameters_id and selected_key for the CandidateDatabase,
         so that you can use reset_selection and/or get_selected_graph'''
@@ -238,13 +255,18 @@ class CandidateDatabase(MongoDbGraphProvider):
         try:
             score_collection = self.database['scores']
             query = {'param_id': parameters_id}
+            logger.debug("Eval params: %s", eval_params)
             if eval_params is not None:
-                query.update(eval_params.valid())
+                if isinstance(eval_params, dict):
+                    query.update(eval_params)
+                else:
+                    query.update(eval_params.valid())
+            logger.debug("Get score query: %s", query)
             old_score = score_collection.find_one(query)
             if old_score:
                 del old_score['_id']
                 score = old_score
-                logger.info("loaded score for %s", query)
+                logger.debug("Loaded score for %s", query)
         finally:
             self._MongoDbGraphProvider__disconnect()
         return score
@@ -273,6 +295,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             score_collection = self.database['scores']
             if eval_params is not None:
                 query.update(eval_params.valid())
+            logger.debug("Query: %s", query)
             scores = list(score_collection.find(query))
             logger.debug("Found %d scores" % len(scores))
 
