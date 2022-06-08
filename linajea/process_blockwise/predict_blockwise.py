@@ -174,13 +174,6 @@ def predict_worker(linajea_config):
     worker_time = time.time()
     job = linajea_config.predict.job
 
-    if job.singularity_image is not None:
-        image_path = '/nrs/funke/singularity/'
-        image = image_path + job.singularity_image + '.img'
-        logger.debug("Using singularity image %s" % image)
-    else:
-        image = None
-
     if linajea_config.predict.write_db_from_zarr:
         path_to_script = linajea_config.predict.path_to_script_db_from_zarr
     else:
@@ -192,20 +185,26 @@ def predict_worker(linajea_config):
 
     if job.local:
         cmd = [command]
-    else:
+    elif os.path.isdir("/nrs/funke"):
         cmd = run(
-            command=command,
+            command=command.split(" "),
             queue=job.queue,
             num_gpus=1,
             num_cpus=linajea_config.predict.processes_per_worker,
-            singularity_image=image,
+            singularity_image=job.singularity_image,
             mount_dirs=['/groups', '/nrs'],
             execute=False,
             expand=False,
             flags=['-P ' + job.lab] if job.lab is not None else None
         )
+    elif os.path.isdir("/fast/work/users"):
+        cmd = ['sbatch', '../run_slurm_gpu.sh'] + command[1:]
+    else:
+        raise RuntimeError("cannot detect hpc system!")
 
     logger.info("Starting predict worker...")
+    cmd = ["\"{}\"".format(c) if "affinity" in c else c for c in cmd]
+    cmd = ["\"{}\"".format(c) if "rusage" in c else c for c in cmd]
     logger.info("Command: %s" % str(cmd))
     os.makedirs('logs', exist_ok=True)
     daisy.call(
