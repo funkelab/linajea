@@ -146,12 +146,16 @@ class CandidateDatabase(MongoDbGraphProvider):
         try:
             params_collection = self.database['parameters']
             query = parameters.query()
+            del query['roi']
             cnt = params_collection.count_documents(query)
             if fail_if_not_exists:
-                assert cnt > 0, "Did not find id for parameters %s"\
-                    " and fail_if_not_exists set to True" % query
+                assert cnt > 0, "Did not find id for parameters %s in %s"\
+                    " and fail_if_not_exists set to True" % (
+                        query, self.db_name)
             assert cnt <= 1, RuntimeError("multiple documents found in db"
-                                          " for these parameters: %s", query)
+                                          " for these parameters: %s: %s",
+                                          query,
+                                          list(params_collection.find(query)))
             if cnt == 1:
                 find_result = params_collection.find_one(query)
                 logger.info("Parameters %s already in collection with id %d"
