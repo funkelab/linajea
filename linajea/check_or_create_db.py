@@ -1,7 +1,10 @@
 import datetime
+import logging
 import os
 
 import pymongo
+
+logger = logging.getLogger(__name__)
 
 
 def checkOrCreateDB(db_host, setup_dir, sample, checkpoint,
@@ -45,6 +48,7 @@ def checkOrCreateDBMeta(db_host, db_meta_info, prefix="linajea_",
             query_result = db["db_meta_info"].find_one()
             del query_result["_id"]
             if query_result == db_meta_info:
+                logger.info("{}: {} (accessed)".format(db_name, query_result))
                 break
     else:
         if not create_if_not_found:
@@ -53,5 +57,6 @@ def checkOrCreateDBMeta(db_host, db_meta_info, prefix="linajea_",
             datetime.datetime.now(tz=datetime.timezone.utc).strftime(
                 '%Y%m%d_%H%M%S'))
         client[db_name]["db_meta_info"].insert_one(db_meta_info)
+        logger.info("{}: {} (created)".format(db_name, db_meta_info))
 
     return db_name
