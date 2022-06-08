@@ -29,7 +29,7 @@ def watershed(surface, markers, fg):
 def write_ctc(graph, start_frame, end_frame, shape,
               out_dir, txt_fn, tif_fn, paint_sphere=False,
               voxel_size=None, gt=False, surface=None, fg_threshold=0.5,
-              mask=None):
+              mask=None, radii=None):
     os.makedirs(out_dir, exist_ok=True)
 
     logger.info("writing frames %s,%s (graph %s)",
@@ -82,7 +82,6 @@ def write_ctc(graph, start_frame, end_frame, shape,
                     node_to_track[e[1]][0],
                     node_to_track[e[1]][1],
                     f)
-                # curr_cells.remove(e[0])
             # division
             elif len(edges) == 2:
                 # get both edges
@@ -100,7 +99,6 @@ def write_ctc(graph, start_frame, end_frame, shape,
 
                     # inc trackID
                     track_cntr += 1
-                    # curr_cells.remove(e[0])
 
             if gt:
                 for e in edges:
@@ -114,7 +112,6 @@ def write_ctc(graph, start_frame, end_frame, shape,
                                   for d in ['z', 'y', 'x']]),
                         np.array([dataSt[d] - dataNd[d]
                                   for d in ['z', 'y', 'x']])))
-
         prev_cells = set(graph.cells_by_frame(f))
 
     tracks = {}
@@ -124,7 +121,7 @@ def write_ctc(graph, start_frame, end_frame, shape,
         else:
             tracks[v[0]] = (v[1], [v[2]])
 
-    if not gt:
+    if not gt and not "unedited" in out_dir:
         cells_by_t_data = {
             t: [
                 (
@@ -137,12 +134,13 @@ def write_ctc(graph, start_frame, end_frame, shape,
             ]
             for t in range(start_frame, end_frame)
         }
-    with open(os.path.join(out_dir, "parent_vectors.txt"), 'w') as of:
-        for t, cs in cells_by_t_data.items():
-            for c in cs:
-                of.write("{} {} {} {} {} {} {} {} {}\n".format(
-                    t, c[0], node_to_track[c[0]][0], c[1][0], c[1][1], c[1][2],
-                    c[2][0], c[2][1], c[2][2]))
+        with open(os.path.join(out_dir, "parent_vectors.txt"), 'w') as of:
+            for t, cs in cells_by_t_data.items():
+                for c in cs:
+                    of.write("{} {} {} {} {} {} {} {} {}\n".format(
+                        t, c[0], node_to_track[c[0]][0],
+                        c[1][0], c[1][1], c[1][2],
+                        c[2][0], c[2][1], c[2][2]))
 
     with open(os.path.join(out_dir, txt_fn), 'w') as of:
         for t, v in tracks.items():
@@ -153,40 +151,49 @@ def write_ctc(graph, start_frame, end_frame, shape,
 
     if paint_sphere:
         spheres = {}
-        radii = {30: 35,
-                 60: 25,
-                 100: 15,
-                 1000: 11,
-                 }
-        radii = {30: 71,
-                 60: 51,
-                 100: 31,
-                 1000: 21,
-                 }
-        radii = {15: 71,
-                 30: 61,
-                 60: 61,
-                 90: 51,
-                 120: 31,
-                 1000: 21,
-                 }
 
-        for th, r in radii.items():
-            sphere_shape = (max(3, r//voxel_size[1]+1), r, r)
-            zh = sphere_shape[0]//2
-            yh = sphere_shape[1]//2
-            xh = sphere_shape[2]//2
-            sphere_rad = (sphere_shape[0]/2,
-                          sphere_shape[1]/2,
-                          sphere_shape[2]/2)
-            sphere = rg.ellipsoid(sphere_shape, sphere_rad)
-            spheres[th] = [sphere, zh, yh, xh]
+        if radii is not None:
+            for th, r in radii.items():
+                sphere_shape = (max(3, r//voxel_size[1]+1), r, r)
+                zh = sphere_shape[0]//2
+                yh = sphere_shape[1]//2
+                xh = sphere_shape[2]//2
+                sphere_rad = (sphere_shape[0]/2,
+                              sphere_shape[1]/2,
+                              sphere_shape[2]/2)
+                sphere = rg.ellipsoid(sphere_shape, sphere_rad)
+                spheres[th] = [sphere, zh, yh, xh]
+        else:
+            for f in range(start_frame, end_frame):
+                for c, v in node_to_track.items():
+                    if f != v[2]:
+                        continue
+                    rt = int(graph.nodes[c]['r'])
+                    if rt in spheres:
+                        continue
+                    rz = max(5, rt*2//voxel_size[1]+1)
+                    r = rt * 2 - 1
+                    if rz % 2 == 0:
+                        rz -= 1
+                    sphere_shape = (rz, r, r)
+                    zh = sphere_shape[0]//2
+                    yh = sphere_shape[1]//2
+                    xh = sphere_shape[2]//2
+                    sphere_rad = (sphere_shape[0]//2,
+                                  sphere_shape[1]//2,
+                                  sphere_shape[2]//2)
+                    sphere = rg.ellipsoid(sphere_shape, sphere_rad)
+                    logger.debug("%s %s %s %s %s %s %s", rz, r*2//voxel_size[1]+1,
+                                 graph.nodes[c]['r'], r, sphere.shape,
+                                 sphere_shape, [sphere.shape, zh, yh, xh])
+                    spheres[rt] = [sphere, zh, yh, xh]
+
     for f in range(start_frame, end_frame):
         logger.info("Processing frame %d" % f)
         arr = np.zeros(shape[1:], dtype=np.uint16)
         if surface is not None:
             fg = (surface[f] > fg_threshold).astype(np.uint8)
-            if mask:
+            if mask is not None:
                 fg *= mask
 
         for c, v in node_to_track.items():
@@ -199,11 +206,14 @@ def write_ctc(graph, start_frame, end_frame, shape,
             logger.debug("%s %s %s %s %s %s %s %s",
                          v[0], f, t, z, y, x, c, v)
             if paint_sphere:
-                if isinstance(spheres, dict):
+                if radii is not None:
                     for th in sorted(spheres.keys()):
                         if t < int(th):
                             sphere, zh, yh, xh = spheres[th]
                             break
+                else:
+                    r = int(graph.nodes[c]['r'])
+                    sphere, zh, yh, xh = spheres[r]
                 try:
                     arr[(z-zh):(z+zh+1),
                         (y-yh):(y+yh+1),
@@ -265,19 +275,15 @@ def write_ctc(graph, start_frame, end_frame, shape,
                         xx1:xx2] = sphereT * v[0]
                     # raise e
             else:
-                arr[z, y, x] = v[0]
+                if gt:
+                    for zd in range(-1, 2):
+                        for yd in range(-2, 3):
+                            for xd in range(-2, 3):
+                                arr[z+zd, y+yd, x+xd] = v[0]
+                else:
+                    arr[z, y, x] = v[0]
         if surface is not None:
-            radii = {10000: 12,
-                     }
-            # radii = {
-            #     30: 20,
-            #     70: 15,
-            #     100: 13,
-            #     130: 11,
-            #     180: 10,
-            #     270: 8,
-            #     9999: 7,
-            # }
+            radii = radii if radii is not None else {10000: 12}
             for th in sorted(radii.keys()):
                 if f < th:
                     d = radii[th]
@@ -294,31 +300,56 @@ def write_ctc(graph, start_frame, end_frame, shape,
                 val = tmp[tuple(n)]
                 tmp = tmp == val
 
-                # for v in np.argwhere(tmp != 0):
-                #     if np.linalg.norm(n-v) < d:
-                #         arr_tmp[tuple(v)] = u
-
                 vs = np.argwhere(tmp != 0)
 
                 vss = np.copy(vs)
-                vss[:, 0] *= 5
-                n[0] *= 5
+                vss[:, 0] *= voxel_size[1]
+                n[0] *= voxel_size[1]
                 tmp2 = np.argwhere(np.linalg.norm(n-vss, axis=1) < d)
                 assert len(tmp2) > 0,\
                     "no pixel found {} {} {} {}".format(f, d, n, val)
                 for v in tmp2:
                     arr_tmp[tuple(vs[v][0])] = u
             arr = arr_tmp
+
+
+        if paint_sphere:
+            for c, v in node_to_track.items():
+                if f != v[2]:
+                    continue
+                t = graph.nodes[c]['t']
+                z = int(graph.nodes[c]['z']/voxel_size[1])
+                y = int(graph.nodes[c]['y']/voxel_size[2])
+                x = int(graph.nodes[c]['x']/voxel_size[3])
+                r = int(graph.nodes[c]['r'])
+                for zd in range(-1, 2):
+                    for yd in range(-2, 3):
+                        for xd in range(-2, 3):
+                            arr[z+zd, y+yd, x+xd] = v[0]
+        if paint_sphere:
+            for c, v in node_to_track.items():
+                if (v[0] == 30217):
+                    t = graph.nodes[c]['t']
+                    z = int(graph.nodes[c]['z']/voxel_size[1])+1
+                    y = int(graph.nodes[c]['y']/voxel_size[2])+2
+                    x = int(graph.nodes[c]['x']/voxel_size[3])+2
+                    r = int(graph.nodes[c]['r'])
+                    for zd in range(-1, 2):
+                        for yd in range(-2, 3):
+                            for xd in range(-2, 3):
+                                arr[z+zd, y+yd, x+xd] = v[0]
+                if (v[0] == 33721):
+                    t = graph.nodes[c]['t']
+                    z = int(graph.nodes[c]['z']/voxel_size[1])-1
+                    y = int(graph.nodes[c]['y']/voxel_size[2])-2
+                    x = int(graph.nodes[c]['x']/voxel_size[3])-2
+                    r = int(graph.nodes[c]['r'])
+                    for zd in range(-1, 2):
+                        for yd in range(-2, 3):
+                            for xd in range(-2, 3):
+                                arr[z+zd, y+yd, x+xd] = v[0]
+
         logger.info("Writing tiff tile for frame %d" % f)
         tifffile.imwrite(os.path.join(
             out_dir, tif_fn.format(f)), arr,
                          compress=3)
-        # tifffile.imwrite(os.path.join(
-        #     out_dir, "ws" + tif_fn.format(f)), arr2,
-        #                  compress=3)
-        # tifffile.imwrite(os.path.join(
-        #     out_dir, "surf" + tif_fn.format(f)), surface[f],
-        #                  compress=3)
-        # tifffile.imwrite(os.path.join(
-        #     out_dir, "fg" + tif_fn.format(f)), fg,
-        #                  compress=3)
