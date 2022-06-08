@@ -105,4 +105,4 @@ def _parse_csv_fields(filename, scale=1.0, limit_to_roi=None):
             if 'div_state' in row:
                 track_info[-1].append(int(row['div_state']))
 
-    return np.array(locations), np.array(track_info)
+    return np.array(locations), np.array(track_info, dtype=object)
