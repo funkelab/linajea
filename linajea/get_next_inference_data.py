@@ -75,6 +75,9 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
             config.inference = InferenceDataTrackingConfig(**inference_data) # type: ignore
             if is_solve:
                 config = fix_solve_roi(config)
+                if config.solve.write_struct_svm:
+                    config.solve.write_struct_svm += "_ckpt_{}_{}".format(
+                        checkpoint, os.path.basename(sample.datafile.filename))
 
             if is_evaluate:
                 for solve_parameters in solve_parameters_sets:
