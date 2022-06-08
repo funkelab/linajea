@@ -51,7 +51,10 @@ class MamutWriter:
                          % self.max_cell_id)
 
     def add_data(self, mamut_reader, data):
-        cells, tracks = mamut_reader.read_data(data)
+        if isinstance(data, tuple) and len(data) == 2:
+            cells, tracks = mamut_reader.read_data(data)
+        else:
+            cells, tracks = mamut_reader.read_data(data)
         self.remap_cell_ids(cells, tracks)
         logger.info("Adding %d cells, %d tracks"
                     % (len(cells), len(tracks)))
@@ -136,8 +139,8 @@ class MamutWriter:
                         frame=t,
                         quality=score,
                         z=z*scale,
-                        y=y*scale,
-                        x=x*scale))
+                        y=y,
+                        x=x))
 
             output.write(inframe_end_template)
 
