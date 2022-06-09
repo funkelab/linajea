@@ -30,10 +30,14 @@ class DataFileConfig:
                 store = self.filename
             container = zarr.open(store)
             attributes = container[self.group].attrs
-
-            self.file_voxel_size = attributes.voxel_size
-            self.file_roi = DataROIConfig(offset=attributes.offset,
-                                          shape=attributes.shape)  # type: ignore
+            shape = container[self.group].shape
+            voxel_size_attr_names = ['voxel_size', 'resolution']
+            for name in voxel_size_attr_names:
+                if name in attributes.keys():
+                    self.file_voxel_size = attributes[name]
+                    break
+            self.file_roi = DataROIConfig(offset=attributes['offset'],
+                                          shape=shape)  # type: ignore
         else:
             filename = self.filename
             is_polar = "polar" in filename
