@@ -2,7 +2,6 @@ import os
 from typing import List
 
 import attr
-import zarr
 import daisy
 
 from linajea import load_config
@@ -24,32 +23,12 @@ class DataFileConfig:
     file_track_range = attr.ib(type=List[int], default=None)
 
     def __attrs_post_init__(self):
-        if os.path.splitext(self.filename)[1] in (".zarr"):
-            if "nested" in self.group:
-                store = zarr.NestedDirectoryStore(self.filename)
-            else:
-                store = self.filename
-            container = zarr.open(store)
-            attributes = container[self.group].attrs
+        if os.path.splitext(self.filename)[1] in (".zarr", ".n5"):
+            dataset = daisy.open_ds(self.filename, self.group)
 
-            self.file_voxel_size = attributes.voxel_size
-            self.file_roi = DataROIConfig(offset=attributes.offset,
-                                          shape=attributes.shape)
-        elif os.path.splitext(self.filename)[1] in (".n5"):
-            if "nested" in self.group:
-                store = zarr.NestedDirectoryStore(self.filename)
-            else:
-                store = self.filename
-            container = zarr.open(store)
-            attributes = container[self.group].attrs
-            # n5 stores coordinates in xyzt, not tzyx
-            shape = container[self.group].shape
-            self.file_voxel_size = reversed(list(attributes['resolution']))
-            offset = reversed(list(attributes['offset']))
-            shape = daisy.Coordinate(shape) * \
-                daisy.Coordinate(self.file_voxel_size)
-            self.file_roi = DataROIConfig(offset=offset,
-                                          shape=shape)
+            self.file_voxel_size = dataset.voxel_size
+            self.file_roi = DataROIConfig(offset=dataset.roi.offset,
+                                          shape=dataset.roi.shape)
         else:
             filename = self.filename
             is_polar = "polar" in filename
