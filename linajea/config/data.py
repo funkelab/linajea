@@ -3,6 +3,7 @@ from typing import List
 
 import attr
 import zarr
+import daisy
 
 from linajea import load_config
 from .utils import ensure_cls
@@ -23,21 +24,32 @@ class DataFileConfig:
     file_track_range = attr.ib(type=List[int], default=None)
 
     def __attrs_post_init__(self):
-        if os.path.splitext(self.filename)[1] in (".n5", ".zarr"):
+        if os.path.splitext(self.filename)[1] in (".zarr"):
             if "nested" in self.group:
                 store = zarr.NestedDirectoryStore(self.filename)
             else:
                 store = self.filename
             container = zarr.open(store)
             attributes = container[self.group].attrs
+
+            self.file_voxel_size = attributes.voxel_size
+            self.file_roi = DataROIConfig(offset=attributes.offset,
+                                          shape=attributes.shape)
+        elif os.path.splitext(self.filename)[1] in (".n5"):
+            if "nested" in self.group:
+                store = zarr.NestedDirectoryStore(self.filename)
+            else:
+                store = self.filename
+            container = zarr.open(store)
+            attributes = container[self.group].attrs
+            # n5 stores coordinates in xyzt, not tzyx
             shape = container[self.group].shape
-            voxel_size_attr_names = ['voxel_size', 'resolution']
-            for name in voxel_size_attr_names:
-                if name in attributes.keys():
-                    self.file_voxel_size = attributes[name]
-                    break
-            self.file_roi = DataROIConfig(offset=attributes['offset'],
-                                          shape=shape)  # type: ignore
+            self.file_voxel_size = reversed(list(attributes['resolution']))
+            offset = reversed(list(attributes['offset']))
+            shape = daisy.Coordinate(shape) * \
+                daisy.Coordinate(self.file_voxel_size)
+            self.file_roi = DataROIConfig(offset=offset,
+                                          shape=shape)
         else:
             filename = self.filename
             is_polar = "polar" in filename
@@ -53,8 +65,8 @@ class DataFileConfig:
             self.file_voxel_size = data_config['general']['resolution']
             self.file_roi = DataROIConfig(
                 offset=data_config['general']['offset'],
-                shape=[s*v for s,v in zip(data_config['general']['shape'],
-                                          self.file_voxel_size)])  # type: ignore
+                shape=[s*v for s, v in zip(data_config['general']['shape'],
+                                           self.file_voxel_size)])
             self.file_track_range = data_config['general'].get('track_range')
             if self.group is None:
                 self.group = data_config['general']['group']
