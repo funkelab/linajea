@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def checkOrCreateDB(db_host, setup_dir, sample, checkpoint,
-                    cell_score_threshold, prefix="linajea_",
+                    cell_score_threshold, roi=None, prefix="linajea_",
                     tag=None, create_if_not_found=True):
     db_host = db_host
 
@@ -17,6 +17,7 @@ def checkOrCreateDB(db_host, setup_dir, sample, checkpoint,
     info["iteration"] = checkpoint
     info["cell_score_threshold"] = cell_score_threshold
     info["sample"] = os.path.basename(sample)
+    info["roi"] = roi
     if tag is not None:
         info["tag"] = tag
 
@@ -26,6 +27,8 @@ def checkOrCreateDB(db_host, setup_dir, sample, checkpoint,
 
 def checkOrCreateDBMeta(db_host, db_meta_info, prefix="linajea_",
                         create_if_not_found=True):
+    db_meta_info_no_roi = {k: v for k, v in db_meta_info.items() if k != "roi"}
+
     client = pymongo.MongoClient(host=db_host)
     for db_name in client.list_database_names():
         if not db_name.startswith(prefix):
@@ -47,7 +50,7 @@ def checkOrCreateDBMeta(db_host, db_meta_info, prefix="linajea_",
             assert query_result == 1
             query_result = db["db_meta_info"].find_one()
             del query_result["_id"]
-            if query_result == db_meta_info:
+            if query_result == db_meta_info or query_result == db_meta_info_no_roi:
                 logger.info("{}: {} (accessed)".format(db_name, query_result))
                 break
     else:

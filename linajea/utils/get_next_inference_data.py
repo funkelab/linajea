@@ -6,8 +6,8 @@ import time
 import attr
 import toml
 
-from linajea import (CandidateDatabase,
-                     checkOrCreateDB)
+from linajea.utils import (CandidateDatabase,
+                           checkOrCreateDB)
 from linajea.config import (InferenceDataTrackingConfig,
                             SolveParametersMinimalConfig,
                             SolveParametersNonMinimalConfig,
@@ -20,30 +20,32 @@ logger = logging.getLogger(__name__)
 def getNextInferenceData(args, is_solve=False, is_evaluate=False):
     config = maybe_fix_config_paths_to_machine_and_load(args.config)
     config = TrackingConfig(**config)
+    # print(config)
 
-    if args.validation:
-        inference = deepcopy(config.validate_data)
+    if hasattr(args, "validation") and args.validation:
+        inference_data = deepcopy(config.validate_data)
         checkpoints = config.validate_data.checkpoints
     else:
-        inference = deepcopy(config.test_data)
+        inference_data = deepcopy(config.test_data)
         checkpoints = [config.test_data.checkpoint]
 
-    if args.validate_on_train:
-        inference.data_sources = deepcopy(config.train_data.data_sources)
+    if hasattr(args, "validate_on_train") and args.validate_on_train:
+        inference_data.data_sources = deepcopy(config.train_data.data_sources)
 
-    if args.checkpoint > 0:
+    if hasattr(args, "checkpoint") and args.checkpoint > 0:
         checkpoints = [args.checkpoint]
 
-    if (is_solve or is_evaluate) and args.val_param_id is not None:
-        config = fix_val_param_pid(args, config, checkpoints, inference)
-    if (is_solve or is_evaluate) and \
-       (args.param_id is not None or
-        (hasattr(args, "param_ids") and args.param_ids is not None)):
-        config = fix_param_pid(args, config, checkpoints, inference)
-
-    max_cell_move = max(config.extract.edge_move_threshold.values())
+    try:
+        max_cell_move = max(config.extract.edge_move_threshold.values())
+    except:
+        max_cell_move = None
     for pid in range(len(config.solve.parameters)):
         if config.solve.parameters[pid].max_cell_move is None:
+            assert max_cell_move is not None, (
+                "Please provide a max_cell_move value, either as "
+                "extract.edge_move_threshold or directly in the parameter sets "
+                "in solve.parameters! (What is the maximum distance that a cell "
+                "can move between two adjacent frames?)")
             config.solve.parameters[pid].max_cell_move = max_cell_move
 
     os.makedirs("tmp_configs", exist_ok=True)
@@ -58,21 +60,30 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
         config.solve.parameters = [solve_parameters]
     solve_parameters_sets = deepcopy(config.solve.parameters)
     for checkpoint in checkpoints:
-        inference_data = {
+        if hasattr(args, "val_param_id") and (is_solve or is_evaluate) and \
+           args.val_param_id is not None:
+            config = fix_val_param_pid(args, config, checkpoint)
+        if hasattr(args, "param_id") and (is_solve or is_evaluate) and \
+           (args.param_id is not None or
+            (hasattr(args, "param_ids") and args.param_ids is not None)):
+            config = fix_param_pid(args, config, checkpoint, inference_data)
+        inference_data_tmp = {
             'checkpoint': checkpoint,
-            'cell_score_threshold': inference.cell_score_threshold}
-        for sample in inference.data_sources:
+            'cell_score_threshold': inference_data.cell_score_threshold}
+        for sample in inference_data.data_sources:
             sample = deepcopy(sample)
-            if sample.db_name is None and not config.predict.no_db_access:
+            if sample.db_name is None and hasattr(config, "predict") and \
+               not config.predict.no_db_access:
                 sample.db_name = checkOrCreateDB(
                     config.general.db_host,
                     config.general.setup_dir,
                     sample.datafile.filename,
                     checkpoint,
-                    inference.cell_score_threshold,
+                    inference_data.cell_score_threshold,
+                    roi=sample.roi,
                     tag=config.general.tag)
-            inference_data['data_source'] = sample
-            config.inference = InferenceDataTrackingConfig(**inference_data) # type: ignore
+            inference_data_tmp['data_source'] = sample
+            config.inference = InferenceDataTrackingConfig(**inference_data_tmp) # type: ignore
             if is_solve:
                 config = fix_solve_roi(config)
                 if config.solve.write_struct_svm:
@@ -80,6 +91,7 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
                         checkpoint, os.path.basename(sample.datafile.filename))
 
             if is_evaluate:
+                print(solve_parameters_sets, len(solve_parameters_sets))
                 for solve_parameters in solve_parameters_sets:
                     solve_parameters = deepcopy(solve_parameters)
                     config.solve.parameters = [solve_parameters]
@@ -94,53 +106,74 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
             yield config
 
 
-def fix_val_param_pid(args, config, checkpoints, inference):
-    if args.validation:
-        sample_name = config.test_data.data_sources[0].datafile.filename
-        threshold = config.test_data.cell_score_threshold
+def fix_val_param_pid(args, config, checkpoint):
+    if hasattr(args, "validation") and args.validation:
+        tmp_data = config.test_data
     else:
-        sample_name = config.validate_data.data_sources[0].datafile.filename
-        threshold = config.validate_data.cell_score_threshold
+        tmp_data = config.validate_data
+    assert len(tmp_data.data_sources) == 1, (
+        "val_param_id only supported with a single sample")
+    if tmp_data.data_sources[0].db_name is None:
+        db_meta_info = {
+            "sample": tmp_data.data_sources[0].datafile.filename,
+            "iteration": checkpoint,
+            "cell_score_threshold": tmp_data.cell_score_threshold,
+            "roi": tmp_data.data_sources[0].roi
+        }
+        db_name = None
+    else:
+        db_name = tmp_data.data_sources[0].db_name
+        db_meta_info = None
+
     pid = args.val_param_id
 
     config = fix_solve_parameters_with_pids(
-        config, sample_name, checkpoints[0], inference, [pid],
-        threshold=threshold)
+        config, [pid], db_meta_info, db_name)
     config.solve.parameters[0].val = False
     return config
 
 
-def fix_param_pid(args, config, checkpoints, inference):
-    assert len(checkpoints) == 1, "use param_id to reevaluate a single instance"
-    sample_name = inference.data_sources[0].datafile.filename
+def fix_param_pid(args, config, checkpoint, inference_data):
+    assert len(inference_data.data_sources) == 1, (
+        "param_id(s) only supported with a single sample")
+    if inference_data.data_sources[0].db_name is None:
+        db_meta_info = {
+            "sample": inference_data.data_sources[0].datafile.filename,
+            "iteration": checkpoint,
+            "cell_score_threshold": inference_data.cell_score_threshold
+        }
+        db_name = None
+    else:
+        db_name = inference_data.data_sources[0].db_name
+        db_meta_info = None
+
     if hasattr(args, "param_ids") and args.param_ids is not None:
-        pids = list(range(int(args.param_ids[0]), int(args.param_ids[1])+1))
+        if len(args.param_ids) > 2:
+            pids = args.param_ids
+        else:
+            pids = list(range(int(args.param_ids[0]), int(args.param_ids[1])+1))
     else:
         pids = [args.param_id]
 
-    config = fix_solve_parameters_with_pids(config, sample_name,
-                                            checkpoints[0], inference, pids)
+    config = fix_solve_parameters_with_pids(config, pids, db_meta_info, db_name)
     return config
 
 
 def fix_solve_roi(config):
     for i in range(len(config.solve.parameters)):
-        config.solve.parameters[i].roi = config.inference.data_source.roi
+        config.solve.parameters[i].roi = config.inference_data.data_source.roi
     return config
 
 
-def fix_solve_parameters_with_pids(config, sample_name, checkpoint, inference,
-                                   pids, threshold=None):
-    if inference.data_sources[0].db_name is not None:
-        db_name = inference.data_sources[0].db_name
-    else:
+def fix_solve_parameters_with_pids(config, pids, db_meta_info=None, db_name=None):
+    if db_name is None:
         db_name = checkOrCreateDB(
             config.general.db_host,
             config.general.setup_dir,
-            sample_name,
-            checkpoint,
-            threshold if threshold is not None
-            else inference.cell_score_threshold,
+            db_meta_info["sample"],
+            db_meta_info["iteration"],
+            db_meta_info["cell_score_threshold"],
+            roi=db_meta_info["roi"],
             tag=config.general.tag,
             create_if_not_found=False)
     assert db_name is not None, "db for pid {} not found".format(pids)
@@ -162,7 +195,8 @@ def fix_solve_parameters_with_pids(config, sample_name, checkpoint, inference,
         if parameters is None:
             continue
         logger.info("getting params %s (id: %s) from database %s (sample: %s)",
-                    parameters, pid, db_name, sample_name)
+                    parameters, pid, db_name,
+                    db_meta_info["sample"] if db_meta_info is not None else None)
         try:
             solve_parameters = SolveParametersMinimalConfig(**parameters) # type: ignore
             config.solve.non_minimal = False

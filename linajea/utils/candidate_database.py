@@ -147,6 +147,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             params_collection = self.database['parameters']
             query = parameters.query()
             del query['roi']
+            logger.info("Querying ID for parameters %s", query)
             cnt = params_collection.count_documents(query)
             if fail_if_not_exists:
                 assert cnt > 0, "Did not find id for parameters %s in %s"\
@@ -189,6 +190,7 @@ class CandidateDatabase(MongoDbGraphProvider):
             params_collection = self.database['parameters']
             query = parameters.query()
             del query['roi']
+            logger.info("Querying ID for parameters %s", query)
             entries = []
             params = list(query.keys())
             for entry in params_collection.find({}):
@@ -371,9 +373,28 @@ class CandidateDatabase(MongoDbGraphProvider):
             score_collection = self.database['scores']
             if eval_params is not None:
                 query.update(eval_params.valid())
-            logger.debug("Query: %s", query)
+            logger.info("Query: %s", query)
             scores = list(score_collection.find(query))
-            logger.debug("Found %d scores" % len(scores))
+            logger.info("Found %d scores" % len(scores))
+            if len(scores) == 0:
+                if "fn_div_count_unconnected_parent" in query and \
+                   query["fn_div_count_unconnected_parent"] == True:
+                    del query["fn_div_count_unconnected_parent"]
+                if "validation_score" in query and \
+                   query["validation_score"] == False:
+                    del query["validation_score"]
+                if "window_size" in query and \
+                   query["window_size"] == 50:
+                    del query["window_size"]
+                if "filter_short_tracklets_len" in query and \
+                   query["filter_short_tracklets_len"] == -1:
+                    del query["filter_short_tracklets_len"]
+                if "ignore_one_off_div_errors" in query and \
+                   query["ignore_one_off_div_errors"] == False:
+                    del query["ignore_one_off_div_errors"]
+                logger.info("Query: %s", query)
+                scores = list(score_collection.find(query))
+                logger.info("Found %d scores" % len(scores))
 
         finally:
             self._MongoDbGraphProvider__disconnect()

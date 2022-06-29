@@ -8,4 +8,4 @@ def construct_zarr_filename(config, sample, checkpoint):
         os.path.basename(sample) +
         'predictions' + (config.general.tag if config.general.tag is not None else "") +
         str(checkpoint) + "_" +
-        str(config.inference.cell_score_threshold).replace(".", "_") + '.zarr')
+        str(config.inference_data.cell_score_threshold).replace(".", "_") + '.zarr')
