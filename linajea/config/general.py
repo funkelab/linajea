@@ -20,8 +20,6 @@ class GeneralConfig:
         with existing CandidateDatabase (no training/prediction)
     db_host: str
         Address of the mongodb server, by default a local server is assumed
-    singularity_image: str, optional
-        Which singularity image to use, deprecated
     sparse: bool
         Is the ground truth sparse (not every instance is annotated)
     logging: int
@@ -30,18 +28,16 @@ class GeneralConfig:
     seed: int
         Which random seed to use, for replication of experiments,
         experimental, not used everywhere yet
+    tag: str, optional
+        Tag for experiment, can be used for debugging purposes
     """
     # set via post_init hook
     setup_dir = attr.ib(type=str, default=None)
     db_host = attr.ib(type=str, default="mongodb://localhost:27017")
-    singularity_image = attr.ib(type=str, default=None)
     sparse = attr.ib(type=bool, default=True)
-    two_frame_edges = attr.ib(type=bool, default=False)
-    tag = attr.ib(type=str, default=None)
-    seed = attr.ib(type=int)
     logging = attr.ib(type=int)
-    subsampling = attr.ib(type=int, default=None)
-    subsampling_seed = attr.ib(type=int, default=None)
+    seed = attr.ib(type=int)
+    tag = attr.ib(type=str, default=None)
 
     def __attrs_post_init__(self):
         if self.setup_dir is not None:

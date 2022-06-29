@@ -50,7 +50,7 @@ def dump_config(config):
 
     Args
     ----
-    config: TrackingConfig or CellCycleConfig or dict
+    config: TrackingConfig or dict
     """
     if not isinstance(config, dict):
         config = attr.asdict(config)
@@ -80,23 +80,6 @@ def ensure_cls(cl):
             return cl(**val)
     return converter
 
-def ensure_cls_construct_on_none(cl):
-    """attrs convert to ensure type of value
-
-    If the attribute is an instance of cls, pass, else try constructing.
-    This way an instance of an attrs config object can be passed or a
-    dict that can be used to construct such an instance.
-    """
-    def converter(val):
-        if isinstance(val, cl):
-            return val
-        elif val is None:
-            return cl()
-        else:
-            return cl(**val)
-    return converter
-
-
 
 def ensure_cls_list(cl):
     """attrs converter to ensure type of values in list
@@ -113,6 +96,9 @@ def ensure_cls_list(cl):
     def converter(vals):
         if vals is None:
             return None
+
+        if isinstance(vals, str) and vals.endswith(".toml"):
+            vals = load_config(vals)
 
         assert isinstance(vals, list), "list of {} expected ({})".format(
             cl, vals)
@@ -223,9 +209,9 @@ def maybe_fix_config_paths_to_machine_and_load(config):
                     config_dict["predict"]["path_to_script_db_from_zarr"].replace(
                         "/groups/funke/home/hirschp/linajea_experiments",
                         paths["HOME"])
-            if "output_zarr_prefix" in config_dict["predict"]:
-                config_dict["predict"]["output_zarr_prefix"] = \
-                    config_dict["predict"]["output_zarr_prefix"].replace(
+            if "output_zarr_dir" in config_dict["predict"]:
+                config_dict["predict"]["output_zarr_dir"] = \
+                    config_dict["predict"]["output_zarr_dir"].replace(
                         "/nrs/funke/hirschp",
                         paths["DATA"])
         dss = []

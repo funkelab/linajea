@@ -9,7 +9,6 @@ Options are:
  - Gaussian Noise
  - Speckle Noise
  - Salt and Pepper Noise
- - Jitter Noise
  - Zoom
  - Histogram
 
@@ -143,23 +142,6 @@ class AugmentNoiseSaltPepperConfig:
     """
     amount = attr.ib(type=float, default=0.0001)
 
-
-@attr.s(kw_only=True)
-class AugmentJitterConfig:
-    """Defines options for Jitter noise augment
-
-    Notes
-    -----
-    Only used in cell state classifier, not in tracking
-
-    Attributes
-    ----------
-    jitter: list of int
-        How far to shift cell location, one value per dimension,
-        sampled uniformly from [-j, +j] in each dimension
-    """
-    jitter = attr.ib(type=List[int], default=[0, 3, 3, 3])
-
 @attr.s(kw_only=True)
 class AugmentZoomConfig:
     """Defines options for Zoom augment
@@ -235,7 +217,8 @@ class _AugmentConfig:
 
     By default all augmentations are turned off if not set otherwise.
     Use one of the derived classes below depending on the use case
-    (tracking vs cell state/cycle classifier)
+    (currently only AugmentTrackingConfig, might be extended in the
+    future)
 
     Notes
     -----
@@ -277,42 +260,6 @@ class AugmentTrackingConfig(_AugmentConfig):
         the lower the probability that point is picked, helps to avoid
         oversampling of dense regions
     """
-    reject_empty_prob = attr.ib(type=float, default=1.0) # (default=1.0?)
+    reject_empty_prob = attr.ib(type=float, default=1.0)
     divisions = attr.ib(type=float, default=0.0)
     point_balance_radius = attr.ib(type=int, default=1)
-
-
-@attr.s(kw_only=True)
-class AugmentCellCycleConfig(_AugmentConfig):
-    """Specialized class for augmentation for cell state/cycle classifier
-
-    Attributes
-    ----------
-    min_key, max_key: str
-        Which statistic to use for normalization, have to be
-        precomputed and stored in data_config.toml per sample
-        E.g.
-        [stats]
-        min = 1874
-        max = 65535
-        mean = 2260
-        std = 282
-        perc0_01 = 2036
-        perc3 = 2087
-        perc99_8 = 4664
-        perc99_99 = 7206
-    norm_min, norm_max: int
-        Default values used it min/max_key do not exist
-    jitter:
-        See AugmentJitterConfig, shift selected point slightly
-
-    Notes
-    -----
-    TODO: move data normalization info outside
-    """
-    min_key = attr.ib(type=str, default=None)
-    max_key = attr.ib(type=str, default=None)
-    norm_min = attr.ib(type=int, default=None)
-    norm_max = attr.ib(type=int, default=None)
-    jitter = attr.ib(converter=ensure_cls(AugmentJitterConfig),
-                     default=None)

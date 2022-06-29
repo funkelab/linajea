@@ -1,7 +1,5 @@
 """Configuration used for evaluation
 """
-from typing import List
-
 import attr
 
 from .data import DataROIConfig
@@ -63,25 +61,6 @@ class EvaluateParametersTrackingConfig:
     filter_short_tracklets_len = attr.ib(type=int, default=-1)
     ignore_one_off_div_errors = attr.ib(type=bool, default=False)
     fn_div_count_unconnected_parent = attr.ib(type=bool, default=True)
-    # deprecated
-    frames = attr.ib(type=List[int], default=None)
-    # deprecated
-    frame_start = attr.ib(type=int, default=None)
-    # deprecated
-    frame_end = attr.ib(type=int, default=None)
-    # deprecated
-    limit_to_roi_offset = attr.ib(type=List[int], default=None)
-    # deprecated
-    limit_to_roi_shape = attr.ib(type=List[int], default=None)
-    # deprecated
-    sparse = attr.ib(type=bool)
-
-    def __attrs_post_init__(self):
-        if self.frames is not None and \
-           self.frame_start is None and self.frame_end is None:
-            self.frame_start = self.frames[0]
-            self.frame_end = self.frames[1]
-            self.frames = None
 
     def valid(self):
         return {key: val
@@ -124,52 +103,3 @@ class EvaluateTrackingConfig(_EvaluateConfig):
     """
     from_scratch = attr.ib(type=bool, default=False)
     parameters = attr.ib(converter=ensure_cls(EvaluateParametersTrackingConfig))
-
-
-@attr.s(kw_only=True)
-class EvaluateParametersCellCycleConfig:
-    """Defines a set of evaluation parameters for the cell state classifier
-
-    Attributes
-    ----------
-    matching_threshold: int
-        How far can a GT annotation and a predicted object be apart but
-        still be matched to each other.
-    roi: DataROIConfig
-        Which ROI should be evaluated?
-    """
-    matching_threshold = attr.ib()
-    roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
-
-
-@attr.s(kw_only=True)
-class EvaluateCellCycleConfig(_EvaluateConfig):
-    """Defines specialized class for configuration of cell state evaluation
-
-    Attributes
-    ----------
-    max_samples: int
-        maximum number of samples to evaluate, deprecated
-    metric: str
-        which metric to use, deprecated
-    one_off: bool
-        Check for one-frame-off divisions (and do not count them as errors)
-    prob_threshold: float
-        Ignore predicted objects with a lower score
-    dry_run: bool
-        Do not write results to database
-    find_fn: bool
-        Do not run normal evaluation but locate missing objects/FN
-    force_eval: bool
-        Run evaluation even if results exist already, deprecated
-    parameters: EvaluateParametersCellCycleConfig
-        Which evaluation parameters to use
-    """
-    max_samples = attr.ib(type=int)
-    metric = attr.ib(type=str)
-    one_off = attr.ib(type=bool)
-    prob_threshold = attr.ib(type=float)
-    dry_run = attr.ib(type=bool)
-    find_fn = attr.ib(type=bool)
-    force_eval = attr.ib(type=bool, default=False)
-    parameters = attr.ib(converter=ensure_cls(EvaluateParametersCellCycleConfig))

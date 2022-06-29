@@ -12,9 +12,7 @@ from .data import DataROIConfig
 from .evaluate import EvaluateTrackingConfig
 from .extract import ExtractConfig
 from .general import GeneralConfig
-from .optimizer import (OptimizerTF1Config,
-                        OptimizerTF2Config,
-                        OptimizerTorchConfig)
+from .optimizer import OptimizerTorchConfig
 from .predict import PredictTrackingConfig
 from .solve import SolveConfig
 from .train_test_validate_data import (InferenceDataTrackingConfig,
@@ -39,8 +37,6 @@ class TrackingConfig:
         General configuration parameters
     model: UnetConfig
         Parameters defining the use U-Net
-    optimizerTF1: OptimizerTF1Config
-    optimizerTF2: OptimizerTF2Config
     optimizerTorch: OptimizerTorchConfig
         Parameters defining the optimizer used during training
     train: TrainTrackingConfig
@@ -63,10 +59,6 @@ class TrackingConfig:
     path = attr.ib(type=str)
     general = attr.ib(converter=ensure_cls(GeneralConfig))
     model = attr.ib(converter=ensure_cls(UnetConfig), default=None)
-    optimizerTF1 = attr.ib(converter=ensure_cls(OptimizerTF1Config),
-                           default=None)
-    optimizerTF2 = attr.ib(converter=ensure_cls(OptimizerTF2Config),
-                           default=None)
     optimizerTorch = attr.ib(converter=ensure_cls(OptimizerTorchConfig),
                              default=None)
     train = attr.ib(converter=ensure_cls(TrainTrackingConfig), default=None)
@@ -99,14 +91,9 @@ class TrackingConfig:
 
         At most one optimizer configuration can be supplied
         If use_swa is not set for prediction step, use value from train
-        If  normalization is not set for prediction step, use value from train
+        If normalization is not set for prediction step, use value from train
         Verify that ROI is set at some level for each data source
         """
-        assert (int(bool(self.optimizerTF1)) +
-                int(bool(self.optimizerTF2)) +
-                int(bool(self.optimizerTorch))) <= 1, \
-        "please specify only one optimizer config (tf1, tf2, torch)"
-
         if self.predict is not None and \
            self.train is not None and \
            self.predict.use_swa is None:

@@ -19,8 +19,6 @@ class UnetConfig:
 
     Attributes
     ----------
-    path_to_script: str
-        Location of training script
     train_input_shape, predict_input_shape: list of int
         4d (t+3d) shape (in voxels) of input to network
     fmap_inc_factors: list of int
@@ -64,17 +62,13 @@ class UnetConfig:
         Use very small weight for pixels lower than cutoff in gt map
     cell_indicator_cutoff: float
         Cutoff values for weight, in gt_cell_indicator map
-    chkpt_parents: str
-        Not used, path to model checkpoint just for movement vectors
-    chkpt_cell_indicator
-        Not used, path to model checkpoint just for cell indicator
-    latent_temp_conv: bool
-        Apply temporal/4d conv not in the beginning but at bottleneck
-    train_only_cell_indicator: bool
-        Only train cell indicator network, not movement vectors
+
+    Notes
+    -----
+    In general, `shape` is in voxels, `size` is in world units, the input
+    to the network has to be specified in voxels.
+    (though kernel_size is still in voxels)
     """
-    path_to_script = attr.ib(type=str, default=None)
-    # shape -> voxels, size -> world units
     train_input_shape = attr.ib(type=List[int],
                                 validator=[_int_list_validator,
                                            _check_nd_shape(4)])
@@ -113,7 +107,3 @@ class UnetConfig:
     num_fmaps = attr.ib(type=int)
     cell_indicator_weighted = attr.ib(type=bool, default=True)
     cell_indicator_cutoff = attr.ib(type=float, default=0.01)
-    chkpt_parents = attr.ib(type=str, default=None)
-    chkpt_cell_indicator = attr.ib(type=str, default=None)
-    latent_temp_conv = attr.ib(type=bool, default=False)
-    train_only_cell_indicator = attr.ib(type=bool, default=False)

@@ -13,7 +13,6 @@ import attr
 import daisy
 
 from .data import (DataSourceConfig,
-                   DataDBMetaConfig,
                    DataROIConfig)
 from .utils import (ensure_cls,
                     ensure_cls_list)
@@ -68,25 +67,6 @@ class _DataConfig():
             roi = daisy.Roi(offset=d.roi.offset,
                             shape=d.roi.shape)
             roi = roi.intersect(file_roi)
-            if d.datafile.file_track_range is not None:
-                if isinstance(d.datafile.file_track_range, dict):
-                    if os.path.isdir(d.datafile.filename):
-                        # TODO check this for training
-                        begin_frame, end_frame = list(d.datafile.file_track_range.values())[0]
-                        for _, v in d.datafile.file_track_range.items():
-                            if v[0] < begin_frame:
-                                begin_frame = v[0]
-                            if v[1] > end_frame:
-                                end_frame = v[1]
-                    else:
-                        begin_frame, end_frame = d.datafile.file_track_range[
-                            os.path.basename(d.datafile.filename)]
-                else:
-                    begin_frame, end_frame = d.datafile.file_track_range
-                track_range_roi = daisy.Roi(
-                    offset=[begin_frame, None, None, None],
-                    shape=[end_frame-begin_frame+1, None, None, None])
-                roi = roi.intersect(track_range_roi)
             d.roi.offset = roi.get_offset()
             d.roi.shape = roi.get_shape()
             if d.voxel_size is None:
@@ -109,7 +89,6 @@ class _DataConfig():
 class TrainDataTrackingConfig(_DataConfig):
     """Defines a specialized class for the definition of a training data set
     """
-    # data_sources = attr.ib(converter=ensure_cls_list(DataSourceConfig))
     @data_sources.validator
     def _check_train_data_source(self, attribute, value):
         """a train data source has to use datafiles and cannot have a database"""
@@ -189,94 +168,3 @@ class ValidateDataTrackingConfig(_DataConfig):
     """
     checkpoints = attr.ib(type=List[int], default=[None])
     cell_score_threshold = attr.ib(type=float, default=None)
-
-
-
-@attr.s(kw_only=True)
-class _DataCellCycleConfig(_DataConfig):
-    """Defines a base class for the definition of a cell state classifier data set
-
-    Attributes
-    ----------
-    use_database: bool
-        If set, samples are read from database, not from data file
-    db_meta_info: DataDBMetaConfig
-        Identifies database to use if use_database is set
-    skip_predict: bool
-        Skip prediction step, e.g. if already computed
-        (enables shortcut in run script)
-    force_predict: bool
-        Enforce prediction, even if already done previously
-    """
-    use_database = attr.ib(type=bool)
-    db_meta_info = attr.ib(converter=ensure_cls(DataDBMetaConfig), default=None)
-    skip_predict = attr.ib(type=bool, default=False)
-    force_predict = attr.ib(type=bool, default=False)
-
-
-@attr.s(kw_only=True)
-class TrainDataCellCycleConfig(_DataCellCycleConfig):
-    """Definition of a cell state classifier training data set
-    """
-    pass
-
-
-@attr.s(kw_only=True)
-class TestDataCellCycleConfig(_DataCellCycleConfig):
-    """Definition of a cell state classifier test data set
-
-    Attributes
-    ----------
-    checkpoint: int
-        Which checkpoint of the trained model should be used?
-    prob_threshold: float
-        What is the minimum score of object/node candidates to be considered?
-    """
-    checkpoint = attr.ib(type=int)
-    prob_threshold = attr.ib(type=float, default=None)
-
-
-@attr.s(kw_only=True)
-class ValidateDataCellCycleConfig(_DataCellCycleConfig):
-    """Definition of a cell state classifier training data set
-
-    Attributes
-    ----------
-    checkpoints: list of int
-        Which checkpoints of the trained model should be used?
-    prob_threshold: list of float
-        What are the minimum scores of object/node candidates to be considered?
-
-    Notes
-    -----
-    Computes the result for every combination of checkpoints and thresholds
-    """
-    checkpoints = attr.ib(type=List[int])
-    prob_thresholds = attr.ib(type=List[float], default=None)
-
-
-@attr.s(kw_only=True)
-class InferenceDataCellCycleConfig():
-    """Definition of a cell state classifier inference data set
-
-    Attributes
-    ----------
-    data_source: DataSourceConfig
-        Which data source should be used?
-    checkpoint: int
-        Which checkpoint of the trained model should be used?
-    prob_threshold: float
-        What is the minimum score of object/node candidates to be considered?
-    use_database: bool
-        If set, samples are read from database, not from data file
-    db_meta_info: DataDBMetaConfig
-        Identifies database to use if use_database is set
-    force_predict: bool
-        Enforce prediction, even if already done previously
-    """
-    data_source = attr.ib(converter=ensure_cls(DataSourceConfig))
-    checkpoint = attr.ib(type=int, default=None)
-    prob_threshold = attr.ib(type=float)
-    use_database = attr.ib(type=bool)
-    db_meta_info = attr.ib(converter=ensure_cls(DataDBMetaConfig), default=None)
-    force_predict = attr.ib(type=bool, default=False)

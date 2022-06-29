@@ -48,14 +48,11 @@ class DataFileConfig:
         Size of data/ROI contained in file, determined automatically
     file_voxel_size: list of int
         Voxel size of data in file, determined automatically
-    file_track_range: list of int
-        deprecated
     """
     filename = attr.ib(type=str)
     group = attr.ib(type=str, default=None)
     file_roi = attr.ib(default=None)
     file_voxel_size = attr.ib(default=None)
-    file_track_range = attr.ib(type=List[int], default=None)
 
     def __attrs_post_init__(self):
         """Read voxel size and ROI from file
@@ -104,34 +101,8 @@ class DataFileConfig:
                 offset=data_config['general']['offset'],
                 shape=[s*v for s,v in zip(data_config['general']['shape'],
                                           self.file_voxel_size)])  # type: ignore
-            self.file_track_range = data_config['general'].get('track_range')
             if self.group is None:
                 self.group = data_config['general']['group']
-
-
-@attr.s(kw_only=True)
-class DataDBMetaConfig:
-    """Defines a configuration uniquely identifying a database
-
-    Attributes
-    ----------
-    setup_dir: str
-        Name of the used setup
-    checkpoint: int
-        Which model checkpoint was used for prediction
-    cell_score_threshold: float
-        Which cell score threshold was used during prediction
-    voxel_size: list of int
-        What is the voxel size of the data?
-
-    Notes
-    -----
-    TODO add roi? remove voxel_size?
-    """
-    setup_dir = attr.ib(type=str, default=None)
-    checkpoint = attr.ib(type=int)
-    cell_score_threshold = attr.ib(type=float)
-    voxel_size = attr.ib(type=List[int], default=None)
 
 
 @attr.s(kw_only=True)

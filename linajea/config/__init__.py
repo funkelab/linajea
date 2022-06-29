@@ -8,10 +8,6 @@ Submodules
 
 augment:
     defines configuration used for data augmentation during training
-cell_cycle_config:
-    combines other config submodules into config for cell state classifier
-cnn_config:
-    defines configuration used for CNNs (e.g. for cell state classifier)
 data:
     defines configuration used for data samples
 evaluate:
@@ -39,28 +35,18 @@ utils:
 """
 # flake8: noqa
 
-from .augment import (AugmentTrackingConfig,
-                      AugmentCellCycleConfig)
-from .cell_cycle_config import CellCycleConfig
-from .cnn_config import (VGGConfig,
-                         ResNetConfig,
-                         EfficientNetConfig)
+from .augment import AugmentTrackingConfig
 from .data import DataFileConfig
-from .evaluate import (EvaluateCellCycleConfig,
-                       EvaluateTrackingConfig)
+from .evaluate import EvaluateTrackingConfig
 from .extract import ExtractConfig
 from .general import GeneralConfig
 from .job import JobConfig
-from .predict import (PredictCellCycleConfig,
-                      PredictTrackingConfig)
+from .predict import PredictTrackingConfig
 from .solve import (SolveConfig,
-                    SolveParametersMinimalConfig,
-                    SolveParametersNonMinimalConfig)
+                    SolveParametersConfig)
 from .tracking_config import TrackingConfig
-from .train import (TrainTrackingConfig,
-                    TrainCellCycleConfig)
-from .train_test_validate_data import (InferenceDataTrackingConfig,
-                                       InferenceDataCellCycleConfig)
+from .train import TrainTrackingConfig
+from .train_test_validate_data import InferenceDataTrackingConfig
 from .unet_config import UnetConfig
 from .utils import (dump_config,
                     load_config,
