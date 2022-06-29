@@ -4,8 +4,8 @@ import re
 
 import pandas
 
-from linajea import (CandidateDatabase,
-                     checkOrCreateDB)
+from linajea.utils import (CandidateDatabase,
+                           checkOrCreateDB)
 from linajea.tracking import TrackingParameters
 
 logger = logging.getLogger(__name__)
@@ -181,7 +181,7 @@ def get_results_sorted(config,
     if not score_weights:
         score_weights = [1.]*len(score_columns)
 
-    db_name = config.inference.data_source.db_name
+    db_name = config.inference_data.data_source.db_name
 
     logger.info("checking db: %s", db_name)
 
@@ -282,7 +282,7 @@ def get_result_id(
     Returns a dictionary containing the keys and values of the score
     object.
     '''
-    db_name = config.inference.data_source.db_name
+    db_name = config.inference_data.data_source.db_name
     candidate_db = CandidateDatabase(db_name, config.general.db_host, 'r')
 
     result = candidate_db.get_score(parameters_id,
@@ -298,10 +298,10 @@ def get_result_params(
     Returns a dictionary containing the keys and values of the score
     object.
     '''
-    db_name = config.inference.data_source.db_name
+    db_name = config.inference_data.data_source.db_name
     candidate_db = CandidateDatabase(db_name, config.general.db_host, 'r')
     if config.evaluate.parameters.roi is None:
-        config.evaluate.parameters.roi = config.inference.data_source.roi
+        config.evaluate.parameters.roi = config.inference_data.data_source.roi
 
     result = candidate_db.get_score(
         candidate_db.get_parameters_id_round(

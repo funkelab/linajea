@@ -1,6 +1,6 @@
 import logging
 import networkx as nx
-from linajea import CandidateDatabase
+from linajea.utils import CandidateDatabase
 from daisy import Roi
 from .track_graph import TrackGraph
 

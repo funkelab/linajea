@@ -17,7 +17,7 @@ def solve_blockwise(linajea_config):
     block_size = daisy.Coordinate(parameters[0].block_size)
     context = daisy.Coordinate(parameters[0].context)
 
-    data = linajea_config.inference.data_source
+    data = linajea_config.inference_data.data_source
     db_name = data.db_name
     db_host = linajea_config.general.db_host
     solve_roi = daisy.Roi(offset=data.roi.offset,
@@ -49,7 +49,8 @@ def solve_blockwise(linajea_config):
         context)
 
     logger.info("Solving in %s", total_roi)
-    logger.info("Sample: %s", data.datafile.filename)
+    if data.datafile is not None:
+        logger.info("Sample: %s", data.datafile.filename)
     logger.info("DB: %s", db_name)
 
     param_names = ['solve_' + str(_id) for _id in parameters_id]
@@ -123,7 +124,7 @@ def solve_in_block(linajea_config,
     # data from outside the solution roi
     # or paying the appear or disappear costs unnecessarily
 
-    db_name = linajea_config.inference.data_source.db_name
+    db_name = linajea_config.inference_data.data_source.db_name
     db_host = linajea_config.general.db_host
 
     if len(parameters_id) == 1:

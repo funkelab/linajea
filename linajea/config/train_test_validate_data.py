@@ -1,3 +1,10 @@
+"""Configuration used to define a dataset for training/test/validation
+
+A dataset can consist of multiple samples (data sources). For Training
+TrainData has to be defined. If the automated data selection functions
+are used define ValData and TestData (support multiple samples),
+otherwise define InferenceData (only a single sample, data source)
+"""
 from copy import deepcopy
 import os
 from typing import List
@@ -13,9 +20,40 @@ from .utils import (ensure_cls,
 
 
 @attr.s(kw_only=True)
-class DataConfig():
+class _DataConfig():
+    """Defines a base class for the definition of a data set
+
+    Attributes
+    ----------
+    data_sources: list of DataSourceConfig
+        List of data sources, can also only have a single element
+    voxel_size: list of int, optional
+    roi: DataROIConfig, optional
+    group: str, optional
+        voxel_size, roi and group can be set on the data source level
+        and on the data set level. If set on the data set level, they
+        the same values are used for all data sources
+    """
     data_sources = attr.ib(converter=ensure_cls_list(DataSourceConfig))
+    voxel_size = attr.ib(type=List[int], default=None)
+    roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
+    group = attr.ib(type=str, default=None)
     def __attrs_post_init__(self):
+        """Validate the supplied parameters and try to fix missing ones
+
+        For every data source:
+        The ROI has to be set.
+        If it is not set, check if it has been set on the data set level
+            If yes, use this value.
+            If no, use the ROI of the data file
+        The ROI cannot be larger than the ROI of the data file
+        The voxel size has to be set.
+        If it is not set, do the same as for the ROI
+        The group/array to be used has to be set.
+        If it is not set, do the same as for the ROI
+
+        The voxel size has to be identical for all data sources
+        """
         for d in self.data_sources:
             if d.roi is None:
                 if self.roi is None:
@@ -49,14 +87,12 @@ class DataConfig():
                     offset=[begin_frame, None, None, None],
                     shape=[end_frame-begin_frame+1, None, None, None])
                 roi = roi.intersect(track_range_roi)
-                # d.roi.offset[0] = max(begin_frame, d.roi.offset[0])
-                # d.roi.shape[0] = min(end_frame - begin_frame + 1,
-                #                      d.roi.shape[0])
             d.roi.offset = roi.get_offset()
             d.roi.shape = roi.get_shape()
             if d.voxel_size is None:
                 if self.voxel_size is None:
                     d.voxel_size = d.datafile.file_voxel_size
+                    self.voxel_size = d.voxel_size
                 else:
                     d.voxel_size = self.voxel_size
             if d.datafile.group is None:
@@ -68,43 +104,110 @@ class DataConfig():
                    for ds in self.data_sources), \
                        "data sources with varying voxel_size not supported"
 
-    voxel_size = attr.ib(type=List[int], default=None)
-    roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
-    group = attr.ib(type=str, default=None)
-
 
 @attr.s(kw_only=True)
-class TrainDataTrackingConfig(DataConfig):
-    data_sources = attr.ib(converter=ensure_cls_list(DataSourceConfig))
+class TrainDataTrackingConfig(_DataConfig):
+    """Defines a specialized class for the definition of a training data set
+    """
+    # data_sources = attr.ib(converter=ensure_cls_list(DataSourceConfig))
     @data_sources.validator
     def _check_train_data_source(self, attribute, value):
+        """a train data source has to use datafiles and cannot have a database"""
         for ds in value:
             if ds.db_name is not None:
                 raise ValueError("train data_sources must not have a db_name")
 
 
 @attr.s(kw_only=True)
-class TestDataTrackingConfig(DataConfig):
+class TestDataTrackingConfig(_DataConfig):
+    """Defines a specialized class for the definition of a test data set
+
+    Attributes
+    ----------
+    checkpoint: int
+        Which checkpoint of the trained model should be used?
+    cell_score_threshold: float
+        What is the minimum score of object/node candidates?
+    """
     checkpoint = attr.ib(type=int, default=None)
     cell_score_threshold = attr.ib(type=float, default=None)
 
 
 @attr.s(kw_only=True)
 class InferenceDataTrackingConfig():
+    """Defines a class for the definition of an inference data set
+
+    An inference data set has only a single data source.
+    If the getNextInferenceData facility is used for inference, it is
+    set automatically based on the values for validate/test data and
+    the current step in the pipeline.
+    Otherwise it has to be set manually (and instead of validate/test)
+    data.
+
+    Attributes
+    ----------
+    data_source: DataSourceConfig
+        Which data source should be used?
+    checkpoint: int
+        Which checkpoint of the trained model should be used?
+    cell_score_threshold: float
+        What is the minimum score of object/node candidates?
+    """
     data_source = attr.ib(converter=ensure_cls(DataSourceConfig))
     checkpoint = attr.ib(type=int, default=None)
     cell_score_threshold = attr.ib(type=float, default=None)
 
+    def __attrs_post_init__(self):
+        """Try to fix ROI/voxel size if needed
+
+        If a data file is set, and ROI or voxel size are not set, try
+        to set it based on file info
+        If data file is not set, and ROI or voxel size are not set and
+        database does not contain the respective information an error
+        will be thrown later in the pipeline.
+        """
+        if self.data_source.datafile is not None:
+            if self.data_source.voxel_size is None:
+                self.data_source.voxel_size = self.data_source.datafile.file_voxel_size
+            if self.data_source.roi is None:
+                self.data_source.roi = self.data_source.datafile.file_roi
 
 @attr.s(kw_only=True)
-class ValidateDataTrackingConfig(DataConfig):
-    checkpoints = attr.ib(type=List[int])
+class ValidateDataTrackingConfig(_DataConfig):
+    """Defines a specialized class for the definition of a validation data set
+
+    Attributes
+    ----------
+    checkpoints: list of int
+        Which checkpoints of the trained model should be used?
+    cell_score_threshold: float
+        What is the minimum score of object/node candidates?
+
+    Notes
+    -----
+    Computes the results for every checkpoint
+    """
+    checkpoints = attr.ib(type=List[int], default=[None])
     cell_score_threshold = attr.ib(type=float, default=None)
 
 
 
 @attr.s(kw_only=True)
-class DataCellCycleConfig(DataConfig):
+class _DataCellCycleConfig(_DataConfig):
+    """Defines a base class for the definition of a cell state classifier data set
+
+    Attributes
+    ----------
+    use_database: bool
+        If set, samples are read from database, not from data file
+    db_meta_info: DataDBMetaConfig
+        Identifies database to use if use_database is set
+    skip_predict: bool
+        Skip prediction step, e.g. if already computed
+        (enables shortcut in run script)
+    force_predict: bool
+        Enforce prediction, even if already done previously
+    """
     use_database = attr.ib(type=bool)
     db_meta_info = attr.ib(converter=ensure_cls(DataDBMetaConfig), default=None)
     skip_predict = attr.ib(type=bool, default=False)
@@ -112,24 +215,65 @@ class DataCellCycleConfig(DataConfig):
 
 
 @attr.s(kw_only=True)
-class TrainDataCellCycleConfig(DataCellCycleConfig):
+class TrainDataCellCycleConfig(_DataCellCycleConfig):
+    """Definition of a cell state classifier training data set
+    """
     pass
 
 
 @attr.s(kw_only=True)
-class TestDataCellCycleConfig(DataCellCycleConfig):
+class TestDataCellCycleConfig(_DataCellCycleConfig):
+    """Definition of a cell state classifier test data set
+
+    Attributes
+    ----------
+    checkpoint: int
+        Which checkpoint of the trained model should be used?
+    prob_threshold: float
+        What is the minimum score of object/node candidates to be considered?
+    """
     checkpoint = attr.ib(type=int)
     prob_threshold = attr.ib(type=float, default=None)
 
 
 @attr.s(kw_only=True)
-class ValidateDataCellCycleConfig(DataCellCycleConfig):
+class ValidateDataCellCycleConfig(_DataCellCycleConfig):
+    """Definition of a cell state classifier training data set
+
+    Attributes
+    ----------
+    checkpoints: list of int
+        Which checkpoints of the trained model should be used?
+    prob_threshold: list of float
+        What are the minimum scores of object/node candidates to be considered?
+
+    Notes
+    -----
+    Computes the result for every combination of checkpoints and thresholds
+    """
     checkpoints = attr.ib(type=List[int])
     prob_thresholds = attr.ib(type=List[float], default=None)
 
 
 @attr.s(kw_only=True)
 class InferenceDataCellCycleConfig():
+    """Definition of a cell state classifier inference data set
+
+    Attributes
+    ----------
+    data_source: DataSourceConfig
+        Which data source should be used?
+    checkpoint: int
+        Which checkpoint of the trained model should be used?
+    prob_threshold: float
+        What is the minimum score of object/node candidates to be considered?
+    use_database: bool
+        If set, samples are read from database, not from data file
+    db_meta_info: DataDBMetaConfig
+        Identifies database to use if use_database is set
+    force_predict: bool
+        Enforce prediction, even if already done previously
+    """
     data_source = attr.ib(converter=ensure_cls(DataSourceConfig))
     checkpoint = attr.ib(type=int, default=None)
     prob_threshold = attr.ib(type=float)

@@ -1,10 +1,29 @@
-import attr
-import os
+"""Contains some utility functions to load configuration
+"""
 import json
+import logging
+import os
+import time
+
+import attr
 import toml
+
+logger = logging.getLogger(__name__)
 
 
 def load_config(config_file):
+    """Load toml or json config file into dict
+
+    Args
+    ----
+    config_file: str
+        path to config file, in json or toml format
+
+    Raises
+    ------
+    ValueError
+        If file not in json or toml format
+    """
     ext = os.path.splitext(config_file)[1]
     with open(config_file, 'r') as f:
         if ext == '.json':
@@ -26,23 +45,77 @@ def load_config(config_file):
     return config
 
 
+def dump_config(config):
+    """Write config (as class or dict) to toml file
+
+    Args
+    ----
+    config: TrackingConfig or CellCycleConfig or dict
+    """
+    if not isinstance(config, dict):
+        config = attr.asdict(config)
+    path = os.path.join(config["general"]["setup_dir"],
+                        "tmp_configs",
+                        "config_{}.toml".format(
+                            time.time()))
+    logger.debug("config dump path: %s", path)
+    with open(path, 'w') as f:
+        toml.dump(config, f)
+    return path
+
+
 def ensure_cls(cl):
-    """If the attribute is an instance of cls, pass, else try constructing."""
+    """attrs convert to ensure type of value
+
+    If the attribute is an instance of cls or None, pass, else try
+    constructing. This way an instance of an attrs config object can be
+    passed or a dict that can be used to construct such an instance.
+    """
     def converter(val):
+        if isinstance(val, str) and val.endswith(".toml"):
+            val = load_config(val)
         if isinstance(val, cl) or val is None:
             return val
         else:
             return cl(**val)
     return converter
 
+def ensure_cls_construct_on_none(cl):
+    """attrs convert to ensure type of value
+
+    If the attribute is an instance of cls, pass, else try constructing.
+    This way an instance of an attrs config object can be passed or a
+    dict that can be used to construct such an instance.
+    """
+    def converter(val):
+        if isinstance(val, cl):
+            return val
+        elif val is None:
+            return cl()
+        else:
+            return cl(**val)
+    return converter
+
+
 
 def ensure_cls_list(cl):
-    """If the attribute is an list of instances of cls, pass, else try constructing."""
+    """attrs converter to ensure type of values in list
+
+    If the attribute is an list of instances of cls, pass, else try constructing.
+    This way a list of instances of an attrs config object can be passed
+    or a list of dicts that can be used to construct such instances.
+
+    Raises
+    ------
+    RuntimeError
+        If passed value is not a list
+    """
     def converter(vals):
         if vals is None:
             return None
 
-        assert isinstance(vals, list), "list of {} expected ({})".format(cl, vals)
+        assert isinstance(vals, list), "list of {} expected ({})".format(
+            cl, vals)
         converted = []
         for val in vals:
             if isinstance(val, cl) or val is None:
@@ -55,12 +128,34 @@ def ensure_cls_list(cl):
 
 
 def _check_nd_shape(ndims):
+    """attrs validator to verify length of list
 
+    Verify that lists representing nD shapes or size have the correct
+    length.
+    """
     def _check_shape(self, attribute, value):
         if len(value) != ndims:
-            raise ValueError("{} must be 4d".format(attribute))
+            raise ValueError("{} must be {}d".format(attribute, ndims))
     return _check_shape
 
+def _check_nested_nd_shape(ndims):
+    """attrs validator to verify length of list
+
+    Verify that lists representing nD shapes or size have the correct
+    length.
+    """
+    def _check_shape(self, attribute, value):
+        for v in value:
+            if len(v) != ndims:
+                raise ValueError("{} must be {}d".format(attribute, ndims))
+    return _check_shape
+
+"""
+_int_list_validator:
+    attrs validator to validate list of ints
+_list_int_list_validator:
+    attrs validator to validate list of list of ints
+"""
 _int_list_validator = attr.validators.deep_iterable(
     member_validator=attr.validators.instance_of(int),
     iterable_validator=attr.validators.instance_of(list))
@@ -70,6 +165,8 @@ _list_int_list_validator = attr.validators.deep_iterable(
     iterable_validator=attr.validators.instance_of(list))
 
 def _check_possible_nested_lists(self, attribute, value):
+    """attrs validator to verify list of ints or list of lists of ints
+    """
     try:
         attr.validators.deep_iterable(
             member_validator=_int_list_validator,
@@ -79,39 +176,71 @@ def _check_possible_nested_lists(self, attribute, value):
             member_validator=_list_int_list_validator,
             iterable_validator=attr.validators.instance_of(list))(self, attribute, value)
 
+
 def maybe_fix_config_paths_to_machine_and_load(config):
+    """Automatically adapt paths in config to machine the code is run on
+
+    Notes
+    -----
+    Expects a file "linajea_paths.toml" in the home directory of the users
+    with two entries:
+    HOME: root of experiments directory
+    DATA: root of data directory
+
+    Returns
+    -------
+    dict
+        config with paths adapted to local machine
+    """
     config_dict = toml.load(config)
     config_dict["path"] = config
 
     if os.path.isfile(os.path.join(os.environ['HOME'], "linajea_paths.toml")):
         paths = load_config(os.path.join(os.environ['HOME'], "linajea_paths.toml"))
-        # if paths["DATA"] == "TMPDIR":
-            # paths["DATA"] = os.environ['TMPDIR']
-        config_dict["general"]["setup_dir"] = config_dict["general"]["setup_dir"].replace(
-            "/groups/funke/home/hirschp/linajea_experiments",
-            paths["HOME"])
-        config_dict["model"]["path_to_script"] = config_dict["model"]["path_to_script"].replace(
-            "/groups/funke/home/hirschp/linajea_experiments",
-            paths["HOME"])
-        config_dict["train"]["path_to_script"] = config_dict["train"]["path_to_script"].replace(
-            "/groups/funke/home/hirschp/linajea_experiments",
-            paths["HOME"])
-        config_dict["predict"]["path_to_script"] = config_dict["predict"]["path_to_script"].replace(
-            "/groups/funke/home/hirschp/linajea_experiments",
-            paths["HOME"])
-        if "path_to_script_db_from_zarr" in config_dict["predict"]:
-            config_dict["predict"]["path_to_script_db_from_zarr"] = config_dict["predict"]["path_to_script_db_from_zarr"].replace(
-                "/groups/funke/home/hirschp/linajea_experiments",
-                paths["HOME"])
-        if "output_zarr_prefix" in config_dict["predict"]:
-            config_dict["predict"]["output_zarr_prefix"] = config_dict["predict"]["output_zarr_prefix"].replace(
-                "/nrs/funke/hirschp",
-                paths["DATA"])
-        for dt in [config_dict["train_data"]["data_sources"],
-                   config_dict["test_data"]["data_sources"],
-                   config_dict["validate_data"]["data_sources"]]:
-            for ds in dt:
-                ds["datafile"]["filename"] = ds["datafile"]["filename"].replace(
-                    "/nrs/funke/hirschp",
-                    paths["DATA"])
+
+        if "general" in config_dict:
+            config_dict["general"]["setup_dir"] = \
+                config_dict["general"]["setup_dir"].replace(
+                    "/groups/funke/home/hirschp/linajea_experiments",
+                    paths["HOME"])
+        if "model" in config_dict:
+            config_dict["model"]["path_to_script"] = \
+                config_dict["model"]["path_to_script"].replace(
+                    "/groups/funke/home/hirschp/linajea_experiments",
+                    paths["HOME"])
+        if "train" in config_dict:
+            config_dict["train"]["path_to_script"] = \
+                config_dict["train"]["path_to_script"].replace(
+                    "/groups/funke/home/hirschp/linajea_experiments",
+                    paths["HOME"])
+        if "predict" in config_dict:
+            config_dict["predict"]["path_to_script"] = \
+                config_dict["predict"]["path_to_script"].replace(
+                    "/groups/funke/home/hirschp/linajea_experiments",
+                    paths["HOME"])
+            if "path_to_script_db_from_zarr" in config_dict["predict"]:
+                config_dict["predict"]["path_to_script_db_from_zarr"] = \
+                    config_dict["predict"]["path_to_script_db_from_zarr"].replace(
+                        "/groups/funke/home/hirschp/linajea_experiments",
+                        paths["HOME"])
+            if "output_zarr_prefix" in config_dict["predict"]:
+                config_dict["predict"]["output_zarr_prefix"] = \
+                    config_dict["predict"]["output_zarr_prefix"].replace(
+                        "/nrs/funke/hirschp",
+                        paths["DATA"])
+        dss = []
+        dss += ["train_data"] if "train_data" in config_dict else []
+        dss += ["test_data"] if "test_data" in config_dict else []
+        dss += ["validate_data"] if "validate_data" in config_dict else []
+        dss += ["inference_data"] if "inference_data" in config_dict else []
+        for ds in dss:
+            ds = (config_dict[ds]["data_sources"]
+                  if "data_sources" in config_dict[ds]
+                  else [config_dict[ds]["data_source"]])
+            for sample in ds:
+                if "datafile" in sample:
+                    sample["datafile"]["filename"] = \
+                        sample["datafile"]["filename"].replace(
+                            "/nrs/funke/hirschp",
+                            paths["DATA"])
     return config_dict

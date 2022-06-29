@@ -1,22 +1,30 @@
-import attr
+"""Configuration used to define parameters for ILP solver
+"""
+
 import itertools
 import logging
-import os
 import random
 from typing import List
+
+import attr
 
 from .data import DataROIConfig
 from .job import JobConfig
 from .utils import (ensure_cls,
-                    ensure_cls_list)
+                    load_config)
 
 logger = logging.getLogger(__name__)
 
 
-def convert_solve_params_list():
+def _convert_solve_params_list():
+    """Auxiliary setup function to distinguish between
+    minimal and non-minimal ILP parameters"""
     def converter(vals):
         if vals is None:
             return None
+        if isinstance(vals, str) and vals.endswith(".toml"):
+            tmp_config = load_config(vals)
+            vals = tmp_config["solve"]["parameters"]
         if not isinstance(vals, list):
             vals = [vals]
         converted = []
@@ -34,7 +42,9 @@ def convert_solve_params_list():
     return converter
 
 
-def convert_solve_search_params():
+def _convert_solve_search_params():
+    """Auxiliary setup function to distinguish between
+    minimal and non-minimal ILP parameters"""
     def converter(vals):
         if vals is None:
             return None
@@ -52,6 +62,41 @@ def convert_solve_search_params():
 
 @attr.s(kw_only=True)
 class SolveParametersMinimalConfig:
+    """Defines a set of ILP hyperparameters
+
+    Attributes
+    ----------
+    track_cost, weight_node_score, selection_constant, weight_division,
+    division_constant, weight_child, weight_continuation,
+    weight_edge_score: float
+        main ILP hyperparameters
+    cell_cycle_key: str
+        key defining which cell cycle classifier to use
+    block_size: list of int
+        ILP is solved in blocks, defines size of each block
+    context: list of int
+        Size of context by which block is grown, to ensure consistent
+        solution along borders
+    max_cell_move: int
+        How far a cell can move in one frame, cells closer than this
+        value to the border do not have to pay certain costs
+        (by default edge_move_threshold from extract is used)
+    roi: DataROI
+        Size of the data sample that is being "solved"
+    feature_func: str
+        Optional function that is applied to node and edge scores
+        before incorporating them into the cost function.
+        One of ["noop", "log", "square"]
+    val: bool
+        Is this set of parameters part of the validation
+        parameter search or does it represent a test result?
+        (if database is used once for testing and once for validation
+        as part of cross-validation)
+    tag: str
+        To automatically tag e.g. ssvm/greedy solutions
+
+
+    """
     track_cost = attr.ib(type=float)
     weight_node_score = attr.ib(type=float)
     selection_constant = attr.ib(type=float)
@@ -63,18 +108,31 @@ class SolveParametersMinimalConfig:
     cell_cycle_key = attr.ib(type=str, default=None)
     block_size = attr.ib(type=List[int])
     context = attr.ib(type=List[int])
-    # max_cell_move: currently use edge_move_threshold from extract
     max_cell_move = attr.ib(type=int, default=None)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
     feature_func = attr.ib(type=str, default="noop")
     val = attr.ib(type=bool, default=False)
+    tag = attr.ib(type=str, default=None)
 
     def valid(self):
+        """Get all valid attributes
+
+        Returns
+        -------
+            Dict with all parameters that are not None
+        """
         return {key: val
                 for key, val in attr.asdict(self).items()
                 if val is not None}
 
     def query(self):
+        """Get attributes for (querying database)
+
+        Returns
+        -------
+            Dict with all valid parameters and all invalid parameters
+            set to "exist=False"
+        """
         params_dict_valid = self.valid()
         params_dict_none = {key: {"$exists": False}
                             for key, val in attr.asdict(self).items()
@@ -85,25 +143,50 @@ class SolveParametersMinimalConfig:
 
 @attr.s(kw_only=True)
 class SolveParametersMinimalSearchConfig:
+    """Defines ranges/sets of ILP hyperparameters for a parameter search
+
+    Can be used for both random search (search by selecting random
+    values within given range) and grid search (search by
+    cartesian product of given values per parameter)
+
+    Notes
+    -----
+    For description of main attributes see SolveParametersMinimalConfig
+
+    Attributes
+    ----------
+    num_configs: int
+        How many sets of parameters to check.
+        For random search: select this many sets of random values
+        For grid search: shuffle cartesian product of parameters and
+        take the num_configs first ones
+    """
     track_cost = attr.ib(type=List[float])
     weight_node_score = attr.ib(type=List[float])
     selection_constant = attr.ib(type=List[float])
-    weight_division = attr.ib(type=List[float])
+    weight_division = attr.ib(type=List[float], default=None)
     division_constant = attr.ib(type=List[float])
-    weight_child = attr.ib(type=List[float])
-    weight_continuation = attr.ib(type=List[float])
+    weight_child = attr.ib(type=List[float], default=None)
+    weight_continuation = attr.ib(type=List[float], default=None)
     weight_edge_score = attr.ib(type=List[float])
     cell_cycle_key = attr.ib(type=str, default=None)
     block_size = attr.ib(type=List[List[int]])
     context = attr.ib(type=List[List[int]])
-    # max_cell_move: currently use edge_move_threshold from extract
     max_cell_move = attr.ib(type=List[int], default=None)
     feature_func = attr.ib(type=List[str], default=["noop"])
-    num_configs = attr.ib(type=int, default=None)
     val = attr.ib(type=List[bool], default=[True])
+    num_configs = attr.ib(type=int, default=None)
+
 
 @attr.s(kw_only=True)
 class SolveParametersNonMinimalConfig:
+    """Defines ILP hyperparameters
+
+    Notes
+    -----
+    old set of parameters, not used anymore, for backwards compatibility
+    for basic info see SolveParametersMinimalConfig
+    """
     cost_appear = attr.ib(type=float)
     cost_disappear = attr.ib(type=float)
     cost_split = attr.ib(type=float)
@@ -121,7 +204,6 @@ class SolveParametersNonMinimalConfig:
     prefix = attr.ib(type=str, default=None)
     block_size = attr.ib(type=List[int])
     context = attr.ib(type=List[int])
-    # max_cell_move: currently use edge_move_threshold from extract
     max_cell_move = attr.ib(type=int, default=None)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
 
@@ -141,6 +223,13 @@ class SolveParametersNonMinimalConfig:
 
 @attr.s(kw_only=True)
 class SolveParametersNonMinimalSearchConfig:
+    """Defines ranges/sets of ILP hyperparameters for a parameter search
+
+    Notes
+    -----
+    old set of parameters, not used anymore, for backwards compatibility
+    for basic info see SolveParametersMinimalSearchConfig
+    """
     cost_appear = attr.ib(type=List[float])
     cost_disappear = attr.ib(type=List[float])
     cost_split = attr.ib(type=List[float])
@@ -162,6 +251,44 @@ class SolveParametersNonMinimalSearchConfig:
     num_configs = attr.ib(type=int, default=None)
 
 def write_solve_parameters_configs(parameters_search, non_minimal, grid):
+    """Create list of ILP hyperparameter sets based on configuration
+
+    Args
+    ----
+    parameters_search: SolveParametersMinimalSearchConfig
+        Parameter search object that is used to create list of
+        individual sets of parameters
+    non_minimal: bool
+        Create minimal (new) or non minimal (old, deprecated) set of
+        parameters
+    grid: bool
+        Do grid search or random search
+
+    Returns
+    -------
+    List of ILP hyperparameter configurations
+
+
+    Notes
+    -----
+    Random search:
+        How random values are determined depends on respective type of
+        values, number of combinations determined by num_configs
+        Not a list or list with single value:
+            interpreted as single value that is selected
+        List of str or more than two values:
+            interpreted as discrete options
+        List of two lists:
+            Sample outer list discretely. If inner list contains
+            strings, sample discretely again; if inner list contains
+            numbers, sample uniformly from range
+        List of two numbers:
+            Sample uniformly from range
+    Grid search:
+        Perform some type cleanup and compute cartesian product with
+        itertools.product. If num_configs is set, shuffle list and take
+        the num_configs first ones.
+    """
     params = {k:v
               for k,v in attr.asdict(parameters_search).items()
               if v is not None}
@@ -230,12 +357,57 @@ def write_solve_parameters_configs(parameters_search, non_minimal, grid):
 
 @attr.s(kw_only=True)
 class SolveConfig:
-    job = attr.ib(converter=ensure_cls(JobConfig))
+    """Defines configuration for ILP solving step
+
+    Attributes
+    ----------
+    job: JobConfig
+        HPC cluster parameters, default constructed (executed locally)
+        if not supplied
+    from_scratch: bool
+        If solution should be recomputed if it already exists
+    parameters: SolveParametersMinimalConfig
+        Fixed set of ILP parameters
+    parameters_search_grid, parameters_search_random: SolveParametersMinimalSearchConfig
+        Ranges/sets per ILP parameter to create parameter search
+    non_minimal: bool
+        If old (non-minimal) parameters should be used, deprecated
+    greedy: bool
+        Do not use ILP for solving, greedy nearest neighbor tracking
+    write_struct_svm: str
+        If not None, do not solve but write files required for StructSVM
+        parameter search
+    check_node_close_to_roi: bool
+        If set, nodes close to roi border do not pay certain costs
+        (as they can move outside of the field of view)
+    add_node_density_constraints: bool
+        Prevent multiple nodes within certain range, useful if size of
+        nuclei changes drastically over time, deprecated
+    timeout: int
+        Time the solver has to find a solution
+    masked_nodes: str
+        Tag that can be used to mask certain nodes (i.e. discard them),
+        deprecated
+    clip_low_score: float
+        Discard nodes with score lower than this value;
+        Only useful if lower than threshold used during prediction
+    grid_search, random_search: bool
+        If grid and/or random search over ILP parameters should be
+        performed
+
+    Notes
+    -----
+    The post init attrs function handles all the parameter setup, e.g.
+    creating the parameter search configurations on the fly, if and
+    which kind of search to perform etc.
+    """
+    job = attr.ib(converter=ensure_cls(JobConfig),
+                  default=attr.Factory(JobConfig))
     from_scratch = attr.ib(type=bool, default=False)
-    parameters = attr.ib(converter=convert_solve_params_list(), default=None)
-    parameters_search_grid = attr.ib(converter=convert_solve_search_params(),
+    parameters = attr.ib(converter=_convert_solve_params_list(), default=None)
+    parameters_search_grid = attr.ib(converter=_convert_solve_search_params(),
                                      default=None)
-    parameters_search_random = attr.ib(converter=convert_solve_search_params(),
+    parameters_search_random = attr.ib(converter=_convert_solve_search_params(),
                                        default=None)
     non_minimal = attr.ib(type=bool, default=False)
     greedy = attr.ib(type=bool, default=False)
@@ -258,6 +430,14 @@ class SolveConfig:
         if self.grid_search or self.random_search:
             assert self.grid_search != self.random_search, \
                 "choose either grid or random search!"
+            assert self.parameters is None, \
+                ("overwriting explicit solve parameters with grid/random search "
+                 "parameters not supported. For search please either (1) "
+                 "precompute search parameters (e.g. using write_config_files.py) "
+                 "and set solve.parameters to point to resulting file or (2) "
+                 "let search parameters be created automatically by setting "
+                 "solve.grid/random_search to true (only supported when using "
+                 "the getNextInferenceData facility to loop over data samples)")
             if self.parameters is not None:
                 logger.warning("overwriting explicit solve parameters with "
                                "grid/random search parameters!")
@@ -285,8 +465,8 @@ class SolveConfig:
                 "weight_child": 0,
                 "weight_continuation": 0,
                 "weight_edge_score":  0,
-                "block_size": [15, 512, 512, 712],
-                "context": [2, 100, 100, 100]
+                "block_size": [-1, -1, -1, -1],
+                "context": [-1, -1, -1, -1]
             }
             if self.parameters[0].cell_cycle_key is not None:
                 config_vals['cell_cycle_key'] = self.parameters[0].cell_cycle_key

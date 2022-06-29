@@ -11,6 +11,7 @@ import daisy
 import funlib.math
 
 import linajea.tracking
+import linajea.utils
 from .evaluate import evaluate
 
 logger = logging.getLogger(__name__)
@@ -22,9 +23,11 @@ def evaluate_setup(linajea_config):
         "can only handle single parameter set"
     parameters = linajea_config.solve.parameters[0]
 
-    data = linajea_config.inference.data_source
+    data = linajea_config.inference_data.data_source
     db_name = data.db_name
     db_host = linajea_config.general.db_host
+    logger.debug("ROI used for evaluation: %s %s",
+                 linajea_config.evaluate.parameters.roi, data.roi)
     if linajea_config.evaluate.parameters.roi is not None:
         assert linajea_config.evaluate.parameters.roi.shape[0] <= data.roi.shape[0], \
             "your evaluation ROI is larger than your data roi!"
@@ -52,10 +55,11 @@ def evaluate_setup(linajea_config):
             return
 
     logger.info("Evaluating %s in %s",
-                os.path.basename(data.datafile.filename), evaluate_roi)
+                os.path.basename(data.datafile.filename)
+                if data.datafile is not None else db_name, evaluate_roi)
 
-    edges_db = linajea.CandidateDatabase(db_name, db_host,
-                                         parameters_id=parameters_id)
+    edges_db = linajea.utils.CandidateDatabase(db_name, db_host,
+                                               parameters_id=parameters_id)
 
     logger.info("Reading cells and edges in db %s with parameter_id %d"
                 % (db_name, parameters_id))
@@ -86,11 +90,11 @@ def evaluate_setup(linajea_config):
     track_graph = linajea.tracking.TrackGraph(
         subgraph, frame_key='t', roi=subgraph.roi)
 
-    gt_db = linajea.CandidateDatabase(
-        linajea_config.inference.data_source.gt_db_name, db_host)
+    gt_db = linajea.utils.CandidateDatabase(
+        linajea_config.inference_data.data_source.gt_db_name, db_host)
 
     logger.info("Reading ground truth cells and edges in db %s"
-                % linajea_config.inference.data_source.gt_db_name)
+                % linajea_config.inference_data.data_source.gt_db_name)
     start_time = time.time()
     gt_subgraph = gt_db.get_graph(
         evaluate_roi,
@@ -101,7 +105,7 @@ def evaluate_setup(linajea_config):
                    gt_subgraph.number_of_edges(),
                    time.time() - start_time))
 
-    if linajea_config.inference.data_source.gt_db_name_polar is not None and \
+    if linajea_config.inference_data.data_source.gt_db_name_polar is not None and \
        not linajea_config.evaluate.parameters.filter_polar_bodies and \
        not linajea_config.evaluate.parameters.filter_polar_bodies_key:
         gt_subgraph = add_gt_polar_bodies(linajea_config, gt_subgraph,
@@ -154,7 +158,7 @@ def evaluate_setup(linajea_config):
 
 
 def split_two_frame_edges(linajea_config, subgraph, evaluate_roi):
-    voxel_size = daisy.Coordinate(linajea_config.inference.data_source.voxel_size)
+    voxel_size = daisy.Coordinate(linajea_config.inference_data.data_source.voxel_size)
     cells_by_frame = {}
     for cell in subgraph.nodes:
         cell = subgraph.nodes[cell]
@@ -291,7 +295,7 @@ def maybe_filter_short_tracklets(linajea_config, subgraph, evaluate_roi):
         logger.info("track begin: {}, track end: {}, track len: {}".format(
             min_t, max_t, len(track.nodes())))
 
-        if len(track.nodes()) < linajea_config.evaluate.filter_short_tracklets_len \
+        if len(track.nodes()) < linajea_config.evaluate.parameters.filter_short_tracklets_len \
            and max_t != last_frame:
             logger.info("removing %s nodes (very short tracks < %d)",
                         len(track.nodes()),
@@ -303,8 +307,8 @@ def maybe_filter_short_tracklets(linajea_config, subgraph, evaluate_roi):
 
 def add_gt_polar_bodies(linajea_config, gt_subgraph, db_host, evaluate_roi):
     logger.info("polar bodies are not filtered, adding polar body GT..")
-    gt_db_polar = linajea.CandidateDatabase(
-        linajea_config.inference.data_source.gt_db_name_polar, db_host)
+    gt_db_polar = linajea.utils.CandidateDatabase(
+        linajea_config.inference_data.data_source.gt_db_name_polar, db_host)
     gt_polar_subgraph = gt_db_polar[evaluate_roi]
     gt_mx_id = max(gt_subgraph.nodes()) + 1
     mapping = {n: n+gt_mx_id for n in gt_polar_subgraph.nodes()}
