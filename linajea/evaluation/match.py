@@ -1,9 +1,10 @@
-from __future__ import absolute_import
-import pylp
+"""Provides function to match edges in two graphs to each other
+"""
 import logging
 import time
 
 import numpy as np
+import pylp
 import scipy.sparse
 import scipy.spatial
 
@@ -11,8 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 def match_edges(track_graph_x, track_graph_y, matching_threshold):
-    '''
-    Arguments:
+    '''Perform matching of two graphs based on edges
+
+    Args
+    ----
 
         track_graph_x, track_graph_y (``linajea.TrackGraph``):
             Track graphs with the ground truth (x) and predicted (y)
@@ -21,9 +24,12 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
             If the nodes on both ends of an edge are within matching_threshold
             real world units, then they are allowed to be matched
 
-    Returns a list of edges in x, a list of edges in y, a list of edge
-    matches [(id_x, id_y), ...] referring to indexes in the returned lists,
-    and the number of edge false positives
+    Returns
+    -------
+    list
+        A list of edges in x, a list of edges in y, a list of edge
+        matches [(id_x, id_y), ...] referring to indexes in the returned
+        lists, and the number of edge false positives
     '''
     begin = min(track_graph_x.get_frames()[0], track_graph_x.get_frames()[0])
     end = max(track_graph_x.get_frames()[1], track_graph_x.get_frames()[1]) + 1
@@ -101,7 +107,7 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
             logger.debug("finding matches in frame %d" % t)
             node_pairs_two_frames = node_pairs_xy.copy()
             node_pairs_two_frames.update(node_pairs_xy_by_frame[t-1])
-            edge_costs = get_edge_costs(
+            edge_costs = _get_edge_costs(
                     edges_x, edges_y_by_source, node_pairs_two_frames)
             if edge_costs == {}:
                 logger.info("No potential matches with source in frame %d" % t)
@@ -109,8 +115,8 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
             logger.debug("costs: %s" % edge_costs)
             y_edges_in_range = set(edge[1] for edge in edge_costs.keys())
             logger.debug("Y edges in range: %s" % y_edges_in_range)
-            edge_matches_in_frame, _ = match(edge_costs,
-                                             2*matching_threshold + 1)
+            edge_matches_in_frame, _ = _match(edge_costs,
+                                              2*matching_threshold + 1)
             edge_matches.extend(edge_matches_in_frame)
             edge_fps_in_frame = len(y_edges_in_range) -\
                 len(edge_matches_in_frame)
@@ -204,7 +210,7 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
     return edges_x, edges_y, edge_matches, edge_fps
 
 
-def get_edge_costs(edges_x, edges_y_by_source, node_pairs_xy):
+def _get_edge_costs(edges_x, edges_y_by_source, node_pairs_xy):
     '''
     Arguments:
         edges_x (list of int):
@@ -244,7 +250,7 @@ def get_edge_costs(edges_x, edges_y_by_source, node_pairs_xy):
     return edge_costs
 
 
-def match(costs, no_match_cost):
+def _match(costs, no_match_cost):
     ''' Arguments:
 
         costs (``dict`` from ``tuple`` of ids to ``float``):

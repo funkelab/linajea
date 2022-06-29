@@ -1,3 +1,5 @@
+"""Defines evaluator object
+"""
 from copy import deepcopy
 import itertools
 import logging
@@ -5,13 +7,14 @@ import math
 import networkx as nx
 from .report import Report
 from .validation_metric import validation_score
-from .analyze_candidates import get_node_recall, get_edge_recall
 
 logger = logging.getLogger(__name__)
 
 
 class Evaluator:
     ''' A class for evaluating linajea results after matching.
+
+    Takes two graphs and precomputed matched edges.
     Creates a report with statistics, error counts, and locations
     of errors.
 
@@ -43,15 +46,13 @@ class Evaluator:
             rec_track_graph,
             edge_matches,
             unselected_potential_matches,
-            sparse=True,
-            validation_score=False,
-            window_size=50,
-            ignore_one_off_div_errors=False,
-            fn_div_count_unconnected_parent=True
+            sparse,
+            validation_score,
+            window_size,
+            ignore_one_off_div_errors,
+            fn_div_count_unconnected_parent
             ):
         self.report = Report()
-        self.report.fn_div_count_unconnected_parent = \
-            fn_div_count_unconnected_parent
 
         self.gt_track_graph = gt_track_graph
         self.rec_track_graph = rec_track_graph
@@ -61,13 +62,14 @@ class Evaluator:
         self.validation_score = validation_score
         self.window_size = window_size
         self.ignore_one_off_div_errors = ignore_one_off_div_errors
+        self.fn_div_count_unconnected_parent = fn_div_count_unconnected_parent
 
         # get tracks
         self.gt_tracks = gt_track_graph.get_tracks()
         self.rec_tracks = rec_track_graph.get_tracks()
         logger.debug("Found %d gt tracks and %d rec tracks"
                      % (len(self.gt_tracks), len(self.rec_tracks)))
-        self.matched_track_ids = self.__get_track_matches()
+        self.matched_track_ids = self._get_track_matches()
 
         # get track statistics
         rec_matched_tracks = set()
@@ -113,14 +115,7 @@ class Evaluator:
             self.get_validation_score()
         if self.ignore_one_off_div_errors:
             self.get_div_topology_stats()
-        self.get_error_free_tracks()
 
-        num_matches, num_gt_nodes = get_node_recall(
-                self.rec_track_graph, self.gt_track_graph, 15)
-        self.report.node_recall = num_matches / num_gt_nodes
-        num_matches, num_gt_edges = get_edge_recall(
-                self.rec_track_graph, self.gt_track_graph, 15, 35)
-        self.report.edge_recall = num_matches / num_gt_edges
         return self.report
 
     def get_fp_edges(self):
@@ -324,6 +319,7 @@ class Evaluator:
                     # FN - No connections
                     logger.debug("FN - no connections")
                     self.fn_div_no_connection_nodes.append(gt_parent)
+                    self.gt_track_graph.nodes[gt_parent]['FN_D'] = True
                     continue
             prev_edge = prev_edges[0]
             prev_edge_match = self.gt_edges_to_rec_edges.get(prev_edge)
@@ -333,10 +329,12 @@ class Evaluator:
 
             is_tp_div = False
             if self.__div_match_node_equality(c1_t, c2_t):
-                # TP
-                logger.debug("TP div")
-                self.tp_div_nodes.append(gt_parent)
-                is_tp_div = True
+                if self.__div_match_node_equality(c1_t, prev_s) or \
+                   not self.fn_div_count_unconnected_parent:
+                    # TP
+                    logger.debug("TP div")
+                    self.tp_div_nodes.append(gt_parent)
+                    is_tp_div = True
                 if not self.__div_match_node_equality(c1_t, prev_s):
                     # FN - Unconnected parent
                     logger.debug("FN div - unconnected parent")
@@ -347,10 +345,12 @@ class Evaluator:
                     # FN - one unconnected child
                     logger.debug("FN div - one unconnected child")
                     self.fn_div_unconnected_child_nodes.append(gt_parent)
+                    self.gt_track_graph.nodes[gt_parent]['FN_D'] = True
                 else:
                     # FN - no connections
                     logger.debug("FN div - no connections")
                     self.fn_div_no_connection_nodes.append(gt_parent)
+                    self.gt_track_graph.nodes[gt_parent]['FN_D'] = True
 
             if not is_tp_div:
                 node = [self.gt_track_graph.nodes[gt_parent]['t'],
@@ -362,7 +362,8 @@ class Evaluator:
         self.report.set_fn_divisions(self.fn_div_no_connection_nodes,
                                      self.fn_div_unconnected_child_nodes,
                                      self.fn_div_unconnected_parent_nodes,
-                                     self.tp_div_nodes)
+                                     self.tp_div_nodes,
+                                     self.fn_div_count_unconnected_parent)
 
     def get_f_score(self):
         self.report.set_f_score()
@@ -435,8 +436,9 @@ class Evaluator:
                             # check current node and next edge
                             for current_node in current_nodes:
                                 if current_node != start_node:
-                                    if 'IS' in self.gt_track_graph.nodes[current_node] or\
-                                       'FP_D' in self.gt_track_graph.nodes[current_node]:
+                                    if ('IS' in self.gt_track_graph.nodes[current_node] or
+                                        'FP_D' in self.gt_track_graph.nodes[current_node] or
+                                        'FN_D' in self.gt_track_graph.nodes[current_node]):
                                         correct = False
                             for next_edge in next_edges:
                                 if 'FN' in self.gt_track_graph.get_edge_data(*next_edge):
@@ -472,7 +474,7 @@ class Evaluator:
             "Track has node %d with %d > 2 children" %\
             (list(track_graph.nodes())[max_index], max(in_degrees))
 
-    def __get_track_matches(self):
+    def _get_track_matches(self):
         self.edges_to_track_id_rec = {}
         self.edges_to_track_id_gt = {}
         track_ids_gt_to_rec = {}
@@ -498,13 +500,19 @@ class Evaluator:
         self.report.set_validation_score(vald_score)
 
     def get_div_topology_stats(self):
+        """Look for `isomorphic` division errors
+
+        For each division error, check if there is one 1 frame earlier
+        or later. If yes, do not count it as an error. Only called if
+        self.ignore_one_off_div_errors is set.
+        """
         self.iso_fn_div_nodes = []
         for fn_div_node in itertools.chain(
                 self.fn_div_no_connection_nodes,
                 self.fn_div_unconnected_child_nodes,
                 self.fn_div_unconnected_parent_nodes):
 
-            gt_tmp_grph, rec_tmp_grph = self.get_local_graphs(
+            gt_tmp_grph, rec_tmp_grph = self._get_local_graphs(
                 fn_div_node,
                 self.gt_track_graph, self.rec_track_graph)
 
@@ -523,7 +531,7 @@ class Evaluator:
         self.iso_fp_div_nodes = []
         for fp_div_node in self.fp_div_nodes:
             fp_div_node = int(fp_div_node)
-            rec_tmp_grph, gt_tmp_grph = self.get_local_graphs(
+            rec_tmp_grph, gt_tmp_grph = self._get_local_graphs(
                 fp_div_node,
                 self.rec_track_graph, self.gt_track_graph, rec_to_gt=True)
             if len(gt_tmp_grph.nodes()) == 0 or len(rec_tmp_grph) == 0:
@@ -539,10 +547,11 @@ class Evaluator:
             else:
                 logger.debug("not-isomorphic fp division: %d", fp_div_node)
 
-        self.report.set_iso_fn_divisions(self.iso_fn_div_nodes)
+        self.report.set_iso_fn_divisions(self.iso_fn_div_nodes,
+                                         self.fn_div_count_unconnected_parent)
         self.report.set_iso_fp_divisions(self.iso_fp_div_nodes)
 
-    def get_local_graphs(self, div_node, g1, g2, rec_to_gt=False):
+    def _get_local_graphs(self, div_node, g1, g2, rec_to_gt=False):
 
         g1_nodes = []
         try:
@@ -559,7 +568,7 @@ class Evaluator:
                 for n2 in g1.predecessors(n1):
                     g1_nodes.append(n2)
         except:
-            raise RuntimeError("Overlooked edge case in get_local_graph?")
+            raise RuntimeError("Overlooked edge case in _get_local_graph?")
 
         prev_edge = list(g1.prev_edges(div_node))
         prev_edge = prev_edge[0] if len(prev_edge) > 0 else None
@@ -607,53 +616,12 @@ class Evaluator:
         g2_tmp_grph = g2.subgraph(g2_nodes).to_undirected()
 
         if len(g1_tmp_grph.nodes()) != 0 and len(g2_tmp_grph.nodes()) != 0:
-            g1_tmp_grph = contract(g1_tmp_grph)
-            g2_tmp_grph = contract(g2_tmp_grph)
+            g1_tmp_grph = _contract(g1_tmp_grph)
+            g2_tmp_grph = _contract(g2_tmp_grph)
         return g1_tmp_grph, g2_tmp_grph
 
-    def get_error_free_tracks(self):
 
-        roi = self.gt_track_graph.roi
-        start_frame = roi.get_offset()[0]
-        end_frame = start_frame + roi.get_shape()[0]
-
-        rec_nodes_last_frame = self.rec_track_graph.cells_by_frame(end_frame-1)
-
-        cnt_rec_nodes_last_frame = len(rec_nodes_last_frame)
-        cnt_gt_nodes_last_frame = len(self.gt_track_graph.cells_by_frame(
-            end_frame-1))
-        cnt_error_free_tracks = cnt_rec_nodes_last_frame
-
-        nodes_prev_frame = rec_nodes_last_frame
-        logger.info("track range %s %s", end_frame-1, start_frame)
-        for i in range(end_frame-1, start_frame, -1):
-            nodes_curr_frame = []
-            logger.debug("nodes in frame %s: %s ", i, len(nodes_prev_frame))
-            for n in nodes_prev_frame:
-                prev_edges = list(self.rec_track_graph.prev_edges(n))
-                if len(prev_edges) == 0:
-                    logger.debug("no predecessor")
-                    cnt_error_free_tracks -= 1
-                    continue
-                else:
-                    assert len(prev_edges) == 1, \
-                        "node can only have single predecessor!"
-                    if prev_edges[0] in self.rec_edges_to_gt_edges:
-                        nodes_curr_frame.append(prev_edges[0][1])
-                    else:
-                        logger.debug("predecessor not matched")
-                        cnt_error_free_tracks -=1
-            nodes_prev_frame = list(set(nodes_curr_frame))
-
-        logger.info("error free tracks: %s/%s %s",
-                    cnt_error_free_tracks, cnt_rec_nodes_last_frame,
-                    cnt_error_free_tracks/cnt_gt_nodes_last_frame)
-        self.report.set_error_free_tracks(cnt_error_free_tracks,
-                                          cnt_rec_nodes_last_frame,
-                                          cnt_gt_nodes_last_frame)
-
-
-def contract(g):
+def _contract(g):
     """
     Contract chains of neighbouring vertices with degree 2 into one hypernode.
     Arguments:
@@ -665,7 +633,10 @@ def contract(g):
         the contracted graph
     hypernode_to_nodes -- dict: int hypernode -> [v1, v2, ..., vn]
         dictionary mapping hypernodes to nodes
-    TODO: cite source
+
+    Notes
+    -----
+    Based on https://stackoverflow.com/a/52329262
     """
 
     # create subgraph of all nodes with degree 2

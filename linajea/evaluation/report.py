@@ -1,3 +1,5 @@
+"""Provides a class containing all different metrics for a single solution
+"""
 from copy import deepcopy
 import logging
 
@@ -5,6 +7,16 @@ logger = logging.getLogger(__name__)
 
 
 class Report:
+    """Object used to accumulate statistics for a solution
+
+    Notes
+    -----
+    A filled Report object contains all computed metrics and statistics
+    wrt to a single solution, such as number of gt/rec tracks, matched
+    tracks, how many edges/division, how many errors of which kind,
+    aggregated metrics such as precision, list of all edges/nodes
+    involved in errors.
+    """
     def __init__(self):
         # STATISTICS
         self.gt_tracks = None
@@ -48,8 +60,6 @@ class Report:
         self.unconnected_child_gt_nodes = None
         self.unconnected_parent_gt_nodes = None
         self.tp_div_gt_nodes = None
-
-        self.fn_div_count_unconnected_parent = False
 
     def set_track_stats(
             self,
@@ -139,7 +149,8 @@ class Report:
             fn_divs_no_connections,
             fn_divs_unconnected_child,
             fn_divs_unconnected_parent,
-            tp_divs):
+            tp_divs
+            fn_div_count_unconnected_parent):
         '''
         Args:
             fn_divs_... (list of int):
@@ -155,7 +166,7 @@ class Report:
         self.fn_divs_unconnected_parent = len(fn_divs_unconnected_parent)
         self.fn_divisions = self.fn_divs_no_connections + \
             self.fn_divs_unconnected_child
-        if self.fn_div_count_unconnected_parent:
+        if fn_div_count_unconnected_parent:
             self.fn_divisions += self.fn_divs_unconnected_parent
 
         self.no_connection_gt_nodes = [int(n) for n in fn_divs_no_connections]
@@ -198,11 +209,17 @@ class Report:
     def set_validation_score(self, validation_score):
         self.validation_score = validation_score
 
-    def set_iso_fn_divisions(self, iso_fn_div_nodes):
+    def set_iso_fn_divisions(self, iso_fn_div_nodes,
+                             fn_div_count_unconnected_parent):
+        """If used, remove fn divisions that are off by only a single
+        frame from the list of false divisions and count them separately
+        as iso(morphic) fn divisions
+
+        Adapt fn edges/fp edges stats accordingly"""
         self.iso_fn_division = len(iso_fn_div_nodes)
         fn_div_gt_nodes = (self.no_connection_gt_nodes +
                            self.unconnected_child_gt_nodes)
-        if self.fn_div_count_unconnected_parent:
+        if fn_div_count_unconnected_parent:
             fn_div_gt_nodes += self.unconnected_parent_gt_nodes
         fn_div_gt_nodes = [f for f in fn_div_gt_nodes
                            if f not in iso_fn_div_nodes]
@@ -238,6 +255,11 @@ class Report:
         logger.debug("fp edges after iso_fn_div: %d", self.fp_edges)
 
     def set_iso_fp_divisions(self, iso_fp_div_nodes):
+        """If used, remove fp divisions that are off by only a single
+        frame from the list of false divisions and count them separately
+        as iso(morphic) fp divisions
+
+        Adapt fn edges/fp edges stats accordingly"""
         self.iso_fp_division = len(iso_fp_div_nodes)
         self.fp_div_rec_nodes = [f for f in self.fp_div_rec_nodes
                                  if f not in iso_fp_div_nodes]
@@ -272,15 +294,25 @@ class Report:
         logger.debug("fp edges after iso_fp_div: %d", self.fp_edges)
         logger.debug("fn edges after iso_fp_div: %d", self.fn_edges)
 
-    def set_error_free_tracks(self, cnt_error_free, cnt_total_rec, cnt_total_gt):
-        self.num_error_free_tracks = cnt_error_free
-        self.num_rec_cells_last_frame = cnt_total_rec
-        self.num_gt_cells_last_frame = cnt_total_gt
 
     def get_report(self):
+        """Long report
+
+        Returns
+        -------
+        dict
+            Dictionary containing all attributes of report
+        """
         return self.__dict__
 
     def get_short_report(self):
+        """Short report without lists
+
+        Returns
+        -------
+        dict
+            Dictionary with all lists of false edges/nodes removed
+        """
         report = deepcopy(self.__dict__)
         # STATISTICS
         del report['fn_edge_list']

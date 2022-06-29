@@ -1,6 +1,13 @@
+"""Compares two graphs and evaluates quality of matching
+
+Typical use case:
+Match ground truth graph to reconstructed graph and evaluate result
+"""
+import logging
+
 from .match import match_edges
 from .evaluator import Evaluator
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -10,14 +17,45 @@ def evaluate(
         rec_track_graph,
         matching_threshold,
         sparse,
-        validation_score=False,
-        window_size=50,
-        ignore_one_off_div_errors=False,
-        fn_div_count_unconnected_parent=True):
-    ''' Performs both matching and evaluation on the given
+        validation_score,
+        window_size,
+        ignore_one_off_div_errors,
+        fn_div_count_unconnected_parent):
+    """Performs both matching and evaluation on the given
     gt and reconstructed tracks, and returns a Report
     with the results.
-    '''
+
+    Args
+    ----
+    gt_track_graph: linajea.tracking.TrackGraph
+        Graph containing the ground truth annotations
+    rec_track_graph: linajea.tracking.TrackGraph
+        Reconstructed graph
+    matching_threshold: int
+        How far can a GT annotation and a predicted object be apart but
+        still be matched to each other.
+    sparse: bool
+        Is the ground truth sparse (not every instance is annotated)
+    validation_score: bool
+        Should the validation score be computed (additional metric)
+    window_size: int
+        What is the maximum window size for which the fraction of
+        error-free tracklets should be computed?
+    ignore_one_off_div_errors: bool
+        Division annotations are often slightly imprecise. Due to the
+        limited temporal resolution the exact moment a division happens
+        cannnot always be determined accuratly. If the predicted division
+        happens 1 frame before or after an annotated one, does not count
+        it as an error.
+    fn_div_count_unconnected_parent: bool
+        If the parent of the mother cell of a division is missing, should
+        this count as a division error (aside from the already counted FN
+        edge error)
+    Returns
+    -------
+    Report
+        Report object containing detailed result
+    """
     logger.info("Checking validity of reconstruction")
     Evaluator.check_track_validity(rec_track_graph)
     logger.info("Matching GT edges to REC edges...")
