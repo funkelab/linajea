@@ -1,3 +1,7 @@
+"""Script for a prediction worker process
+
+Predicts cells/nodes and writes them to database
+"""
 import warnings
 warnings.filterwarnings("once", category=FutureWarning)
 
@@ -28,17 +32,27 @@ logger = logging.getLogger(__name__)
 
 
 def predict(config):
+    """Predict function used by a prediction worker process
 
+    Sets up model and data and then repeatedly requests blocks to
+    predict using daisy until all blocks have been processed.
+
+    Args
+    ----
+    config: TrackingConfig
+        Tracking configuration object, has to contain at least model,
+        prediction and data configuration
+    """
     raw = gp.ArrayKey('RAW')
     cell_indicator = gp.ArrayKey('CELL_INDICATOR')
     maxima = gp.ArrayKey('MAXIMA')
     if not config.model.train_only_cell_indicator:
-        parent_vectors = gp.ArrayKey('PARENT_VECTORS')
+        movement_vectors = gp.ArrayKey('MOVEMENT_VECTORS')
 
     model = linajea.training.torch_model.UnetModelWrapper(
         config, config.inference_data.checkpoint)
     model.eval()
-    logger.info("Model: %s", model)
+    logger.debug("Model: %s", model)
 
     input_shape = config.model.predict_input_shape
     trial_run = model.forward(torch.zeros(input_shape, dtype=torch.float32))
@@ -54,7 +68,7 @@ def predict(config):
     chunk_request.add(cell_indicator, output_size)
     chunk_request.add(maxima, output_size)
     if not config.model.train_only_cell_indicator:
-        chunk_request.add(parent_vectors, output_size)
+        chunk_request.add(movement_vectors, output_size)
 
     sample = config.inference_data.data_source.datafile.filename
     if os.path.isfile(os.path.join(sample, "data_config.toml")):
@@ -110,13 +124,13 @@ def predict(config):
         1: maxima,
     }
     if not config.model.train_only_cell_indicator:
-        outputs[3] = parent_vectors
+        outputs[3] = movement_vectors
 
     dataset_names={
         cell_indicator: 'volumes/cell_indicator',
     }
     if not config.model.train_only_cell_indicator:
-        dataset_names[parent_vectors] = 'volumes/parent_vectors'
+        dataset_names[movement_vectors] = 'volumes/movement_vectors'
 
     pipeline = (
         source +
@@ -138,8 +152,8 @@ def predict(config):
 
             gp.ZarrWrite(
                 dataset_names=dataset_names,
-                output_filename=construct_zarr_filename(config, sample,
-                                                        config.inference_data.checkpoint)
+                output_filename=construct_zarr_filename(
+                    config, sample, config.inference_data.checkpoint)
             ))
         if not config.predict.no_db_access:
             cb.append(lambda b: write_done(
@@ -157,7 +171,8 @@ def predict(config):
             WriteCells(
                 maxima,
                 cell_indicator,
-                parent_vectors if not config.model.train_only_cell_indicator else None,
+                movement_vectors if not config.model.train_only_cell_indicator
+                else None,
                 score_threshold=config.inference_data.cell_score_threshold,
                 db_host=config.general.db_host,
                 db_name=config.inference_data.data_source.db_name,
@@ -178,7 +193,7 @@ def predict(config):
         maxima: 'write_roi'
     }
     if not config.model.train_only_cell_indicator:
-        roi_map[parent_vectors] = 'write_roi'
+        roi_map[movement_vectors] = 'write_roi'
 
     pipeline = (
         pipeline +
@@ -196,12 +211,32 @@ def predict(config):
 
 
 def normalize(file_source, config, raw, data_config=None):
+    """Add data normalization node to pipeline.
+
+    Should be identical to the one used during training
+
+    Notes
+    -----
+    Which normalization method should be used?
+    None/default:
+        [0,1] based on data type
+    minmax:
+        normalize such that lower bound is at 0 and upper bound at 1
+        clipping is less strict, some data might be outside of range
+    percminmax:
+        use precomputed percentile values for minmax normalization;
+        precomputed values are stored in data_config file that has to
+        be supplied; set perc_min/max to tag to be used
+    mean/median
+        normalize such that mean/median is at 0 and 1 std/mad is at -+1
+        set perc_min/max tags for clipping beforehand
+    """
     if config.predict.normalization is None or \
        config.predict.normalization.type == 'default':
         logger.info("default normalization")
         file_source = file_source + \
-            gp.Normalize(raw,
-                         factor=1.0/np.iinfo(data_config['stats']['dtype']).max)
+            gp.Normalize(
+                raw, factor=1.0/np.iinfo(data_config['stats']['dtype']).max)
     elif config.predict.normalization.type == 'minmax':
         mn = config.predict.normalization.norm_bounds[0]
         mx = config.predict.normalization.norm_bounds[1]

@@ -1,10 +1,13 @@
+"""Script for a prediction worker process
+
+Writes cells/nodes from predicted zarr to database
+"""
 import warnings
 warnings.filterwarnings("once", category=FutureWarning)
 
 import argparse
 import logging
 import os
-
 
 import h5py
 import numpy as np
@@ -22,11 +25,22 @@ logger = logging.getLogger(__name__)
 
 
 def write_cells_from_zarr(config):
+    """Function used by a prediction worker process
 
+    Lazily loads already predicted array and then repeatedly requests
+    blocks to process using daisy until all blocks have been processed.
+    Locates maxima in each block and writes data to database.
+
+    Args
+    ----
+    config: TrackingConfig
+        Tracking configuration object, has to contain at least model
+        and data configuration
+    """
     cell_indicator = gp.ArrayKey('CELL_INDICATOR')
     maxima = gp.ArrayKey('MAXIMA')
     if not config.model.train_only_cell_indicator:
-        parent_vectors = gp.ArrayKey('PARENT_VECTORS')
+        movement_vectors = gp.ArrayKey('MOVEMENT_VECTORS')
 
     voxel_size = gp.Coordinate(config.inference_data.data_source.voxel_size)
     output_size = gp.Coordinate(output_shape) * voxel_size
@@ -35,7 +49,7 @@ def write_cells_from_zarr(config):
     chunk_request.add(cell_indicator, output_size)
     chunk_request.add(maxima, output_size)
     if not config.model.train_only_cell_indicator:
-        chunk_request.add(parent_vectors, output_size)
+        chunk_request.add(movement_vectors, output_size)
 
     sample = config.inference_data.data_source.datafile.filename
     if os.path.isfile(os.path.join(sample, "data_config.toml")):
@@ -73,7 +87,7 @@ def write_cells_from_zarr(config):
         cell_indicator: 'volumes/cell_indicator',
         maxima: '/volumes/maxima'}
     if not config.model.train_only_cell_indicator:
-        datasets[parent_vectors] = 'volumes/parent_vectors'
+        datasets[movement_vectors] = 'volumes/movement_vectors'
 
     array_specs = {
         cell_indicator: gp.ArraySpec(
@@ -83,7 +97,7 @@ def write_cells_from_zarr(config):
             interpolatable=False,
             voxel_size=voxel_size)}
     if not config.model.train_only_cell_indicator:
-        array_specs[parent_vectors] = gp.ArraySpec(
+        array_specs[movement_vectors] = gp.ArraySpec(
             interpolatable=True,
             voxel_size=voxel_size)
 
@@ -97,7 +111,7 @@ def write_cells_from_zarr(config):
         maxima: 'write_roi'
     }
     if not config.model.train_only_cell_indicator:
-        roi_map[parent_vectors] = 'write_roi'
+        roi_map[movement_vectors] = 'write_roi'
 
     pipeline = (
         source +
@@ -106,14 +120,14 @@ def write_cells_from_zarr(config):
 
     if not config.model.train_only_cell_indicator:
         pipeline = (pipeline +
-                    gp.Pad(parent_vectors, size=None))
+                    gp.Pad(movement_vectors, size=None))
 
     pipeline = (
         pipeline +
         WriteCells(
             maxima,
             cell_indicator,
-            parent_vectors if not config.model.train_only_cell_indicator else None,
+            movement_vectors if not config.model.train_only_cell_indicator else None,
             score_threshold=config.inference_data.cell_score_threshold,
             db_host=config.general.db_host,
             db_name=config.inference_data.data_source.db_name,
@@ -145,4 +159,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = TrackingConfig.from_file(args.config)
-    write_cells_sample(config)
+    write_cells_from_zarr(config)
