@@ -1,0 +1,16 @@
+path_to_script = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/celegans_setups/predict_celegans_torch.py"
+path_to_script_db_from_zarr = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/celegans_setups/write_cells_celegans.py"
+output_zarr_prefix = "/nrs/funke/hirschp/linajea_experiments"
+write_to_zarr = false
+write_to_db = true
+write_db_from_zarr = false
+processes_per_worker = 1
+[normalization]
+type = "minmax"
+perc_min = "perc0_01"
+perc_max = "perc99_99"
+norm_bounds = [ 2000, 7500,]
+
+[job]
+num_workers = 1
+queue = "gpu_tesla"

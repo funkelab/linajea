@@ -1,0 +1,167 @@
+[general]
+logging = 20
+db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin?replicaSet=rsLinajea"
+seed = 42
+setup_dir = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/celegans_setups/experiments/mskc_test_2"
+sparse = false
+
+[train_data]
+[[train_data.data_sources]]
+[train_data.data_sources.datafile]
+filename = "/nrs/funke/hirschp/mskcc_emb3"
+group = "volumes/raw_nested"
+[train_data.data_sources.roi]
+offset = [ 50, 0, 0, 0,]
+shape = [ 10, 205, 512, 512,]
+
+
+[model]
+train_input_shape = [ 7, 40, 148, 148,]
+# train_input_shape = [ 7, 40, 260, 260,]
+predict_input_shape = [ 7, 80, 260, 260,]
+unet_style = "split"
+num_fmaps = [12, 12]
+# fmap_inc_factors = [4, 4, 8]
+fmap_inc_factors = 4
+downsample_factors = [[ 1, 2, 2,],
+                      [ 1, 2, 2,],
+                      [ 2, 2, 2,],]
+# kernel_size_down = [[ [3, 3, 3], [3, 3, 3],],
+#                     [ [3, 3, 3], [3, 3, 3],],
+#                     [ [3, 3, 3], [3, 3, 3],],
+#                     [ [3, 3, 3], [3, 3, 3],],]
+kernel_size_down = [[ [3, 3, 3, 3], [3, 3, 3, 3],],
+                    [ [3, 3, 3, 3], [3, 3, 3],],
+                    [ [3, 3, 3], [3, 3, 3],],
+                    [ [3, 3, 3], [3, 3, 3],],]
+# kernel_size_down = [[ [3, 3, 3], [3, 3, 3],],
+#                     [ [3, 3, 3], [3, 3, 3],],
+#                     [ [3, 3, 3], [3, 3, 3, 3],],
+#                     [ [3, 3, 3, 3], [3, 3, 3, 3],],]
+kernel_size_up = [[ [3, 3, 3], [3, 3, 3],],
+                  [ [3, 3, 3], [3, 3, 3],],
+                  [ [3, 3, 3], [3, 3, 3],],]
+# constant_upsample = true
+# upsampling = "pixel_shuffle"
+# upsampling = "trilinear"
+upsampling = "sep_transposed_conv"
+average_vectors = false
+# nms_window_shape = [ 3, 11, 11,]
+nms_window_shape = [ 3, 9, 9,]
+path_to_script = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/celegans_setups/mknet_celegans.py"
+cell_indicator_weighted = 0.01
+cell_indicator_cutoff = 0.01
+# cell_indicator_weighted = true
+latent_temp_conv = false
+train_only_cell_indicator = false
+
+[train]
+# val_log_step = 25
+# radius for binary map -> *2 (in world units)
+# in which to draw parent vectors (not used if use_radius)
+parent_radius = [ 0.1, 8.0, 8.0, 8.0,]
+# upper bound for dist cell moved between two frames (needed for context)
+move_radius = 25
+# sigma for Gauss -> ~*4 (5 in z -> in 3 slices) (not used if use_radius)
+rasterize_radius = [ 0.1, 5.0, 3.0, 3.0,]
+cache_size = 1
+parent_vectors_loss_transition_offset = 20000
+parent_vectors_loss_transition_factor = 0.001
+#use_radius = true
+path_to_script = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/celegans_setups/train_val_celegans_torch.py"
+max_iterations = 11
+checkpoint_stride = 10
+snapshot_stride = 5
+profiling_stride = 10
+use_auto_mixed_precision = true
+use_swa = true
+swa_every_it = false
+swa_start_it = 49999
+swa_freq_it = 1000
+use_grad_norm = true
+[train.normalization]
+type = "minmax"
+perc_min = "perc0_01"
+perc_max = "perc99_99"
+norm_bounds = [ 2000, 7500,]
+
+
+[train.use_radius]
+30 = 20
+70 = 15
+100 = 13
+130 = 11
+180 = 10
+270 = 8
+9999 = 7
+
+[optimizerTorch]
+optimizer = "Adam"
+# optimizer = "SGD"
+
+
+[train.job]
+num_workers = 1
+queue = "gpu_tesla"
+
+[train.augment]
+divisions = true
+reject_empty_prob = 0.9
+point_balance_radius = 75
+
+[optimizerTorch.kwargs]
+lr = 5e-5
+betas = [0.95, 0.999]
+eps = 1e-8
+amsgrad = false
+# weight_decay = 1e-4
+# momentum = 0.9
+# nesterov = true
+
+[train_data.roi]
+offset = [ 50, 0, 0, 0,]
+shape = [ 10, 205, 512, 512,]
+
+[train.augment.elastic]
+control_point_spacing = [ 5, 25, 25,]
+# control_point_spacing = [ 3, 15, 15,]
+jitter_sigma = [ 1, 1, 1,]
+rotation_min = -45
+rotation_max = 45
+rotation_3d = false
+subsample = 4
+use_fast_points_transform = true
+
+[train.augment.zoom]
+factor_min = 0.75
+factor_max = 1.5
+spatial_dims = 2
+
+[train.augment.shift]
+prob_slip = 0.2
+prob_shift = 0.2
+sigma = [ 0, 4, 4, 4,]
+
+[train.augment.intensity]
+scale = [ 0.9, 1.1,]
+shift = [ -0.001, 0.001,]
+
+[train.augment.simple]
+mirror = [ 2, 3,]
+transpose = [ 2, 3,]
+
+# # check snapshots per dataset for good value!
+# # maybe just use speckle (multiplicative gaussian noise)
+# # instead of this (additive gaussian noise)
+# [train.augment.noise_gaussian]
+# var = [ 0.001,]
+
+[train.augment.noise_saltpepper]
+amount = [ 0.0001,]
+
+[train.augment.noise_speckle]
+var = [ 0.05,]
+
+[train.augment.histogram]
+range_low = 0.1
+range_high = 1.0
