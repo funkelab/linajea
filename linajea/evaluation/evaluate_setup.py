@@ -13,6 +13,7 @@ import funlib.math
 import linajea.tracking
 import linajea.utils
 from .evaluate import evaluate
+from .report import Report
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,9 @@ def evaluate_setup(linajea_config):
                              shape=data.roi.shape)
 
     # determine parameters id from database
-    results_db = linajea.CandidateDatabase(db_name, db_host)
-    parameters_id = results_db.get_parameters_id(parameters)
+    results_db = linajea.utils.CandidateDatabase(db_name, db_host)
+    parameters_id = results_db.get_parameters_id(parameters,
+                                                 fail_if_not_exists=True)
 
     if not linajea_config.evaluate.from_scratch:
         old_score = results_db.get_score(parameters_id,
@@ -51,8 +53,10 @@ def evaluate_setup(linajea_config):
             for k, v in old_score.items():
                 if not isinstance(k, list) or k != "roi":
                     score[k] = v
-            logger.info("Stored results: %s", score)
-            return
+            logger.debug("Stored results: %s", score)
+            report = Report()
+            report.__dict__.update(score)
+            return report
 
     logger.info("Evaluating %s in %s",
                 os.path.basename(data.datafile.filename)
@@ -77,7 +81,7 @@ def evaluate_setup(linajea_config):
     if subgraph.number_of_edges() == 0:
         logger.warn("No selected edges for parameters_id %d. Skipping"
                     % parameters_id)
-        return
+        return False
 
     if linajea_config.evaluate.parameters.filter_polar_bodies or \
        linajea_config.evaluate.parameters.filter_polar_bodies_key:
@@ -98,8 +102,7 @@ def evaluate_setup(linajea_config):
     start_time = time.time()
     gt_subgraph = gt_db.get_graph(
         evaluate_roi,
-        subsampling=linajea_config.general.subsampling,
-        subsampling_seed=linajea_config.general.subsampling_seed)
+    )
     logger.info("Read %d cells and %d edges in %s seconds"
                 % (gt_subgraph.number_of_nodes(),
                    gt_subgraph.number_of_edges(),
@@ -122,6 +125,7 @@ def evaluate_setup(linajea_config):
     fn_div_count_unconnected_parent = \
         linajea_config.evaluate.parameters.fn_div_count_unconnected_parent
     window_size=linajea_config.evaluate.parameters.window_size
+
     report = evaluate(
             gt_track_graph,
             track_graph,
@@ -134,27 +138,10 @@ def evaluate_setup(linajea_config):
 
     logger.info("Done evaluating results for %d. Saving results to mongo."
                 % parameters_id)
-    logger.info("Result summary: %s", report.get_short_report())
+    logger.debug("Result summary: %s", report.get_short_report())
     results_db.write_score(parameters_id, report,
                            eval_params=linajea_config.evaluate.parameters)
-    res = report.get_short_report()
-    print("|              |  fp |  fn |  id | fp_div | fn_div | sum_div |"
-          " sum | DET | TRA |   REFT |     NR |     ER |    GT |")
-    sum_errors = (res['fp_edges'] + res['fn_edges'] +
-                  res['identity_switches'] +
-                  res['fp_divisions'] + res['fn_divisions'])
-    sum_divs = res['fp_divisions'] + res['fn_divisions']
-    reft = res["num_error_free_tracks"]/res["num_gt_cells_last_frame"]
-    print("| {:3d} | {:3d} | {:3d} |"
-          "    {:3d} |    {:3d} |     {:3d} | {:3d} |     |     |"
-          " {:.4f} | {:.4f} | {:.4f} | {:5d} |".format(
-              int(res['fp_edges']), int(res['fn_edges']),
-              int(res['identity_switches']),
-              int(res['fp_divisions']), int(res['fn_divisions']),
-              int(sum_divs),
-              int(sum_errors),
-              reft, res['node_recall'], res['edge_recall'],
-              int(res['gt_edges'])))
+    return report
 
 
 def split_two_frame_edges(linajea_config, subgraph, evaluate_roi):
@@ -292,7 +279,7 @@ def maybe_filter_short_tracklets(linajea_config, subgraph, evaluate_roi):
             if node['t'] > max_t:
                 max_t = node['t']
 
-        logger.info("track begin: {}, track end: {}, track len: {}".format(
+        logger.debug("track begin: {}, track end: {}, track len: {}".format(
             min_t, max_t, len(track.nodes())))
 
         if len(track.nodes()) < linajea_config.evaluate.parameters.filter_short_tracklets_len \
@@ -316,9 +303,8 @@ def add_gt_polar_bodies(linajea_config, gt_subgraph, db_host, evaluate_roi):
                                          copy=False)
     gt_subgraph.update(gt_polar_subgraph)
 
-    logger.info("Read %d cells and %d edges in %s seconds (after adding polar bodies)"
+    logger.info("Read %d cells and %d edges (after adding polar bodies)"
                 % (gt_subgraph.number_of_nodes(),
-                   gt_subgraph.number_of_edges(),
-                   time.time() - start_time))
+                   gt_subgraph.number_of_edges()))
 
     return gt_subgraph

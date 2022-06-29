@@ -2,6 +2,7 @@ from __future__ import absolute_import
 import json
 import logging
 import os
+import subprocess
 import time
 
 import numpy as np
@@ -130,7 +131,8 @@ def predict_blockwise(linajea_config):
             linajea_config.general.db_host))
 
     # process block-wise
-    daisy.run_blockwise(
+    task = daisy.Task(
+        "linajea_prediction",
         input_roi,
         block_read_roi,
         block_write_roi,
@@ -141,11 +143,11 @@ def predict_blockwise(linajea_config):
         max_retries=0,
         fit='valid')
 
+    daisy.run_blockwise([task])
+
 
 def predict_worker(linajea_config):
 
-    worker_id = daisy.Context.from_env().worker_id
-    worker_time = time.time()
     job = linajea_config.predict.job
 
     script_dir = os.path.join(
@@ -174,21 +176,15 @@ def predict_worker(linajea_config):
             expand=False,
             flags=['-P ' + job.lab] if job.lab is not None else None
         )
-    elif os.path.isdir("/fast/work/users"):
-        cmd = ['sbatch', '../run_slurm_gpu.sh'] + command[1:]
+    elif job.run_on == "slurm":
+        cmd = ['sbatch', '../run_slurm_gpu.sh'] + command.split(" ")[1:]
+    elif job.run_on == "gridengine":
+        cmd = ['qsub', '../run_gridengine_gpu.sh'] + command.split(" ")[1:]
     else:
         raise RuntimeError("cannot detect hpc system!")
 
     logger.info("Starting predict worker...")
-    cmd = ["\"{}\"".format(c) if "affinity" in c else c for c in cmd]
-    cmd = ["\"{}\"".format(c) if "rusage" in c else c for c in cmd]
     logger.info("Command: %s" % str(cmd))
-    os.makedirs('logs', exist_ok=True)
-    daisy.call(
-        cmd,
-        log_out='logs/predict_%s_%d_%d.out' % (linajea_config.general.setup,
-                                               worker_time, worker_id),
-        log_err='logs/predict_%s_%d_%d.err' % (linajea_config.general.setup,
-                                               worker_time, worker_id))
 
+    subprocess.run(cmd, shell=True)
     logger.info("Predict worker finished")

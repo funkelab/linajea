@@ -291,5 +291,6 @@ class Report:
         del report['unconnected_child_gt_nodes']
         del report['unconnected_parent_gt_nodes']
         del report['tp_div_gt_nodes']
+        del report['correct_segments']
 
         return report

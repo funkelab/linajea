@@ -52,7 +52,8 @@ def extract_edges_blockwise(linajea_config):
     logger.info("DB: %s", data.db_name)
 
     # process block-wise
-    daisy.run_blockwise(
+    task = daisy.Task(
+        "linajea_extract_edges",
         input_roi,
         block_read_roi,
         block_write_roi,
@@ -67,9 +68,10 @@ def extract_edges_blockwise(linajea_config):
             data.db_name,
             linajea_config.general.db_host),
         num_workers=linajea_config.extract.job.num_workers,
-        processes=True,
         read_write_conflict=False,
         fit='overhang')
+
+    daisy.run_blockwise([task])
 
 
 def extract_edges_in_block(

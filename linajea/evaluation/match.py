@@ -182,22 +182,23 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
                      np.min(avg_dist_frame),
                      np.max(avg_dist_frame))
 
-    logger.debug("total count matches %d", len(avg_dist_source))
-    logger.debug("dist source: avg %.3f, med %.3f, min %.3f, max %.3f",
-                 np.mean(avg_dist_source),
-                 np.median(avg_dist_source),
-                 np.min(avg_dist_source),
-                 np.max(avg_dist_source))
-    logger.debug("dist target: avg %.3f, med %.3f, min %.3f, max %.3f",
-                 np.mean(avg_dist_target),
-                 np.median(avg_dist_target),
-                 np.min(avg_dist_target),
-                 np.max(avg_dist_target))
-    logger.debug("dist : avg %.3f, med %.3f, min %.3f, max %.3f",
-                 np.mean(avg_dist),
-                 np.median(avg_dist),
-                 np.min(avg_dist),
-                 np.max(avg_dist))
+    if len(avg_dist_source) > 0:
+        logger.debug("total count matches %d", len(avg_dist_source))
+        logger.debug("dist source: avg %.3f, med %.3f, min %.3f, max %.3f",
+                     np.mean(avg_dist_source),
+                     np.median(avg_dist_source),
+                     np.min(avg_dist_source),
+                     np.max(avg_dist_source))
+        logger.debug("dist target: avg %.3f, med %.3f, min %.3f, max %.3f",
+                     np.mean(avg_dist_target),
+                     np.median(avg_dist_target),
+                     np.min(avg_dist_target),
+                     np.max(avg_dist_target))
+        logger.debug("dist : avg %.3f, med %.3f, min %.3f, max %.3f",
+                     np.mean(avg_dist),
+                     np.median(avg_dist),
+                     np.min(avg_dist),
+                     np.max(avg_dist))
     logger.info("Done matching, found %d matches and %d edge fps"
                 % (len(edge_matches), edge_fps))
     return edges_x, edges_y, edge_matches, edge_fps

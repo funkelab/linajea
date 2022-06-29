@@ -1,8 +1,9 @@
 import logging
+import subprocess
 import time
 
 import daisy
-from linajea import CandidateDatabase
+from linajea.utils import CandidateDatabase
 from .daisy_check_functions import (
         check_function, write_done,
         check_function_all_blocks, write_done_all_blocks)
@@ -60,7 +61,7 @@ def solve_blockwise(linajea_config):
         if check_function_all_blocks(step_name, db_name, db_host):
             logger.info("Param set with name %s already completed. Exiting",
                         step_name)
-            return True
+            return parameters_id
     else:
         step_name = 'solve_' + str(parameters_id[0])
     # Check each individual parameter to see if it is done
@@ -77,9 +78,10 @@ def solve_blockwise(linajea_config):
     logger.debug(parameters_id)
     if len(parameters_id) == 0:
         logger.info("All parameters in set already completed. Exiting")
-        return True
+        return parameters_id
 
-    success = daisy.run_blockwise(
+    task = daisy.Task(
+        "linajea_solving",
         total_roi,
         block_read_roi,
         block_write_roi,
@@ -98,6 +100,8 @@ def solve_blockwise(linajea_config):
             db_host),
         num_workers=linajea_config.solve.job.num_workers,
         fit='overhang')
+
+    success = daisy.run_blockwise([task])
     if success:
         # write all done to individual parameters and set
         if len(param_names) > 1:
@@ -111,7 +115,7 @@ def solve_blockwise(linajea_config):
                 db_name,
                 db_host)
     logger.info("Finished solving")
-    return success
+    return parameters_id if success else success
 
 
 def solve_in_block(linajea_config,
@@ -146,7 +150,7 @@ def solve_in_block(linajea_config,
 
     logger.debug("Write roi: %s", str(write_roi))
 
-    if write_roi.empty():
+    if write_roi.empty:
         logger.info("Write roi empty, skipping block %d", block.block_id)
         write_done(block, step_name, db_name, db_host)
         return 0
@@ -201,7 +205,7 @@ def solve_in_block(linajea_config,
         nm_track(graph, linajea_config, selected_keys, frames=frames)
     else:
         track(graph, linajea_config, selected_keys,
-              frames=frames, block_id=block.block_id)
+              frames=frames, block_id=block.block_id[1])
 
     if linajea_config.solve.write_struct_svm:
         logger.info("wrote struct svm data, database not updated")
