@@ -16,8 +16,7 @@ class AddParentVectors(BatchFilter):
 
     def __init__(
             self, points, array, mask, radius,
-            move_radius=0, array_spec=None, dense=False,
-            subsampling=None):
+            move_radius=0, array_spec=None, dense=False):
 
         self.points = points
         self.array = array
@@ -30,7 +29,6 @@ class AddParentVectors(BatchFilter):
             self.array_spec = array_spec
 
         self.dense = dense
-        self.subsampling = subsampling
 
     def setup(self):
 
@@ -182,11 +180,6 @@ class AddParentVectors(BatchFilter):
         empty = True
         cnt = 0
         total = 0
-        for point_id, point in points.data.items():
-            if self.subsampling is not None and point.value > self.subsampling:
-                logger.debug("skipping point %s %s due to subsampling %s",
-                             point, point.value, self.subsampling)
-                continue
 
         avg_radius = []
         for point in points.nodes:
@@ -246,7 +239,7 @@ class AddParentVectors(BatchFilter):
                             z_min:z_max+1,
                             y_min:y_max+1,
                             x_min:x_max+1]
-        logger.info("mask cut %s", mask_cut.shape)
+        logger.debug("mask cut %s", mask_cut.shape)
 
         point_mask = np.zeros(shape, dtype=bool)
 
@@ -326,6 +319,6 @@ class AddParentVectors(BatchFilter):
         if empty:
             logger.warning("No parent vectors written for points %s"
                            % points.nodes)
-        logger.info("written {}/{}".format(cnt, total))
+        logger.debug("written {}/{}".format(cnt, total))
 
         return parent_vectors, mask.astype(np.float32)

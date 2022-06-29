@@ -242,7 +242,7 @@ class ShiftAugment(BatchFilter):
         """
 
         nodes = list(points.nodes)
-        logger.info("nodes before %s", nodes)
+        logger.debug("nodes before %s", nodes)
         spec = points.spec
         shift_axis_start_pos = spec.roi.get_offset()[shift_axis]
 
@@ -258,7 +258,7 @@ class ShiftAugment(BatchFilter):
             if not request_roi.contains(loc):
                 points.remove_node(node)
 
-        logger.info("nodes after %s", nodes)
+        logger.debug("nodes after %s", nodes)
         points.spec.roi = request_roi
         return points
 

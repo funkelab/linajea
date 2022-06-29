@@ -4,7 +4,7 @@ from gunpowder.profiling import Timing
 import numpy as np
 import logging
 
-from linajea import parse_tracks_file
+from linajea.utils import parse_tracks_file
 
 logger = logging.getLogger(__name__)
 

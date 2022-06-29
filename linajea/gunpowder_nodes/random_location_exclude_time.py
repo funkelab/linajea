@@ -16,14 +16,14 @@ class RandomLocationExcludeTime(gp.RandomLocation):
             mask=None,
             ensure_nonempty=None,
             p_nonempty=1.0,
-            subsampling=None):
+            point_balance_radius=1):
 
         super(RandomLocationExcludeTime, self).__init__(
             min_masked,
             mask,
             ensure_nonempty,
             p_nonempty,
-            subsampling=subsampling)
+            point_balance_radius=point_balance_radius)
 
         self.raw = raw
         if isinstance(time_interval, list) and \
