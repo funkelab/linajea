@@ -1,4 +1,9 @@
-from __future__ import absolute_import
+"""Prediction run script
+
+Loads the configuration and predicts.
+Expects data specified as [validate_data] and [test_data]
+Automatically selects data, sets db name etc based on config
+"""
 import argparse
 import logging
 import time
@@ -9,9 +14,7 @@ from linajea.process_blockwise import predict_blockwise
 
 
 logging.basicConfig(
-        # wrong crop: switch
         level=logging.INFO,
-        # level=logging.DEBUG,
         format='%(asctime)s %(name)s %(levelname)-8s %(message)s')
 logger = logging.getLogger(__name__)
 

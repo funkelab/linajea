@@ -104,7 +104,7 @@ queue = "gpu_tesla"
 [extract]
 block_size = [ 5, 500, 500, 500,]
 # edge_move_threshold = 40
-use_pv_distance = true
+use_mv_distance = true
 [extract.edge_move_threshold]
 -1 = 40
 

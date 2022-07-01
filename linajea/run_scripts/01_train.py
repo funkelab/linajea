@@ -1,3 +1,9 @@
+"""Training run script
+
+Loads the configuration and starts training.
+Uses data specified under [train_data]
+Writes logging output to stdout and run.log file
+"""
 import argparse
 import logging
 import os

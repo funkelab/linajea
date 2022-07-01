@@ -1,4 +1,10 @@
-from __future__ import absolute_import
+"""Extract Edges run script
+
+Loads the configuration and computes edge candidates.
+Expects data specified as [validate_data] and [test_data]
+Automatically selects data; if db name not set, set automatically
+based on data
+"""
 import argparse
 import logging
 import time

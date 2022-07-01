@@ -1,3 +1,14 @@
+"""Evaluate run script
+
+Loads the configuration and solves the ILP.
+Expects data specified as [validate_data] and [test_data]
+Automatically selects data; if db name not set, set automatically
+based on data.
+If weights/parameters search is supposed to be evaluated and run
+separately from 04_solve.py/without run.py, disable grid_search and
+random_search and supply --param_ids to select which parameter sets
+stored in the database should be evaluated.
+"""
 import argparse
 import logging
 import time
@@ -27,6 +38,8 @@ if __name__ == "__main__":
                         help='get test parameters from validation parameters_id')
     parser.add_argument('--param_id', default=None,
                         help='process parameters with parameters_id')
+    parser.add_argument('--param_ids', default=None, nargs=+,
+                        help='start/end range or list of eval parameters_ids')
     parser.add_argument('--param_list_idx', type=str, default=None,
                         help='only eval parameters[idx] in config')
     args = parser.parse_args()

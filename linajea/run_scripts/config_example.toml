@@ -38,27 +38,24 @@ upsampling = "sep_transposed_conv"
 average_vectors = false
 # nms_window_shape = [ 3, 11, 11,]
 nms_window_shape = [ 3, 9, 9,]
-path_to_script = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/celegans_setups/mknet_celegans.py"
 cell_indicator_weighted = 0.01
 cell_indicator_cutoff = 0.01
 # cell_indicator_weighted = true
-latent_temp_conv = false
 train_only_cell_indicator = false
 
 [train]
 val_log_step = 25
 # radius for binary map -> *2 (in world units)
 # in which to draw parent vectors (not used if use_radius)
-parent_radius = [ 0.1, 8.0, 8.0, 8.0,]
+object_radius = [ 0.1, 8.0, 8.0, 8.0,]
 # upper bound for dist cell moved between two frames (needed for context)
 move_radius = 25
 # sigma for Gauss -> ~*4 (5 in z -> in 3 slices) (not used if use_radius)
 rasterize_radius = [ 0.1, 5.0, 3.0, 3.0,]
 cache_size = 1
-parent_vectors_loss_transition_offset = 20000
-parent_vectors_loss_transition_factor = 0.001
+movement_vectors_loss_transition_offset = 20000
+movement_vectors_loss_transition_factor = 0.001
 #use_radius = true
-path_to_script = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/celegans_setups/train_val_celegans_torch.py"
 max_iterations = 11
 checkpoint_stride = 10
 snapshot_stride = 5
@@ -88,16 +85,10 @@ block_size = [ 5, 512, 512, 512,]
 
 [solve]
 from_scratch = true
-non_minimal = false
 greedy = false
 # write_struct_svm = "ssvm_ckpt_200000"
 check_node_close_to_roi = false
-add_node_density_constraints = false
 # random_search = false
-# [solve.add_node_density_constraints]
-# 30 = 13
-# 60 = 11
-# 10000 = 7
 
 
 [[solve.parameters]]
@@ -150,9 +141,7 @@ num_configs = 5
 from_scratch = false
 
 [predict]
-path_to_script = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/celegans_setups/predict_celegans_torch.py"
-path_to_script_db_from_zarr = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/celegans_setups/write_cells_celegans.py"
-output_zarr_prefix = "/nrs/funke/hirschp/linajea_experiments"
+output_zarr_dir = "/nrs/funke/hirschp/linajea_experiments"
 write_to_zarr = false
 write_to_db = true
 write_db_from_zarr = false
@@ -199,13 +188,15 @@ group = "volumes/raw_nested"
 num_workers = 1
 queue = "gpu_tesla"
 
-[train.augment]
-divisions = true
-reject_empty_prob = 0.9
-normalization = "minmax"
+[train.normalization]
+type = "minmax"
 perc_min = "perc0_01"
 perc_max = "perc99_99"
 norm_bounds = [ 2000, 7500,]
+
+[train.augment]
+divisions = true
+reject_empty_prob = 0.9
 point_balance_radius = 75
 
 [optimizerTorch.kwargs]
@@ -231,7 +222,6 @@ queue = "local"
 
 [evaluate.parameters]
 matching_threshold = 15
-sparse = false
 
 [evaluate.job]
 num_workers = 1
