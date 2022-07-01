@@ -1,7 +1,15 @@
+"""Provides a function to compute the greedy tracking solution
+
+Greedily connects objects to closest neighbors as long as no constraints
+are violated
+"""
 import logging
+
 import networkx as nx
-from linajea.utils import CandidateDatabase
+
 from daisy import Roi
+
+from linajea.utils import CandidateDatabase
 from .track_graph import TrackGraph
 
 logger = logging.getLogger(__name__)
@@ -42,6 +50,31 @@ def greedy_track(
         frame_key='t',
         allow_new_tracks=True,
         roi=None):
+    """Computes greedy tracking solution
+
+    Either directly takes graph or first loads graph from given db
+
+    Args
+    ----
+    graph: nx.DiGraph
+        Compute tracks from this graph, if None load graph from db
+    db_name: str
+        If graph not provided, load graph from this db
+    db_host: str
+        Host for database
+    selected_key: d
+        Edge attribute to use for storing results
+    cell_indicator_threshold: float
+        Discard node candidates with a lower score
+    metric: str
+        Which edge attribute to use to rank neighbors
+    frame_key: str
+        Which attribute defines what frame a node is in
+    allow_new_tracks:
+        Tracker can start new tracks (e.g. if no neighbors exist)
+    roi:
+        Restrict tracking to this ROI
+    """
     if graph is None:
         cand_db = CandidateDatabase(db_name, db_host, 'r+')
         total_roi = cand_db.get_nodes_roi()

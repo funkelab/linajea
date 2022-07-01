@@ -1,8 +1,11 @@
-from __future__ import absolute_import
-from .solver import Solver
-from .track_graph import TrackGraph
+"""Provides a function to compute the tracking solution for multiple
+parameter sets
+"""
 import logging
 import time
+
+from .solver import Solver
+from .track_graph import TrackGraph
 
 logger = logging.getLogger(__name__)
 
@@ -47,28 +50,6 @@ def track(graph, config, selected_key, frame_key='t', frames=None,
             The ID of the current daisy block.
 
     '''
-    # cell_cycle_keys = [p.cell_cycle_key for p in config.solve.parameters]
-    cell_cycle_keys = [p.cell_cycle_key + "mother"
-                       if p.cell_cycle_key is not None
-                       else None
-                       for p in config.solve.parameters]
-    if any(cell_cycle_keys):
-        assert None not in cell_cycle_keys, \
-            ("mixture of with and without cell_cycle key in concurrent "
-             "solving not supported yet")
-        # remove nodes that don't have a cell cycle key, with warning
-        to_remove = []
-        for node, data in graph.nodes(data=True):
-            for key in cell_cycle_keys:
-                if key not in data:
-                    raise RuntimeError(
-                        "Node %d does not have cell cycle key %s",
-                        node, key)
-
-        for node in to_remove:
-            logger.debug("Removing node %d", node)
-            graph.remove_node(node)
-
     # assuming graph is a daisy subgraph
     if graph.number_of_nodes() == 0:
         logger.info("No nodes in graph - skipping solving step")
@@ -94,17 +75,12 @@ def track(graph, config, selected_key, frame_key='t', frames=None,
         if not solver:
             solver = Solver(
                 track_graph, parameter, key, frames=frames,
-                write_struct_svm=config.solve.write_struct_svm,
                 block_id=block_id,
                 check_node_close_to_roi=config.solve.check_node_close_to_roi,
-                timeout=config.solve.timeout,
-                add_node_density_constraints=config.solve.add_node_density_constraints)
+                timeout=config.solve.timeout)
         else:
             solver.update_objective(parameter, key)
 
-        if config.solve.write_struct_svm:
-            logger.info("wrote struct svm data, skipping solving")
-            break
         logger.info("Solving for key %s", str(key))
         start_time = time.time()
         solver.solve()
