@@ -149,7 +149,7 @@ class Report:
             fn_divs_no_connections,
             fn_divs_unconnected_child,
             fn_divs_unconnected_parent,
-            tp_divs
+            tp_divs,
             fn_div_count_unconnected_parent):
         '''
         Args:

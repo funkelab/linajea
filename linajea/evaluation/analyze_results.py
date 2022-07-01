@@ -1,3 +1,11 @@
+"""Provides a set of functions to get evaluation results from database
+
+get_results_sorted: get list of sorted results based on config
+get_best_result_config: get best result based on config
+get_results_sorted_db: get list of sorted results from given db
+get_result_id: get result with given id
+get_result_params: get result with given parameter values
+"""
 import logging
 
 import pandas as pd
@@ -37,6 +45,7 @@ def get_results_sorted(config,
 
     return get_results_sorted_db(db_name,
                                  config.general.db_host,
+                                 sparse=config.general.sparse,
                                  filter_params=filter_params,
                                  eval_params=config.evaluate.parameters,
                                  score_columns=score_columns,
@@ -85,6 +94,7 @@ def get_best_result_config(config,
 
 def get_results_sorted_db(db_name,
                           db_host,
+                          sparse=True,
                           filter_params=None,
                           eval_params=None,
                           score_columns=None,
@@ -98,6 +108,9 @@ def get_results_sorted_db(db_name,
         Which database to use
     db_host: str
         Which database connection/host to use
+    sparse: bool
+        Is the ground truth sparse (not every instance is annotated)
+        If it is sparse, fp_edge errors are not included.
     filter_params: dict
         Has to be a valid mongodb query, used to filter results
     eval_params: EvaluateParametersConfig
@@ -117,6 +130,8 @@ def get_results_sorted_db(db_name,
     if not score_columns:
         score_columns = ['fn_edges', 'identity_switches',
                          'fp_divisions', 'fn_divisions']
+        if not sparse:
+            score_columns = ['fp_edges'] + score_columns
     if not score_weights:
         score_weights = [1.]*len(score_columns)
 
