@@ -31,16 +31,6 @@ class EvaluateParametersTrackingConfig:
     window_size: int
         What is the maximum window size for which the fraction of
         error-free tracklets should be computed?
-    filter_polar_bodies: bool
-        Should polar bodies be removed from the computed tracks?
-        Requires cell state classifier predictions, removes objects with
-        a high polar body score from tracks, does not load GT polar
-        bodies.
-    filter_polar_bodies_key: str
-        If polar bodies should be filtered, which attribute in database
-        node collection should be used
-    filter_short_tracklets_len: int
-        If positive, remove all tracks shorter than this many objects
     ignore_one_off_div_errors: bool
         Division annotations are often slightly imprecise. Due to the
         limited temporal resolution the exact moment a division happens
@@ -56,9 +46,6 @@ class EvaluateParametersTrackingConfig:
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
     validation_score = attr.ib(type=bool, default=False)
     window_size = attr.ib(type=int, default=50)
-    filter_polar_bodies = attr.ib(type=bool, default=None)
-    filter_polar_bodies_key = attr.ib(type=str, default=None)
-    filter_short_tracklets_len = attr.ib(type=int, default=-1)
     ignore_one_off_div_errors = attr.ib(type=bool, default=False)
     fn_div_count_unconnected_parent = attr.ib(type=bool, default=True)
 

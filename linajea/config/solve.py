@@ -4,14 +4,14 @@
 import itertools
 import logging
 import random
-from typing import List
+from typing import List, Tuple
 
 import attr
 
 from .data import DataROIConfig
 from .job import JobConfig
 from .utils import (ensure_cls,
-                    ensure_cls_list
+                    ensure_cls_list,
                     load_config)
 
 logger = logging.getLogger(__name__)
@@ -60,8 +60,8 @@ class SolveParametersConfig:
     weight_child = attr.ib(type=float, default=0.0)
     weight_continuation = attr.ib(type=float, default=0.0)
     weight_edge_score = attr.ib(type=float)
-    block_size = attr.ib(type=List[int])
-    context = attr.ib(type=List[int])
+    block_size = attr.ib(type=Tuple[int, int, int, int])
+    context = attr.ib(type=Tuple[int, int, int, int])
     max_cell_move = attr.ib(type=int, default=None)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
     feature_func = attr.ib(type=str, default="noop")

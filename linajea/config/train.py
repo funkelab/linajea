@@ -64,7 +64,7 @@ class _TrainConfig:
     cache_size = attr.ib(type=int)
     max_iterations = attr.ib(type=int)
     checkpoint_stride = attr.ib(type=int)
-ap    snapshot_stride = attr.ib(type=int)
+    snapshot_stride = attr.ib(type=int)
     profiling_stride = attr.ib(type=int)
     use_auto_mixed_precision = attr.ib(type=bool, default=False)
     use_swa = attr.ib(type=bool, default=False)
@@ -120,7 +120,7 @@ class TrainTrackingConfig(_TrainConfig):
     move_radius = attr.ib(type=float)
     rasterize_radius = attr.ib(type=List[float])
     augment = attr.ib(converter=ensure_cls(AugmentTrackingConfig))
-    object_vectors_loss_transition_factor = attr.ib(type=float, default=0.01)
-    object_vectors_loss_transition_offset = attr.ib(type=int, default=20000)
+    movement_vectors_loss_transition_factor = attr.ib(type=float, default=0.01)
+    movement_vectors_loss_transition_offset = attr.ib(type=int, default=20000)
     use_radius = attr.ib(type=Dict[int, int], default=None,
                          converter=use_radius_converter())

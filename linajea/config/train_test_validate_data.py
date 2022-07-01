@@ -89,6 +89,7 @@ class _DataConfig():
 class TrainDataTrackingConfig(_DataConfig):
     """Defines a specialized class for the definition of a training data set
     """
+    data_sources = attr.ib(converter=ensure_cls_list(DataSourceConfig))
     @data_sources.validator
     def _check_train_data_source(self, attribute, value):
         """a train data source has to use datafiles and cannot have a database"""

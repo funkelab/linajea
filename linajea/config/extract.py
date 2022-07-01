@@ -42,7 +42,7 @@ class ExtractConfig:
     context: list of int
         Size of context by which block is grown, to ensure consistent
         solution along borders
-    use_pv_distance: bool
+    use_mv_distance: bool
         Use distance to location predicted by movement vector to look
         for closest neighbors, recommended
     """
@@ -52,4 +52,4 @@ class ExtractConfig:
     job = attr.ib(converter=ensure_cls(JobConfig),
                   default=attr.Factory(JobConfig))
     context = attr.ib(type=List[int], default=None)
-    use_pv_distance = attr.ib(type=bool, default=False)
+    use_mv_distance = attr.ib(type=bool, default=False)

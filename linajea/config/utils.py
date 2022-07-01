@@ -60,7 +60,7 @@ def dump_config(config):
                             time.time()))
     logger.debug("config dump path: %s", path)
     with open(path, 'w') as f:
-        toml.dump(config, f)
+        toml.dump(config, f, encoder=toml.TomlNumpyEncoder())
     return path
 
 
@@ -189,26 +189,7 @@ def maybe_fix_config_paths_to_machine_and_load(config):
                 config_dict["general"]["setup_dir"].replace(
                     "/groups/funke/home/hirschp/linajea_experiments",
                     paths["HOME"])
-        if "model" in config_dict:
-            config_dict["model"]["path_to_script"] = \
-                config_dict["model"]["path_to_script"].replace(
-                    "/groups/funke/home/hirschp/linajea_experiments",
-                    paths["HOME"])
-        if "train" in config_dict:
-            config_dict["train"]["path_to_script"] = \
-                config_dict["train"]["path_to_script"].replace(
-                    "/groups/funke/home/hirschp/linajea_experiments",
-                    paths["HOME"])
         if "predict" in config_dict:
-            config_dict["predict"]["path_to_script"] = \
-                config_dict["predict"]["path_to_script"].replace(
-                    "/groups/funke/home/hirschp/linajea_experiments",
-                    paths["HOME"])
-            if "path_to_script_db_from_zarr" in config_dict["predict"]:
-                config_dict["predict"]["path_to_script_db_from_zarr"] = \
-                    config_dict["predict"]["path_to_script_db_from_zarr"].replace(
-                        "/groups/funke/home/hirschp/linajea_experiments",
-                        paths["HOME"])
             if "output_zarr_dir" in config_dict["predict"]:
                 config_dict["predict"]["output_zarr_dir"] = \
                     config_dict["predict"]["output_zarr_dir"].replace(

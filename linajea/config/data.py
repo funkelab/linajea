@@ -164,6 +164,6 @@ class DataSourceConfig:
 
     def __attrs_post_init__(self):
         assert (self.datafile is not None or
-                self.db_name is not None,
-                "please specify either a file source (datafile) "
-                "or a database source (db_name)")
+                self.db_name is not None), \
+                ("please specify either a file source (datafile) "
+                 "or a database source (db_name)")

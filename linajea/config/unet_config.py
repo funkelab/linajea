@@ -62,6 +62,8 @@ class UnetConfig:
         Use very small weight for pixels lower than cutoff in gt map
     cell_indicator_cutoff: float
         Cutoff values for weight, in gt_cell_indicator map
+    train_only_cell_indicator: bool
+        Only train cell indicator network, not movement vectors
 
     Notes
     -----
@@ -107,3 +109,4 @@ class UnetConfig:
     num_fmaps = attr.ib(type=int)
     cell_indicator_weighted = attr.ib(type=bool, default=True)
     cell_indicator_cutoff = attr.ib(type=float, default=0.01)
+    train_only_cell_indicator = attr.ib(type=bool, default=False)
