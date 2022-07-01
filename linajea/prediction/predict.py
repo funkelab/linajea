@@ -18,15 +18,11 @@ import gunpowder as gp
 
 from linajea.config import (load_config,
                             TrackingConfig)
-from linajea.gunpowder_nodes import (Clip,
-                                     NormalizeMinMax,
-                                     NormalizeMeanStd,
-                                     NormalizeMedianMad,
-                                     WriteCells)
+from linajea.gunpowder_nodes import WriteCells
 from linajea.process_blockwise import write_done
 import linajea.training.torch_model
 from linajea.utils import construct_zarr_filename
-
+from linajea.training.utils import normalize
 
 logger = logging.getLogger(__name__)
 
@@ -209,70 +205,6 @@ def predict(config):
     with gp.build(pipeline):
         pipeline.request_batch(gp.BatchRequest())
 
-
-def normalize(file_source, config, raw, data_config=None):
-    """Add data normalization node to pipeline.
-
-    Should be identical to the one used during training
-
-    Notes
-    -----
-    Which normalization method should be used?
-    None/default:
-        [0,1] based on data type
-    minmax:
-        normalize such that lower bound is at 0 and upper bound at 1
-        clipping is less strict, some data might be outside of range
-    percminmax:
-        use precomputed percentile values for minmax normalization;
-        precomputed values are stored in data_config file that has to
-        be supplied; set perc_min/max to tag to be used
-    mean/median
-        normalize such that mean/median is at 0 and 1 std/mad is at -+1
-        set perc_min/max tags for clipping beforehand
-    """
-    if config.predict.normalization is None or \
-       config.predict.normalization.type == 'default':
-        logger.info("default normalization")
-        file_source = file_source + \
-            gp.Normalize(
-                raw, factor=1.0/np.iinfo(data_config['stats']['dtype']).max)
-    elif config.predict.normalization.type == 'minmax':
-        mn = config.predict.normalization.norm_bounds[0]
-        mx = config.predict.normalization.norm_bounds[1]
-        logger.info("minmax normalization %s %s", mn, mx)
-        file_source = file_source + \
-            Clip(raw, mn=mn/2, mx=mx*2) + \
-            NormalizeMinMax(raw, mn=mn, mx=mx, interpolatable=False)
-    elif config.predict.normalization.type == 'percminmax':
-        mn = data_config['stats'][config.predict.normalization.perc_min]
-        mx = data_config['stats'][config.predict.normalization.perc_max]
-        logger.info("perc minmax normalization %s %s", mn, mx)
-        file_source = file_source + \
-            Clip(raw, mn=mn/2, mx=mx*2) + \
-            NormalizeMinMax(raw, mn=mn, mx=mx)
-    elif config.predict.normalization.type == 'mean':
-        mean = data_config['stats']['mean']
-        std = data_config['stats']['std']
-        mn = data_config['stats'][config.predict.normalization.perc_min]
-        mx = data_config['stats'][config.predict.normalization.perc_max]
-        logger.info("mean normalization %s %s %s %s", mean, std, mn, mx)
-        file_source = file_source + \
-            Clip(raw, mn=mn, mx=mx) + \
-            NormalizeMeanStd(raw, mean=mean, std=std)
-    elif config.predict.normalization.type == 'median':
-        median = data_config['stats']['median']
-        mad = data_config['stats']['mad']
-        mn = data_config['stats'][config.predict.normalization.perc_min]
-        mx = data_config['stats'][config.predict.normalization.perc_max]
-        logger.info("median normalization %s %s %s %s", median, mad, mn, mx)
-        file_source = file_source + \
-            Clip(raw, mn=mn, mx=mx) + \
-            NormalizeMedianMad(raw, median=median, mad=mad)
-    else:
-        raise RuntimeError("invalid normalization method %s",
-                           config.predict.normalization.type)
-    return file_source
 
 
 if __name__ == "__main__":

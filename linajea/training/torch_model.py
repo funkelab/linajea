@@ -1,3 +1,5 @@
+"""Provides a U-Net based tracking model class using torch
+"""
 import json
 import logging
 import os
@@ -13,6 +15,20 @@ logger = logging.getLogger(__name__)
 
 
 class UnetModelWrapper(torch.nn.Module):
+    """Wraps a torch U-Net implementation and extends it to the tracking
+    model used in Linajea
+
+    Supports multiple styles of U-Nets:
+    - a single network for both cell indicator and movement vectors (single)
+    - two separate networks (split)
+    - a shared encoder and two decoders (multihead)
+
+    Adds a layer to directly perform non maximum suppression using a 3d
+    pooling layer with stride 1
+
+    Input and Output shapes can be precomputed using `inout_shapes` (they
+    can differ as valid padding is used by default)
+    """
     def __init__(self, config, current_step=0):
         super().__init__()
         self.config = config

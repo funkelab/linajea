@@ -20,19 +20,14 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 import gunpowder as gp
 
 from linajea.gunpowder_nodes import (TracksSource, AddMovementVectors,
-                                     ShiftAugment, ShuffleChannels, Clip,
-                                     NoOp, NormalizeMinMax, NormalizeMeanStd,
-                                     NormalizeMedianMad,
-                                     RandomLocationExcludeTime)
-from linajea.config import (load_config,
-                            maybe_fix_config_paths_to_machine_and_load,
-                            TrackingConfig)
-
+                                     ShiftAugment, ShuffleChannels,
+                                     NoOp, RandomLocationExcludeTime)
+from linajea.config import load_config
 
 from . import torch_model
 from . import torch_loss
 from .utils import (get_latest_checkpoint,
-                   Cast)
+                    normalize)
 
 
 logger = logging.getLogger(__name__)
@@ -54,7 +49,7 @@ def train(config):
     """
     # Get the latest checkpoint
     checkpoint_basename = os.path.join(config.general.setup_dir, 'train_net')
-    latest_checkpoint, trained_until = get_latest_checkpoint(checkpoint_basename)
+    _, trained_until = get_latest_checkpoint(checkpoint_basename)
     # training already done?
     if trained_until >= config.train.max_iterations:
         return
@@ -405,7 +400,7 @@ def train(config):
             model=model,
             loss=loss,
             optimizer=opt,
-            checkpoint_basename=os.path.join(config.general.setup_dir, 'train_net'),
+            checkpoint_basename=checkpoint_basename,
             inputs=inputs,
             outputs=outputs,
             loss_inputs=loss_inputs,
@@ -445,70 +440,6 @@ def train(config):
                 logger.info(
                     "Batch: iteration=%d, time=%f",
                     i, time_of_iteration)
-
-
-def normalize(file_source, config, raw, data_config=None):
-    """Add data normalization node to pipeline
-
-    Notes
-    -----
-    Which normalization method should be used?
-    None/default:
-        [0,1] based on data type
-    minmax:
-        normalize such that lower bound is at 0 and upper bound at 1
-        clipping is less strict, some data might be outside of range
-    percminmax:
-        use precomputed percentile values for minmax normalization;
-        precomputed values are stored in data_config file that has to
-        be supplied; set perc_min/max to tag to be used
-    mean/median
-        normalize such that mean/median is at 0 and 1 std/mad is at -+1
-        set perc_min/max tags for clipping beforehand
-    """
-    if config.train.normalization is None or \
-       config.train.normalization.type == 'default':
-        logger.info("default normalization")
-        file_source = file_source + \
-            gp.Normalize(raw,
-                         factor=1.0/np.iinfo(data_config['stats']['dtype']).max
-                         if data_config is not None else None)
-    elif config.train.normalization.type == 'minmax':
-        mn = config.train.normalization.norm_bounds[0]
-        mx = config.train.normalization.norm_bounds[1]
-        logger.info("minmax normalization %s %s", mn, mx)
-        file_source = file_source + \
-            Clip(raw, mn=mn/2, mx=mx*2) + \
-            NormalizeMinMax(raw, mn=mn, mx=mx, interpolatable=False)
-    elif config.train.normalization.type == 'percminmax':
-        mn = data_config['stats'][config.train.normalization.perc_min]
-        mx = data_config['stats'][config.train.normalization.perc_max]
-        logger.info("perc minmax normalization %s %s", mn, mx)
-        file_source = file_source + \
-            Clip(raw, mn=mn/2, mx=mx*2) + \
-            NormalizeMinMax(raw, mn=mn, mx=mx)
-    elif config.train.normalization.type == 'mean':
-        mean = data_config['stats']['mean']
-        std = data_config['stats']['std']
-        mn = data_config['stats'][config.train.normalization.perc_min]
-        mx = data_config['stats'][config.train.normalization.perc_max]
-        logger.info("mean normalization %s %s %s %s", mean, std, mn, mx)
-        file_source = file_source + \
-            Clip(raw, mn=mn, mx=mx) + \
-            NormalizeMeanStd(raw, mean=mean, std=std)
-    elif config.train.normalization.type == 'median':
-        median = data_config['stats']['median']
-        mad = data_config['stats']['mad']
-        mn = data_config['stats'][config.train.normalization.perc_min]
-        mx = data_config['stats'][config.train.normalization.perc_max]
-        logger.info("median normalization %s %s %s %s", median, mad, mn, mx)
-        file_source = file_source + \
-            Clip(raw, mn=mn, mx=mx) + \
-            NormalizeMedianMad(raw, median=median, mad=mad)
-    else:
-        raise RuntimeError("invalid normalization method %s",
-                           config.train.normalization.type)
-    return file_source
 
 
 def get_sources(config, raw, anchor, tracks, center_tracks, data_sources,
