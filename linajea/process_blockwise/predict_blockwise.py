@@ -1,12 +1,11 @@
-from __future__ import absolute_import
+"""Provides function to predict object candidates block-wise
+"""
 import json
 import logging
 import os
 import subprocess
-import time
 
 import numpy as np
-from numcodecs import Blosc
 
 import daisy
 from funlib.run import run
@@ -18,6 +17,18 @@ logger = logging.getLogger(__name__)
 
 
 def predict_blockwise(linajea_config):
+    """Function to predict object candidates using a previously
+    trained model.
+
+    Starts a number of worker processes. Each process loads the model
+    and sets up the prediction pipeline and then repeatedly requests
+    blocks to process from this main process.
+
+    Args
+    ----
+    linajea_config: TrackingConfig
+        Configuration object
+    """
     setup_dir = linajea_config.general.setup_dir
 
     data = linajea_config.inference_data.data_source
@@ -55,13 +66,15 @@ def predict_blockwise(linajea_config):
     block_write_roi = daisy.Roi((0, 0, 0, 0), net_output_size)
     block_read_roi = block_write_roi.grow(context, context)
 
-    output_zarr = construct_zarr_filename(linajea_config,
-                                          data.datafile.filename,
-                                          linajea_config.inference_data.checkpoint)
+    output_zarr = construct_zarr_filename(
+        linajea_config,
+        data.datafile.filename,
+        linajea_config.inference_data.checkpoint)
 
     if linajea_config.predict.write_db_from_zarr:
         assert os.path.exists(output_zarr), \
-            "{} does not exist, cannot write to db from it!".format(output_zarr)
+            "{} does not exist, cannot write to db from it!".format(
+                output_zarr)
         input_roi = output_roi
         block_read_roi = block_write_roi
 
@@ -72,7 +85,6 @@ def predict_blockwise(linajea_config):
         maxima_ds = 'volumes/maxima'
         output_path = os.path.join(setup_dir, output_zarr)
         logger.info("Preparing zarr at %s" % output_path)
-        compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
         file_roi = daisy.Roi(offset=data.datafile.file_roi.offset,
                              shape=data.datafile.file_roi.shape)
 
@@ -83,8 +95,7 @@ def predict_blockwise(linajea_config):
                 voxel_size,
                 dtype=np.float32,
                 write_size=net_output_size,
-                num_channels=3,
-                compressor_object=compressor)
+                num_channels=3)
         daisy.prepare_ds(
                 output_path,
                 cell_indicator_ds,
@@ -92,8 +103,7 @@ def predict_blockwise(linajea_config):
                 voxel_size,
                 dtype=np.float32,
                 write_size=net_output_size,
-                num_channels=1,
-                compressor_object=compressor)
+                num_channels=1)
         daisy.prepare_ds(
                 output_path,
                 maxima_ds,
@@ -101,8 +111,7 @@ def predict_blockwise(linajea_config):
                 voxel_size,
                 dtype=np.float32,
                 write_size=net_output_size,
-                num_channels=1,
-                compressor_object=compressor)
+                num_channels=1)
 
     logger.info("Following ROIs in world units:")
     logger.info("Input ROI       = %s", input_roi)
@@ -137,7 +146,8 @@ def predict_blockwise(linajea_config):
         block_read_roi,
         block_write_roi,
         process_function=lambda: predict_worker(linajea_config),
-        check_function=None if linajea_config.predict.no_db_access else lambda b: all([f(b) for f in cf]),
+        check_function=(None if linajea_config.predict.no_db_access
+                        else lambda b: all([f(b) for f in cf])),
         num_workers=linajea_config.predict.job.num_workers,
         read_write_conflict=False,
         max_retries=0,

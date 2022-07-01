@@ -1,3 +1,8 @@
+"""Set of daisy block-wise processing utility functions
+
+check_function*: Check in database if block has already been processed
+write_done*: Write into database that block has been processed
+"""
 import pymongo
 
 def get_daisy_collection_name(step_name):

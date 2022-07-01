@@ -1,5 +1,7 @@
+"""Provides function to solve an ILP with a predefined set of constraints
+and a set of object and edge candidates.
+"""
 import logging
-import subprocess
 import time
 
 import daisy
@@ -7,12 +9,32 @@ from linajea.utils import CandidateDatabase
 from .daisy_check_functions import (
         check_function, write_done,
         check_function_all_blocks, write_done_all_blocks)
-from linajea.tracking import track, nm_track, greedy_track
+from linajea.tracking import track, greedy_track
 
 logger = logging.getLogger(__name__)
 
 
 def solve_blockwise(linajea_config):
+    """Function to solve an ILP-based optimization problem block-wise
+
+    Notes
+    -----
+    The set of constraints has been predefined.
+    For each block:
+    Takes the previously predicted object candidates and extracted edge
+    candidates, sets up the objective based on their score and creates
+    the respective constraints for all indicator variables and solve.
+    To achieve consistent solutions along the block boundary, compute
+    with overlap, blocks without overlap can be processed in parallel.
+    If there is overlap, compute these blocks sequentially; if a
+    solution for candidates in the overlap area has already been
+    computed by a previous block, enforce this in the remaining blocks.
+
+    Args
+    ----
+    linajea_config: TrackingConfig
+        Configuration object
+    """
     parameters = linajea_config.solve.parameters
     # block_size/context are identical for all parameters
     block_size = daisy.Coordinate(parameters[0].block_size)
@@ -93,7 +115,7 @@ def solve_blockwise(linajea_config):
         # Note: in the case of a set of parameters,
         # we are assuming that none of the individual parameters are
         # half done and only checking the hash for each block
-        check_function=None if linajea_config.solve.write_struct_svm else lambda b: check_function(
+        check_function=lambda b: check_function(
             b,
             step_name,
             db_name,
@@ -201,15 +223,9 @@ def solve_in_block(linajea_config,
     if linajea_config.solve.greedy:
         greedy_track(graph=graph, selected_key=selected_keys[0],
                      cell_indicator_threshold=0.2)
-    elif linajea_config.solve.non_minimal:
-        nm_track(graph, linajea_config, selected_keys, frames=frames)
     else:
         track(graph, linajea_config, selected_keys,
               frames=frames, block_id=block.block_id[1])
-
-    if linajea_config.solve.write_struct_svm:
-        logger.info("wrote struct svm data, database not updated")
-        return 0
 
     start_time = time.time()
     graph.update_edge_attrs(

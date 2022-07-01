@@ -1,19 +1,29 @@
-from __future__ import absolute_import
+"""Provides function to extract edges from object candidates block-wise
+"""
 import logging
 import time
 
-from scipy.spatial import cKDTree
 import numpy as np
+from scipy.spatial import KDTree
 
 import daisy
-import linajea
 from .daisy_check_functions import write_done, check_function
+import linajea
 
 logger = logging.getLogger(__name__)
 
 
 def extract_edges_blockwise(linajea_config):
+    """Function to extract edges (compute edge candidates between
+    neighboring object candidates in adjacent frames)
 
+    Starts a number of worker processes to process the blocks.
+
+    Args
+    ----
+    linajea_config: TrackingConfig
+        Configuration object
+    """
     data = linajea_config.inference_data.data_source
     extract_roi = daisy.Roi(offset=data.roi.offset,
                             shape=data.roi.shape)
@@ -115,80 +125,79 @@ def extract_edges_in_block(
             (
                 cell,
                 np.array([attrs[d] for d in ['z', 'y', 'x']]),
-                np.array(attrs['parent_vector'])
+                np.array(attrs['movement_vector'])
             )
             for cell, attrs in graph.nodes(data=True)
             if 't' in attrs and attrs['t'] == t
         ]
-        for t in range(t_begin - (2 if linajea_config.general.two_frame_edges else 1),
+        for t in range(t_begin - 1,
                        t_end)
     }
 
     for t in range(t_begin, t_end):
 
-        for fd in [1,2] if linajea_config.general.two_frame_edges else [1]:
-            pre = t - fd
-            nex = t
+        pre = t - 1
+        nex = t
+
+        logger.debug(
+            "Finding edges between cells in frames %d and %d "
+            "(%d and %d cells)",
+            pre, nex, len(cells_by_t[pre]), len(cells_by_t[nex]))
+
+        if len(cells_by_t[pre]) == 0 or len(cells_by_t[nex]) == 0:
+
+            logger.debug("There are no edges between these frames, skipping")
+            continue
+
+        # prepare KD tree for fast lookup of 'pre' cells
+        logger.debug("Preparing KD tree...")
+        all_pre_cells = cells_by_t[pre]
+        kd_data = [cell[1] for cell in all_pre_cells]
+        pre_kd_tree = KDTree(kd_data)
+
+        for th, val in linajea_config.extract.edge_move_threshold.items():
+            if th == -1 or t < int(th):
+                edge_move_threshold = val
+                break
+
+        for i, nex_cell in enumerate(cells_by_t[nex]):
+
+            nex_cell_id = nex_cell[0]
+            nex_cell_center = nex_cell[1]
+            nex_parent_center = nex_cell_center + nex_cell[2]
+
+            if linajea_config.extract.use_mv_distance:
+                pre_cells_indices = pre_kd_tree.query_ball_point(
+                    nex_parent_center,
+                    edge_move_threshold)
+            else:
+                pre_cells_indices = pre_kd_tree.query_ball_point(
+                    nex_cell_center,
+                    edge_move_threshold)
+            pre_cells = [all_pre_cells[i] for i in pre_cells_indices]
 
             logger.debug(
-                "Finding edges between cells in frames %d and %d "
-                "(%d and %d cells)",
-                pre, nex, len(cells_by_t[pre]), len(cells_by_t[nex]))
+                "Linking to %d cells in previous frame",
+                len(pre_cells))
 
-            if len(cells_by_t[pre]) == 0 or len(cells_by_t[nex]) == 0:
-
-                logger.debug("There are no edges between these frames, skipping")
+            if len(pre_cells) == 0:
                 continue
 
-            # prepare KD tree for fast lookup of 'pre' cells
-            logger.debug("Preparing KD tree...")
-            all_pre_cells = cells_by_t[pre]
-            kd_data = [cell[1] for cell in all_pre_cells]
-            pre_kd_tree = cKDTree(kd_data)
+            for pre_cell in pre_cells:
 
-            for th, val in linajea_config.extract.edge_move_threshold.items():
-                if th == -1 or t < int(th):
-                    edge_move_threshold = val
-                    break
+                pre_cell_id = pre_cell[0]
+                pre_cell_center = pre_cell[1]
 
-            for i, nex_cell in enumerate(cells_by_t[nex]):
+                moved = (pre_cell_center - nex_cell_center)
+                distance = np.linalg.norm(moved)
 
-                nex_cell_id = nex_cell[0]
-                nex_cell_center = nex_cell[1]
-                nex_parent_center = nex_cell_center + nex_cell[2]
+                prediction_offset = (pre_cell_center - nex_parent_center)
+                prediction_distance = np.linalg.norm(prediction_offset)
 
-                if linajea_config.extract.use_pv_distance:
-                    pre_cells_indices = pre_kd_tree.query_ball_point(
-                        nex_parent_center,
-                        edge_move_threshold)
-                else:
-                    pre_cells_indices = pre_kd_tree.query_ball_point(
-                        nex_cell_center,
-                        edge_move_threshold)
-                pre_cells = [all_pre_cells[i] for i in pre_cells_indices]
-
-                logger.debug(
-                    "Linking to %d cells in previous frame",
-                    len(pre_cells))
-
-                if len(pre_cells) == 0:
-                    continue
-
-                for pre_cell in pre_cells:
-
-                    pre_cell_id = pre_cell[0]
-                    pre_cell_center = pre_cell[1]
-
-                    moved = (pre_cell_center - nex_cell_center)
-                    distance = np.linalg.norm(moved)
-
-                    prediction_offset = (pre_cell_center - nex_parent_center)
-                    prediction_distance = np.linalg.norm(prediction_offset)
-
-                    graph.add_edge(
-                        nex_cell_id, pre_cell_id,
-                        distance=distance,
-                        prediction_distance=prediction_distance)
+                graph.add_edge(
+                    nex_cell_id, pre_cell_id,
+                    distance=distance,
+                    prediction_distance=prediction_distance)
 
     logger.debug("Found %d edges", graph.number_of_edges())
 
