@@ -1,8 +1,15 @@
-from daisy.persistence import MongoDbGraphProvider
+"""Provides a class wrapping a mongodb database
+
+The database is used to store object and edge candidates, sets of
+parameters that have been used to compute tracks from these and the
+associated solutions and evaluation.
+"""
 import logging
 import pymongo
 import time
+
 import numpy as np
+from daisy.persistence import MongoDbGraphProvider
 from daisy import Coordinate, Roi
 
 logger = logging.getLogger(__name__)

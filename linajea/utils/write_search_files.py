@@ -1,3 +1,5 @@
+"""Provides a script to write (grid) search parameters as list to toml file
+"""
 import argparse
 import itertools
 import logging
@@ -90,13 +92,6 @@ def write_search_configs(config, random_search, output_file, num_configs=None):
                 conf[k] = value
             search_configs.append(conf)
     else:
-        if params.get('cell_cycle_key') == '':
-            params['cell_cycle_key'] = None
-        elif isinstance(params.get('cell_cycle_key'), list) and \
-             '' in params['cell_cycle_key']:
-            params['cell_cycle_key'] = [k if k != '' else None
-                                        for k in params['cell_cycle_key']]
-
         search_configs = [
             dict(zip(params.keys(), x))
             for x in itertools.product(*params.values())]
@@ -105,7 +100,7 @@ def write_search_configs(config, random_search, output_file, num_configs=None):
             random.shuffle(search_configs)
             search_configs = search_configs[:num_configs]
 
-    search_configs = {"solve" : { "parameters": search_configs}}
+    search_configs = {"parameters": search_configs}
     with open(output_file, 'w') as f:
         print(search_configs)
         toml.dump(search_configs, f)

@@ -1,3 +1,8 @@
+"""Provides function to read tracks from csv text file
+
+First checks if file has header, if yes uses it to parse file,
+if no assumes default order of columns
+"""
 import csv
 import logging
 
@@ -8,20 +13,11 @@ from daisy import Coordinate
 logger = logging.getLogger(__name__)
 
 
-def get_dialect_and_header(csv_file):
-    with open(csv_file, 'r') as f:
-        dialect = csv.Sniffer().sniff(f.read(1024))
-        f.seek(0)
-        has_header = csv.Sniffer().has_header(f.read(1024))
-
-    return dialect, has_header
-
-
 def parse_tracks_file(
         filename,
         scale=1.0,
         limit_to_roi=None):
-    dialect, has_header = get_dialect_and_header(filename)
+    dialect, has_header = _get_dialect_and_header(filename)
     logger.debug("Tracks file has header: %s" % has_header)
     if has_header:
         locations, track_info = \
@@ -30,6 +26,15 @@ def parse_tracks_file(
         locations, track_info = \
             _parse_csv_ndims(filename, scale, limit_to_roi)
     return locations, track_info
+
+
+def _get_dialect_and_header(csv_file):
+    with open(csv_file, 'r') as f:
+        dialect = csv.Sniffer().sniff(f.read(1024))
+        f.seek(0)
+        has_header = csv.Sniffer().has_header(f.read(1024))
+
+    return dialect, has_header
 
 
 def _parse_csv_ndims(filename, scale=1.0, limit_to_roi=None, read_dims=4):
@@ -82,7 +87,7 @@ def _parse_csv_fields(filename, scale=1.0, limit_to_roi=None):
     '''
     locations = []
     track_info = []
-    dialect, has_header = get_dialect_and_header(filename)
+    dialect, has_header = _get_dialect_and_header(filename)
     with open(filename, 'r') as f:
         assert has_header, "No header found, but this function needs a header"
         reader = csv.DictReader(f, fieldnames=None,

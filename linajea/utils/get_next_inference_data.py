@@ -1,3 +1,10 @@
+"""Provides facility to automatically loop over all desired samples
+
+Useful if data set (validate_data or test_data) contains multiple samples,
+or if multiple checkpoints should be compared or in general to be able to
+set (monolithic) config file once and compute all steps without changing it
+or needing different ones for validation and testing.
+"""
 from copy import deepcopy
 import logging
 import os
@@ -9,8 +16,7 @@ import toml
 from linajea.utils import (CandidateDatabase,
                            checkOrCreateDB)
 from linajea.config import (InferenceDataTrackingConfig,
-                            SolveParametersMinimalConfig,
-                            SolveParametersNonMinimalConfig,
+                            SolveParametersConfig,
                             TrackingConfig,
                             maybe_fix_config_paths_to_machine_and_load)
 
@@ -18,6 +24,45 @@ logger = logging.getLogger(__name__)
 
 
 def getNextInferenceData(args, is_solve=False, is_evaluate=False):
+    """
+
+    Args
+    ----
+    args: argparse.Namespace or types.SimpleNamespace
+        Simple Namespace object with some (mostly optional, depending on
+        step that should be computed) attributes, e.g., the result of
+        calling parse_args on an argparse.ArgumentParser or by constructing
+        a types.SimpleNamespace manually.
+
+        Attributes
+        ----------
+        config: Path
+            Mandatory,path to the configuration file that should be used
+        validation: bool
+            Compute results on validate_data (or on test_data)
+        validate_on_train: bool
+            Use train_data for validation, for debugging/checking for
+            overfitting
+        checkpoint: int
+            Can be used to overwrite value of checkpoint contained in config
+        param_list_idx: int
+            Index into list of parameter sets in config.solve.parameters
+            Only this element will be computed.
+        val_param_id: int
+            Load parameters from validation database with this ID, use it for
+            test data; only works with a single data sample (otherwise ID might
+            not be unique)
+        param_id: int
+            Load parameters from current database with this ID and compute
+        param_ids: list of int
+            Load sets of parameters with these IDs from current database
+            and compute; if two elements, interpreted as range; if more
+            than two elements, interpreted as list.
+    is_solve: bool
+        Compute solving step
+    is_evaluate: bool
+        Compute evaluation step
+    """
     config = maybe_fix_config_paths_to_machine_and_load(args.config)
     config = TrackingConfig(**config)
     # print(config)
@@ -62,11 +107,11 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
     for checkpoint in checkpoints:
         if hasattr(args, "val_param_id") and (is_solve or is_evaluate) and \
            args.val_param_id is not None:
-            config = fix_val_param_pid(args, config, checkpoint)
+            config = _fix_val_param_pid(args, config, checkpoint)
         if hasattr(args, "param_id") and (is_solve or is_evaluate) and \
            (args.param_id is not None or
             (hasattr(args, "param_ids") and args.param_ids is not None)):
-            config = fix_param_pid(args, config, checkpoint, inference_data)
+            config = _fix_param_pid(args, config, checkpoint, inference_data)
         inference_data_tmp = {
             'checkpoint': checkpoint,
             'cell_score_threshold': inference_data.cell_score_threshold}
@@ -80,22 +125,19 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
                     sample.datafile.filename,
                     checkpoint,
                     inference_data.cell_score_threshold,
-                    roi=sample.roi,
+                    roi=attr.asdict(sample.roi),
                     tag=config.general.tag)
             inference_data_tmp['data_source'] = sample
-            config.inference = InferenceDataTrackingConfig(**inference_data_tmp) # type: ignore
+            config.inference_data = InferenceDataTrackingConfig(**inference_data_tmp) # type: ignore
             if is_solve:
-                config = fix_solve_roi(config)
-                if config.solve.write_struct_svm:
-                    config.solve.write_struct_svm += "_ckpt_{}_{}".format(
-                        checkpoint, os.path.basename(sample.datafile.filename))
+                config = _fix_solve_roi(config)
 
             if is_evaluate:
                 print(solve_parameters_sets, len(solve_parameters_sets))
                 for solve_parameters in solve_parameters_sets:
                     solve_parameters = deepcopy(solve_parameters)
                     config.solve.parameters = [solve_parameters]
-                    config = fix_solve_roi(config)
+                    config = _fix_solve_roi(config)
                     yield config
                 continue
 
@@ -106,7 +148,7 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
             yield config
 
 
-def fix_val_param_pid(args, config, checkpoint):
+def _fix_val_param_pid(args, config, checkpoint):
     if hasattr(args, "validation") and args.validation:
         tmp_data = config.test_data
     else:
@@ -127,13 +169,13 @@ def fix_val_param_pid(args, config, checkpoint):
 
     pid = args.val_param_id
 
-    config = fix_solve_parameters_with_pids(
+    config = _fix_solve_parameters_with_pids(
         config, [pid], db_meta_info, db_name)
     config.solve.parameters[0].val = False
     return config
 
 
-def fix_param_pid(args, config, checkpoint, inference_data):
+def _fix_param_pid(args, config, checkpoint, inference_data):
     assert len(inference_data.data_sources) == 1, (
         "param_id(s) only supported with a single sample")
     if inference_data.data_sources[0].db_name is None:
@@ -148,24 +190,24 @@ def fix_param_pid(args, config, checkpoint, inference_data):
         db_meta_info = None
 
     if hasattr(args, "param_ids") and args.param_ids is not None:
-        if len(args.param_ids) > 2:
-            pids = args.param_ids
-        else:
+        if len(args.param_ids) == 2:
             pids = list(range(int(args.param_ids[0]), int(args.param_ids[1])+1))
+        else:
+            pids = args.param_ids
     else:
         pids = [args.param_id]
 
-    config = fix_solve_parameters_with_pids(config, pids, db_meta_info, db_name)
+    config = _fix_solve_parameters_with_pids(config, pids, db_meta_info, db_name)
     return config
 
 
-def fix_solve_roi(config):
+def _fix_solve_roi(config):
     for i in range(len(config.solve.parameters)):
         config.solve.parameters[i].roi = config.inference_data.data_source.roi
     return config
 
 
-def fix_solve_parameters_with_pids(config, pids, db_meta_info=None, db_name=None):
+def _fix_solve_parameters_with_pids(config, pids, db_meta_info=None, db_name=None):
     if db_name is None:
         db_name = checkOrCreateDB(
             config.general.db_host,
@@ -173,7 +215,7 @@ def fix_solve_parameters_with_pids(config, pids, db_meta_info=None, db_name=None
             db_meta_info["sample"],
             db_meta_info["iteration"],
             db_meta_info["cell_score_threshold"],
-            roi=db_meta_info["roi"],
+            roi=attr.asdict(db_meta_info["roi"]),
             tag=config.general.tag,
             create_if_not_found=False)
     assert db_name is not None, "db for pid {} not found".format(pids)
@@ -197,11 +239,6 @@ def fix_solve_parameters_with_pids(config, pids, db_meta_info=None, db_name=None
         logger.info("getting params %s (id: %s) from database %s (sample: %s)",
                     parameters, pid, db_name,
                     db_meta_info["sample"] if db_meta_info is not None else None)
-        try:
-            solve_parameters = SolveParametersMinimalConfig(**parameters) # type: ignore
-            config.solve.non_minimal = False
-        except TypeError:
-            solve_parameters = SolveParametersNonMinimalConfig(**parameters) # type: ignore
-            config.solve.non_minimal = True
+        solve_parameters = SolveParametersConfig(**parameters) # type: ignore
         config.solve.parameters.append(solve_parameters)
     return config

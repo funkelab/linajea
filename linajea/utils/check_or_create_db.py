@@ -1,3 +1,8 @@
+"""Provides function to check if database for given setup exists already.
+
+If yes, returns name.
+If no, creates it or throws error (depending on flag)
+"""
 import datetime
 import logging
 import os
@@ -10,6 +15,29 @@ logger = logging.getLogger(__name__)
 def checkOrCreateDB(db_host, setup_dir, sample, checkpoint,
                     cell_score_threshold, roi=None, prefix="linajea_",
                     tag=None, create_if_not_found=True):
+    """
+
+    Attributes
+    ----------
+    db_host: str
+        Host address of mongodb server
+    setup_dir: str
+        Which experiment/setup to use
+    sample: str
+        Which data sample are we looking for?
+    checkpoint: int
+        Which model checkpoint was used for prediction?
+    cell_score_threshold:
+        Which score threshold was used for prediction?
+    roi: dict of str: List[int]
+        What ROI was predicted?
+    prefix: str
+        Prefix used for database names
+    tag: str, optional
+        Optional tag used to mark experiment
+    create_if_not_found: bool
+        Should db be created if not found? (otherwise exception is thrown)
+    """
     db_host = db_host
 
     info = {}
@@ -21,12 +49,12 @@ def checkOrCreateDB(db_host, setup_dir, sample, checkpoint,
     if tag is not None:
         info["tag"] = tag
 
-    return checkOrCreateDBMeta(db_host, info, prefix=prefix,
-                               create_if_not_found=create_if_not_found)
+    return _checkOrCreateDBMeta(db_host, info, prefix=prefix,
+                                create_if_not_found=create_if_not_found)
 
 
-def checkOrCreateDBMeta(db_host, db_meta_info, prefix="linajea_",
-                        create_if_not_found=True):
+def _checkOrCreateDBMeta(db_host, db_meta_info, prefix="linajea_",
+                         create_if_not_found=True):
     db_meta_info_no_roi = {k: v for k, v in db_meta_info.items() if k != "roi"}
 
     client = pymongo.MongoClient(host=db_host)

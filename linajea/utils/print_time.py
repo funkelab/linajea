@@ -1,3 +1,5 @@
+"""Provides a function to pretty print a time duration
+"""
 import logging
 
 logger = logging.getLogger(__name__)
