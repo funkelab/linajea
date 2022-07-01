@@ -1,20 +1,56 @@
-from funlib import math
-import gunpowder as gp
-import numpy as np
+"""Provides a gunpowder node to write node indicators and movement vectors to database
+"""
+import logging
 import pymongo
 from pymongo.errors import BulkWriteError
-import logging
+
+import numpy as np
+
+from funlib import math
+import gunpowder as gp
 
 logger = logging.getLogger(__name__)
 
 
 class WriteCells(gp.BatchFilter):
+    """Gunpowder node to write tracking prediction data to database
 
+    Attributes
+    ----------
+    maxima: gp.ArrayKey
+        binary array containing extracted maxima
+    cell_indicator: gp.ArrayKey
+        array containing cell indicator prediction
+    movement_vectors: gp.ArrayKey
+        array containing movement vector prediction
+    score_threshold: float
+        ignore maxima with a cell indicator score lower than this
+    db_host: str
+        mongodb host
+    db_name: str
+        write to this database
+    edge_length: int
+        if > 1, edge length indicates the length of the edge of a cube
+        from which movement vectors will be read. The cube will be
+        centered around the maxima, and predictions within the cube
+        of voxels will be averaged to get the movement vector to store
+        in the db
+    mask: np.ndarray
+        If not None, use as mask and ignore all predictions outside of
+        mask
+    z_range: 2-tuple
+        If not None, ignore all predictions ouside of the given
+        z/depth range
+    volume_shape: gp.Coordinate or list of int
+        If not None, should be set to shape of volume (in voxels);
+        ignore all predictions outside (might occur if using daisy with
+        overhang)
+    """
     def __init__(
             self,
             maxima,
             cell_indicator,
-            parent_vectors,
+            movement_vectors,
             score_threshold,
             db_host,
             db_name,
@@ -22,17 +58,10 @@ class WriteCells(gp.BatchFilter):
             mask=None,
             z_range=None,
             volume_shape=None):
-        '''Edge length indicates the length of the edge of the cube
-        from which parent vectors will be read. The cube will be centered
-        around the maxima, and predictions within the cube of voxels
-        will be averaged to get the parent vector to store in the db
-        If (binary) mask or z_range is provided, only cells within mask
-        or range will be written
-        '''
 
         self.maxima = maxima
         self.cell_indicator = cell_indicator
-        self.parent_vectors = parent_vectors
+        self.movement_vectors = movement_vectors
         self.score_threshold = score_threshold
         self.db_host = db_host
         self.db_name = db_name
@@ -69,20 +98,20 @@ class WriteCells(gp.BatchFilter):
 
         maxima = batch[self.maxima].data
         cell_indicator = batch[self.cell_indicator].data
-        parent_vectors = batch[self.parent_vectors].data
+        movement_vectors = batch[self.movement_vectors].data
 
         cells = []
         for index in np.argwhere(maxima*cell_indicator > self.score_threshold):
             index = gp.Coordinate(index)
-            logger.debug("Getting parent vector at index %s" % str(index))
+            logger.debug("Getting movement vector at index %s" % str(index))
 
             score = cell_indicator[index]
             if self.edge_length == 1:
-                parent_vector = tuple(
-                    float(x) for x in parent_vectors[(Ellipsis,) + index])
+                movement_vector = tuple(
+                    float(x) for x in movement_vectors[(Ellipsis,) + index])
             else:
-                parent_vector = WriteCells.get_avg_pv(
-                        parent_vectors, index, self.edge_length)
+                movement_vector = WriteCells.get_avg_mv(
+                        movement_vectors, index, self.edge_length)
             position = roi.get_begin() + voxel_size*index
             if self.volume_shape is not None and \
                np.any(np.greater_equal(
@@ -93,13 +122,13 @@ class WriteCells(gp.BatchFilter):
             if self.mask is not None:
                 tmp_pos = position // voxel_size
                 if self.mask[tmp_pos[-self.mask.ndim:]] == 0:
-                    logger.info("skipping cell mask {}".format(tmp_pos))
+                    logger.debug("skipping cell mask {}".format(tmp_pos))
                     continue
             if self.z_range is not None:
                 tmp_pos = position // voxel_size
                 if tmp_pos[1] < self.z_range[0] or \
                    tmp_pos[1] > self.z_range[1]:
-                    logger.info("skipping cell zrange {}".format(tmp_pos))
+                    logger.debug("skipping cell zrange {}".format(tmp_pos))
                     continue
 
             cell_id = int(math.cantor_number(
@@ -112,12 +141,12 @@ class WriteCells(gp.BatchFilter):
                 'z': position[1],
                 'y': position[2],
                 'x': position[3],
-                'parent_vector': parent_vector
+                'movement_vector': movement_vector
             })
 
             logger.debug(
-                "ID=%d, score=%f, parent_vector=%s" % (
-                    cell_id, score, parent_vector))
+                "ID=%d, score=%f, movement_vector=%s" % (
+                    cell_id, score, movement_vector))
 
         if len(cells) > 0:
             try:
@@ -127,54 +156,54 @@ class WriteCells(gp.BatchFilter):
                 raise
 
 
-    def get_avg_pv(parent_vectors, index, edge_length):
-        ''' Computes the average parent vector offset from the parent vectors
-        in a cube centered at index. Accounts for the fact that each parent
+    def get_avg_mv(movement_vectors, index, edge_length):
+        ''' Computes the average movement vector offset from the movement vectors
+        in a cube centered at index. Accounts for the fact that each movement
         vector is a relative offset from its source location, not from index.
 
         Args:
 
-            parent_vectors (``np.array``):
+            movement_vectors (``np.array``):
 
-                A numpy array of parent vectors with dimensions
+                A numpy array of movement vectors with dimensions
                 (channels, time, z, y, x).
 
             index (``gp.Coordinate``):
 
                 A 4D coordiante (t, z, y, x) indicating the target
-                location to get the average parent vector for.
+                location to get the average movement vector for.
 
             edge_length (``int``):
 
                 Length of each side of the cube within which the
-                parent vectors are averaged.
+                movement vectors are averaged.
 
         '''
         radius = (edge_length - 1) // 2
-        logger.debug("Getting average parent vectors with radius"
+        logger.debug("Getting average movement vectors with radius"
                      " %d around index %s" % (radius, str(index)))
         offsets = []
-        pv_shape = parent_vectors.shape
+        mv_shape = movement_vectors.shape
         # channels, t, z, y, x
-        assert(len(pv_shape) == 5)
-        pv_max_z = pv_shape[2]
-        pv_max_y = pv_shape[3]
-        pv_max_x = pv_shape[4]
+        assert(len(mv_shape) == 5)
+        mv_max_z = mv_shape[2]
+        mv_max_y = mv_shape[3]
+        mv_max_x = mv_shape[4]
         logger.debug("Type of index[1]: %s   index[1] %s"
                      % (str(type(index[1])), str(index[1])))
         for z in range(max(0, index[1] - radius),
-                       min(index[1] + radius + 1, pv_max_z)):
+                       min(index[1] + radius + 1, mv_max_z)):
             for y in range(max(0, index[2] - radius),
-                           min(index[2] + radius + 1, pv_max_y)):
+                           min(index[2] + radius + 1, mv_max_y)):
                 for x in range(max(0, index[3] - radius),
-                               min(index[3] + radius + 1, pv_max_x)):
+                               min(index[3] + radius + 1, mv_max_x)):
                     c = gp.Coordinate((z, y, x))
                     c_with_time = gp.Coordinate((index[0], z, y, x))
                     relative_pos = c - index[1:]
-                    offset_relative_to_c = parent_vectors[
+                    offset_relative_to_c = movement_vectors[
                             (Ellipsis,) + c_with_time]
                     offsets.append(offset_relative_to_c + relative_pos)
         logger.debug("Offsets to average: %s" + str(offsets))
-        parent_vector = tuple(float(sum(col) / len(col))
+        movement_vector = tuple(float(sum(col) / len(col))
                               for col in zip(*offsets))
-        return parent_vector
+        return movement_vector

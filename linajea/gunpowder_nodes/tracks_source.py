@@ -1,8 +1,12 @@
+"""Provides a gunpowder source node for tracks
+"""
+import logging
+
+import numpy as np
+
 from gunpowder import (Node, Coordinate, Batch, BatchProvider,
                        Roi, GraphSpec, Graph)
 from gunpowder.profiling import Timing
-import numpy as np
-import logging
 
 from linajea.utils import parse_tracks_file
 
@@ -10,7 +14,20 @@ logger = logging.getLogger(__name__)
 
 
 class TrackNode(Node):
+    """Specializes gp.Node to set a number of attributes
 
+    Attributes
+    ----------
+    original_location: np.ndarray
+        location of node
+    parent_id: int
+        id of parent node in track that node is part of
+    track_id: int
+        id of track that node is part of
+    value: object
+        some value that should be associated with node,
+        e.g., used to store object specific radius
+    """
     def __init__(self, id, location, parent_id, track_id, value=None):
 
         attrs = {"original_location": np.array(location, dtype=np.float32),
@@ -20,7 +37,7 @@ class TrackNode(Node):
         super(TrackNode, self).__init__(id, location, attrs=attrs)
 
 class TracksSource(BatchProvider):
-    '''Read tracks of points from a comma-separated-values text file.
+    '''Gunpowder source node: read tracks of points from a csv file.
 
     If possible, this node uses the header of the file to determine values.
     If present, a header must have the following required fields:
@@ -137,27 +154,31 @@ class TracksSource(BatchProvider):
         nodes = []
         for location, track_info in zip(filtered_locations,
                                         filtered_track_info):
+            # frame of current point
             t = location[0]
-            if isinstance(self.use_radius, dict):
+            if not isinstance(self.use_radius, dict):
+                # if use_radius is boolean, take radius from file if set
+                value = track_info[3] if self.use_radius else None
+            else:
+                # otherwise use_radius should be a dict mapping from
+                # frame thresholds to radii
                 if len(self.use_radius.keys()) > 1:
                     value = None
                     for th in sorted(self.use_radius.keys()):
+                        # find entry that is closest but larger than
+                        # frame of current point
                         if t < int(th):
+                            # get value object (list) from track info
                             value = track_info[3]
-
-                            try:
-                                value[0] = self.use_radius[th]
-                            except TypeError as e:
-                                print(value, self.use_radius, track_info,
-                                      self.filename)
-                                raise e
+                            # radius stored at first position (None if not set)
+                            value[0] = self.use_radius[th]
                             break
-                    assert value is not None, "verify use_radius in config"
+                    assert value is not None, \
+                        "verify value of use_radius in config"
                 else:
                     value = (track_info[3] if list(self.use_radius.values())[0]
                              else None)
-            else:
-                value = track_info[3] if self.use_radius else None
+
             node = TrackNode(
                 # point_id
                 track_info[0],

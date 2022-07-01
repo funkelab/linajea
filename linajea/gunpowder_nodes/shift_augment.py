@@ -1,22 +1,24 @@
-from __future__ import print_function, division
+"""Provides an adapted version of the gunpowder ShiftAugment node
+"""
 import logging
-import numpy as np
 import random
+
+import numpy as np
+
 from gunpowder.roi import Roi
 from gunpowder.coordinate import Coordinate
 from gunpowder.batch_request import BatchRequest
-
 from gunpowder import BatchFilter
 
 logger = logging.getLogger(__name__)
 
 
 class ShiftAugment(BatchFilter):
-    '''
-    This class differs from the gunpowder ShiftAugment by only
-    shifting between frame 0 and frame -1
-    '''
+    """Modification of Gunpowder ShiftAugment, only shift/slip center
 
+    This class differs from the gunpowder ShiftAugment by only
+    slipping/shifting at the center frame.
+    """
     def __init__(
             self,
             prob_slip=0,
@@ -242,7 +244,6 @@ class ShiftAugment(BatchFilter):
         """
 
         nodes = list(points.nodes)
-        logger.debug("nodes before %s", nodes)
         spec = points.spec
         shift_axis_start_pos = spec.roi.get_offset()[shift_axis]
 
@@ -253,12 +254,10 @@ class ShiftAugment(BatchFilter):
                                     // lcm_voxel_size[shift_axis])
             assert(shift_array_index >= 0)
             shift = Coordinate(sub_shift_array[shift_array_index])
-            # TODO check
             loc += shift
             if not request_roi.contains(loc):
                 points.remove_node(node)
 
-        logger.debug("nodes after %s", nodes)
         points.spec.roi = request_roi
         return points
 

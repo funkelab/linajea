@@ -1,3 +1,6 @@
+"""Provides gunpowder node to exclude time range when selecting
+ random location
+"""
 import gunpowder as gp
 import logging
 
@@ -5,8 +8,24 @@ logger = logging.getLogger(__name__)
 
 
 class RandomLocationExcludeTime(gp.RandomLocation):
-    ''' Provide list of time intervals to exclude.
-    time interval is like an array slice - includes start, excludes end '''
+    """Adapts Gunpowder RandomLocation node to exclude time interval
+
+    Provide list of time intervals to exclude.
+    time interval is like an array slice - includes start, excludes end
+
+    Attributes
+    ----------
+    raw: ArrayKey
+        verify that Roi of this array is outside of all given intervals
+    time_interval: list of list of int
+        list of intervals to exclude
+    min_masked: float
+    mask: ArrayKey
+    ensure_nonempty: GraphKey
+    p_nonempty: float
+    point_balance_radius: int
+        Pass these through to RandomLocation constructor
+    """
 
     def __init__(
             self,

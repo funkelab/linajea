@@ -1,12 +1,35 @@
-from gunpowder import BatchFilter, ArraySpec, Array
-import numpy as np
+"""Provides a gunpowder node to combine multiple channels into single array
+"""
 import logging
+
+import numpy as np
+
+from gunpowder import BatchFilter, ArraySpec, Array
 
 logger = logging.getLogger(__name__)
 
 
 class CombineChannels(BatchFilter):
+    """Gunpowder node to take several arrays and combine them into a
+    multichannel array
 
+    Could be used if, e.g., rgb channels or multiple time frames  are
+    stored separately.
+
+    Attributes
+    ----------
+    channel_1: gp.ArrayKey
+    channel_2: gp.ArrayKey
+        The two arrays to combine
+    output: gp.ArrayKey
+        The combined array will be stored here
+    transpose: bool
+        Shuffle order of channels
+
+    Notes
+    -----
+    TODO: generalize for N channels (list of channels)
+    """
     def __init__(
             self,
             channel_1,

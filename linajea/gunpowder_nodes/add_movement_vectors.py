@@ -1,3 +1,9 @@
+"""Provides a gunpowder node to add movement vectors to pipeline
+"""
+import logging
+
+import numpy as np
+
 from gunpowder import BatchFilter
 from gunpowder.array import Array
 from gunpowder.array_spec import ArraySpec
@@ -6,22 +12,49 @@ from gunpowder.coordinate import Coordinate
 from gunpowder.morphology import enlarge_binary_map
 from gunpowder.graph_spec import GraphSpec
 from gunpowder.roi import Roi
-import logging
-import numpy as np
+
 
 logger = logging.getLogger(__name__)
 
 
-class AddParentVectors(BatchFilter):
+class AddMovementVectors(BatchFilter):
+    """Gunpowder node to add movement vectors
 
+    Takes a list of points and their parent and draws movement vectors
+    into a new array
+
+    Attributes
+    ----------
+    points: gp.GraphKey
+        Gunpowder graph object containing a graph of points and their
+        parents
+    array: gp.ArrayKey
+        Empty gunpowder array object, movement vectors will be drawn
+        into this
+    mask: gp.ArrayKey
+        Empty gunpowder array object, binary mask, around each point
+        a disk will be drawn, its size depends on the given object radius.
+        The movement vectors will only be drawn were this mask is set.
+    object_radius:
+        Fixed size of the radius of each object disk drawn.
+        Not used if graph contains object specific radii.
+    move_radius:
+        How far an object can move between two frames, increase read ROI
+        by this much, to avoid that parent nodes are outside and skipped.
+    array_spec: gp.ArraySpec
+        ArraySpec to use for movement vectors array. Should be used to
+        set voxel size if data is anisotropic
+    dense: bool
+        Is every object contained in ground truth annotations?
+    """
     def __init__(
-            self, points, array, mask, radius,
+            self, points, array, mask, object_radius,
             move_radius=0, array_spec=None, dense=False):
 
         self.points = points
         self.array = array
         self.mask = mask
-        self.radius = np.array([radius]).flatten().astype(np.float32)
+        self.object_radius = np.array([object_radius]).flatten().astype(np.float32)
         self.move_radius = move_radius
         if array_spec is None:
             self.array_spec = ArraySpec()
@@ -51,7 +84,7 @@ class AddParentVectors(BatchFilter):
         self.enable_autoskip()
 
     def prepare(self, request):
-        context = np.ceil(self.radius).astype(int)
+        context = np.ceil(self.object_radius).astype(int)
 
         dims = self.array_spec.roi.dims()
         if len(context) == 1:
@@ -65,7 +98,7 @@ class AddParentVectors(BatchFilter):
         for i in range(1, len(context)):
             context[i] = max(context[i], self.move_radius)
 
-        logger.debug ("parent vector context %s", context)
+        logger.debug ("movement vector context %s", context)
         # request points in a larger area
         points_roi = request[self.array].roi.grow(
                 Coordinate(context),
@@ -101,22 +134,22 @@ class AddParentVectors(BatchFilter):
             logger.debug("Data roi in voxels: %s", data_roi)
             logger.debug("Data roi in world units: %s", data_roi*voxel_size)
 
-        parent_vectors_data, mask_data = self.__draw_parent_vectors(
+        movement_vectors_data, mask_data = self.__draw_movement_vectors(
             points,
             data_roi,
             voxel_size,
             enlarged_vol_roi.get_begin(),
-            self.radius,
+            self.object_radius,
             request[self.points].roi)
 
         # create array and crop it to requested roi
         spec = self.spec[self.array].copy()
         spec.roi = data_roi*voxel_size
-        parent_vectors = Array(
-            data=parent_vectors_data,
+        movement_vectors = Array(
+            data=movement_vectors_data,
             spec=spec)
-        logger.debug("Cropping parent vectors to %s", request[self.array].roi)
-        batch.arrays[self.array] = parent_vectors.crop(request[self.array].roi)
+        logger.debug("Cropping movement vectors to %s", request[self.array].roi)
+        batch.arrays[self.array] = movement_vectors.crop(request[self.array].roi)
 
         # create mask and crop it to requested roi
         spec = self.spec[self.mask].copy()
@@ -139,8 +172,8 @@ class AddParentVectors(BatchFilter):
                 logger.warning("Returning empty batch for key %s and roi %s"
                                % (self.points, request_roi))
 
-    def __draw_parent_vectors(
-            self, points, data_roi, voxel_size, offset, radius, final_roi):
+    def __draw_movement_vectors(self, points, data_roi, voxel_size, offset,
+                                object_radius, final_roi):
 
         # 4D: t, z, y, x
         shape = data_roi.get_shape()
@@ -167,27 +200,29 @@ class AddParentVectors(BatchFilter):
         coords[1, :] += offset[2]
         coords[2, :] += offset[3]
 
-        parent_vectors = np.zeros_like(coords)
+        movement_vectors = np.zeros_like(coords)
         mask = np.zeros(shape, dtype=bool)
 
         logger.debug(
-            "Adding parent vectors for %d points...",
+            "Adding movement vectors for %d points...",
             points.num_vertices())
 
         if points.num_vertices() == 0:
-            return parent_vectors, mask.astype(np.float32)
+            return movement_vectors, mask.astype(np.float32)
 
         empty = True
         cnt = 0
         total = 0
 
-        avg_radius = []
+        # if object specific radius is contained in data, compute average
+        # radius for current frame and use that to draw mask and vectors
+        avg_object_radius = []
         for point in points.nodes:
             if point.attrs.get('value') is not None:
                 r = point.attrs['value'][0]
-                avg_radius.append(point.attrs['value'][0])
-        avg_radius = (int(np.ceil(np.mean(avg_radius)))
-                      if len(avg_radius) > 0 else radius)
+                avg_object_radius.append(r)
+        avg_object_radius = (int(np.ceil(np.mean(avg_object_radius)))
+                             if len(avg_object_radius) > 0 else object_radius)
 
         for point in points.nodes:
             # get the voxel coordinate, 'Coordinate' ensures integer
@@ -220,7 +255,7 @@ class AddParentVectors(BatchFilter):
 
         enlarge_binary_map(
             mask,
-            avg_radius,
+            avg_object_radius,
             voxel_size,
             in_place=True)
 
@@ -228,7 +263,7 @@ class AddParentVectors(BatchFilter):
         mask_tmp[shape//2] = 1
         enlarge_binary_map(
             mask_tmp,
-            avg_radius,
+            avg_object_radius,
             voxel_size,
             in_place=True)
 
@@ -305,20 +340,20 @@ class AddParentVectors(BatchFilter):
             point_mask[:] = 0
             point_mask[slices] = mask_cut[mc_slices]
 
-            parent_vectors[0][point_mask] = (parent.location[1]
-                                             - coords[0][point_mask])
-            parent_vectors[1][point_mask] = (parent.location[2]
-                                             - coords[1][point_mask])
-            parent_vectors[2][point_mask] = (parent.location[3]
-                                             - coords[2][point_mask])
+            movement_vectors[0][point_mask] = (parent.location[1]
+                                               - coords[0][point_mask])
+            movement_vectors[1][point_mask] = (parent.location[2]
+                                               - coords[1][point_mask])
+            movement_vectors[2][point_mask] = (parent.location[3]
+                                               - coords[2][point_mask])
 
-        parent_vectors[0][np.logical_not(mask)] = 0
-        parent_vectors[1][np.logical_not(mask)] = 0
-        parent_vectors[2][np.logical_not(mask)] = 0
+        movement_vectors[0][np.logical_not(mask)] = 0
+        movement_vectors[1][np.logical_not(mask)] = 0
+        movement_vectors[2][np.logical_not(mask)] = 0
 
         if empty:
-            logger.warning("No parent vectors written for points %s"
+            logger.warning("No movement vectors written for points %s"
                            % points.nodes)
         logger.debug("written {}/{}".format(cnt, total))
 
-        return parent_vectors, mask.astype(np.float32)
+        return movement_vectors, mask.astype(np.float32)

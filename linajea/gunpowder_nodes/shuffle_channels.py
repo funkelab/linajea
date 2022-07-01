@@ -1,12 +1,23 @@
-from gunpowder import BatchFilter, Array
-import numpy as np
+"""Provides a gunpowder node to shuffle the order of input channels
+"""
 import logging
+
+import numpy as np
+
+from gunpowder import BatchFilter, Array
 
 logger = logging.getLogger(__name__)
 
 
 class ShuffleChannels(BatchFilter):
+    """Gunpowder node to shuffle input channels
 
+    Attributes
+    ----------
+    source: gp.ArrayKey
+        array whose channels should be shuffled, expects channels along
+        first axis
+    """
     def __init__(
             self,
             source):
