@@ -45,7 +45,7 @@ def greedy_track(
         db_name=None,
         db_host=None,
         selected_key=None,
-        cell_indicator_threshold=None,
+        node_threshold=0.0,
         metric='prediction_distance',
         frame_key='t',
         allow_new_tracks=True,
@@ -64,7 +64,7 @@ def greedy_track(
         Host for database
     selected_key: d
         Edge attribute to use for storing results
-    cell_indicator_threshold: float
+    node_threshold: float
         Discard node candidates with a lower score
     metric: str
         Which edge attribute to use to rank neighbors
@@ -109,7 +109,7 @@ def greedy_track(
                 cand_db,
                 section_roi,
                 selected_key,
-                cell_indicator_threshold,
+                node_threshold,
                 selected_prev_nodes,
                 metric=metric,
                 frame_key=frame_key,
@@ -124,7 +124,7 @@ def track_section(
         cand_db,
         roi,
         selected_key,
-        cell_indicator_threshold,
+        node_threshold,
         selected_prev_nodes,
         metric='prediction_distance',
         frame_key='t',
@@ -150,7 +150,7 @@ def track_section(
             assert [p in seed_candidates for p in selected_prev_nodes],\
                 "previously selected nodes are not contained in current frame!"
         seeds = set([node for node in seed_candidates
-                     if graph.nodes[node]['score'] > cell_indicator_threshold])
+                     if graph.nodes[node]['score'] > node_threshold])
         logger.debug("Found %d potential seeds in frame %d", len(seeds), frame)
 
         # use only new (not previously selected) nodes to seed new tracks
@@ -176,6 +176,9 @@ def track_section(
 
         logger.debug("Selecting shortest edges")
         for u, v, data in sorted_edges:
+            # check if child node score is above threshold:
+            if graph.nodes[v]['score'] < node_threshold:
+                continue
             # check if child already has selected out edge
             already_selected = len([
                     u
@@ -206,6 +209,9 @@ def track_section(
                                   key=lambda e: e[2][metric])
 
             for u, v, data in sorted_edges:
+                # check if child node score is above threshold:
+                if graph.nodes[v]['score'] < node_threshold:
+                    continue
                 # check if child already has selected out edge
                 already_selected = len([
                         u

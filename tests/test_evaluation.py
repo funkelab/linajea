@@ -1,10 +1,12 @@
-import linajea.tracking
-import linajea.evaluation as e
 import logging
 import unittest
-import linajea
-import daisy
 import pymongo
+
+import daisy
+
+import linajea.evaluation as e
+import linajea.tracking
+import linajea.utils
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,7 +20,7 @@ class EvaluationTestCase(unittest.TestCase):
         client.drop_database('test_eval')
 
     def create_graph(self, cells, edges, roi):
-        db = linajea.CandidateDatabase('test_eval', 'localhost')
+        db = linajea.utils.CandidateDatabase('test_eval', 'localhost')
         graph = db[roi]
         graph.add_nodes_from(cells)
         graph.add_edges_from(edges)
@@ -68,8 +70,10 @@ class EvaluationTestCase(unittest.TestCase):
             cell[1]['y'] += 1
         rec_track_graph = self.create_graph(cells, edges, roi)
         scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2,
-                sparse=True)
+            gt_track_graph, rec_track_graph, matching_threshold=2,
+            sparse=True, validation_score=None, window_size=5,
+            ignore_one_off_div_errors=False,
+            fn_div_count_unconnected_parent=True)
         self.assertEqual(scores.matched_edges, 3)
         self.assertEqual(scores.fp_edges, 0)
         self.assertEqual(scores.fn_edges, 0)
@@ -86,9 +90,9 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 1.0)
         self.assertAlmostEqual(scores.f_score, 1.0)
-        self.assertEqual(scores.correct_segments[1], (3, 3))
-        self.assertEqual(scores.correct_segments[2], (2, 2))
-        self.assertEqual(scores.correct_segments[3], (1, 1))
+        self.assertEqual(scores.correct_segments["1"], (3, 3))
+        self.assertEqual(scores.correct_segments["2"], (2, 2))
+        self.assertEqual(scores.correct_segments["3"], (1, 1))
         self.delete_db()
 
     def test_imperfect_evaluation(self):
@@ -100,8 +104,10 @@ class EvaluationTestCase(unittest.TestCase):
         del edges[1]
         rec_track_graph = self.create_graph(cells, edges, roi)
         scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2,
-                sparse=True)
+            gt_track_graph, rec_track_graph, matching_threshold=2,
+            sparse=True, validation_score=None, window_size=5,
+            ignore_one_off_div_errors=False,
+            fn_div_count_unconnected_parent=True)
         self.assertEqual(scores.matched_edges, 2)
         self.assertEqual(scores.fp_edges, 0)
         self.assertEqual(scores.fn_edges, 1)
@@ -118,9 +124,9 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 2./3)
         self.assertAlmostEqual(scores.f_score, 4./5)
-        self.assertEqual(scores.correct_segments[1], (2, 3))
-        self.assertEqual(scores.correct_segments[2], (0, 2))
-        self.assertEqual(scores.correct_segments[3], (0, 1))
+        self.assertEqual(scores.correct_segments["1"], (2, 3))
+        self.assertEqual(scores.correct_segments["2"], (0, 2))
+        self.assertEqual(scores.correct_segments["3"], (0, 1))
         self.delete_db()
 
     def test_fn_division_evaluation(self):
@@ -134,8 +140,11 @@ class EvaluationTestCase(unittest.TestCase):
         edges.remove((5, 2))
         rec_track_graph = self.create_graph(cells, edges, roi)
         scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2,
-                sparse=True)
+            gt_track_graph, rec_track_graph, matching_threshold=2,
+            sparse=True,
+            validation_score=None, window_size=5,
+            ignore_one_off_div_errors=False,
+            fn_div_count_unconnected_parent=True)
 
         self.assertEqual(scores.matched_edges, 5)
         self.assertEqual(scores.fp_edges, 0)
@@ -152,10 +161,10 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.fp_divisions, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 5./6)
-        self.assertEqual(scores.correct_segments[1], (5, 6))
-        self.assertEqual(scores.correct_segments[2], (2, 4))
-        self.assertEqual(scores.correct_segments[3], (0, 2))
-        self.assertEqual(scores.correct_segments[4], (0, 1))
+        self.assertEqual(scores.correct_segments["1"], (5, 6))
+        self.assertEqual(scores.correct_segments["2"], (2, 4))
+        self.assertEqual(scores.correct_segments["3"], (0, 2))
+        self.assertEqual(scores.correct_segments["4"], (0, 1))
         self.delete_db()
 
     def test_fn_division_evaluation2(self):
@@ -172,8 +181,10 @@ class EvaluationTestCase(unittest.TestCase):
         edges.remove((5, 2))
         rec_track_graph = self.create_graph(cells, edges, roi)
         scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2,
-                sparse=True)
+            gt_track_graph, rec_track_graph, matching_threshold=2,
+            sparse=True, validation_score=None, window_size=5,
+            ignore_one_off_div_errors=False,
+            fn_div_count_unconnected_parent=True)
         self.assertEqual(scores.matched_edges, 4)
         self.assertEqual(scores.fp_edges, 0)
         self.assertEqual(scores.fn_edges, 1)
@@ -189,9 +200,9 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.fp_divisions, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 4./5)
-        self.assertEqual(scores.correct_segments[1], (4, 5))
-        self.assertEqual(scores.correct_segments[2], (2, 3))
-        self.assertEqual(scores.correct_segments[3], (0, 1))
+        self.assertEqual(scores.correct_segments["1"], (4, 5))
+        self.assertEqual(scores.correct_segments["2"], (2, 3))
+        self.assertEqual(scores.correct_segments["3"], (0, 1))
         self.delete_db()
 
     def test_fn_division_evaluation3(self):
@@ -205,8 +216,10 @@ class EvaluationTestCase(unittest.TestCase):
         edges.remove((5, 2))
         rec_track_graph = self.create_graph(cells, edges, roi)
         scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2,
-                sparse=True)
+            gt_track_graph, rec_track_graph, matching_threshold=2,
+            sparse=True, validation_score=None, window_size=5,
+            ignore_one_off_div_errors=False,
+            fn_div_count_unconnected_parent=True)
 
         self.assertEqual(scores.matched_edges, 5)
         self.assertEqual(scores.fp_edges, 0)
@@ -234,8 +247,10 @@ class EvaluationTestCase(unittest.TestCase):
             cell[1]['y'] += 1
         rec_track_graph = self.create_graph(cells, edges, roi)
         scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2,
-                sparse=True)
+            gt_track_graph, rec_track_graph, matching_threshold=2,
+            sparse=True, validation_score=None, window_size=5,
+            ignore_one_off_div_errors=False,
+            fn_div_count_unconnected_parent=True)
 
         self.assertEqual(scores.matched_edges, 5)
         self.assertEqual(scores.fp_edges, 0)
@@ -252,9 +267,9 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.fp_divisions, 1)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 1.0)
-        self.assertEqual(scores.correct_segments[1], (5, 5))
-        self.assertEqual(scores.correct_segments[2], (2, 3))
-        self.assertEqual(scores.correct_segments[3], (0, 1))
+        self.assertEqual(scores.correct_segments["1"], (5, 5))
+        self.assertEqual(scores.correct_segments["2"], (2, 3))
+        self.assertEqual(scores.correct_segments["3"], (0, 1))
         self.delete_db()
 
     def test_fp_division_evaluation_at_beginning_of_gt(self):
@@ -271,8 +286,10 @@ class EvaluationTestCase(unittest.TestCase):
         edges.append((5, 1))
         rec_track_graph = self.create_graph(cells, edges, roi)
         scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2,
-                sparse=True)
+            gt_track_graph, rec_track_graph, matching_threshold=2,
+            sparse=True, validation_score=None, window_size=5,
+            ignore_one_off_div_errors=False,
+            fn_div_count_unconnected_parent=True)
 
         self.assertEqual(scores.matched_edges, 3)
         self.assertEqual(scores.fp_edges, 0)
@@ -339,8 +356,10 @@ class EvaluationTestCase(unittest.TestCase):
             cell[1]['y'] += 1
         rec_track_graph = self.create_graph(cells, edges, roi)
         scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2,
-                sparse=True)
+            gt_track_graph, rec_track_graph, matching_threshold=2,
+            sparse=True, validation_score=None, window_size=5,
+            ignore_one_off_div_errors=False,
+            fn_div_count_unconnected_parent=True)
 
         self.assertEqual(scores.identity_switches, 0)
         self.assertEqual(scores.gt_divisions, 2)
@@ -402,8 +421,10 @@ class EvaluationTestCase(unittest.TestCase):
             cell[1]['y'] += 1
         rec_track_graph = self.create_graph(cells, edges, roi)
         scores = e.evaluate(
-                gt_track_graph, rec_track_graph, matching_threshold=2,
-                sparse=True)
+            gt_track_graph, rec_track_graph, matching_threshold=2,
+            sparse=True, validation_score=None, window_size=5,
+            ignore_one_off_div_errors=False,
+            fn_div_count_unconnected_parent=True)
 
         self.assertEqual(scores.identity_switches, 1)
         self.assertEqual(scores.gt_divisions, 2)

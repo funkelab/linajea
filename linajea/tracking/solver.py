@@ -173,9 +173,6 @@ class Solver(object):
 
     def _node_costs(self, node):
         # node score times a weight plus a threshold
-        logger.info("%s %s %s", type(self.graph.nodes[node]['score']),
-                    type(self.parameters.weight_node_score),
-                    type(self.parameters.selection_constant))
         score_costs = ((self.graph.nodes[node]['score'] *
                         self.parameters.weight_node_score) +
                        self.parameters.selection_constant)

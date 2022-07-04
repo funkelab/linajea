@@ -1,9 +1,12 @@
-import unittest
-import random
-import networkx as nx
-from linajea.evaluation.validation_metric import (
-        track_distance, norm_distance, validation_score)
 import logging
+import random
+import unittest
+
+import networkx as nx
+
+from linajea.evaluation.validation_metric import (
+        _track_distance, _norm_distance, validation_score)
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,7 +21,7 @@ class TestValidationMetric(unittest.TestCase):
         gt_track = self.create_track(length, seed=seed)
         rec_track = self.create_track(length, seed=seed)
         self.assertAlmostEqual(
-                track_distance(gt_track, rec_track), 0,
+                _track_distance(gt_track, rec_track), 0,
                 places=self.tolerance_places)
 
     def test_empty_reconstruction(self):
@@ -26,7 +29,7 @@ class TestValidationMetric(unittest.TestCase):
         seed = 1
         gt_track = self.create_track(length, seed=seed)
         rec_track = nx.DiGraph()
-        self.assertEqual(track_distance(gt_track, rec_track), length)
+        self.assertEqual(_track_distance(gt_track, rec_track), length)
 
     def test_one_off(self):
         length = 8
@@ -36,8 +39,8 @@ class TestValidationMetric(unittest.TestCase):
         for node_id in range(length):
             rec_track.nodes[node_id]['x'] += 1
         self.assertAlmostEqual(
-                track_distance(gt_track, rec_track),
-                length * norm_distance(1),
+                _track_distance(gt_track, rec_track),
+                length * _norm_distance(1),
                 places=self.tolerance_places)
 
     def test_far_away(self):
@@ -48,7 +51,7 @@ class TestValidationMetric(unittest.TestCase):
         for node_id in range(length):
             rec_track.nodes[node_id]['x'] += 200
         self.assertAlmostEqual(
-                track_distance(gt_track, rec_track),
+                _track_distance(gt_track, rec_track),
                 length,
                 places=self.tolerance_places)
 
@@ -59,7 +62,7 @@ class TestValidationMetric(unittest.TestCase):
         rec_track = self.create_track(length, seed=seed)
         rec_track.remove_node(0)
         self.assertAlmostEqual(
-                track_distance(gt_track, rec_track),
+                _track_distance(gt_track, rec_track),
                 1,
                 places=self.tolerance_places)
 
@@ -69,7 +72,7 @@ class TestValidationMetric(unittest.TestCase):
         gt_track = self.create_track(length, seed=seed)
         rec_track = self.create_track(length + 1, seed=seed)
         self.assertAlmostEqual(
-                track_distance(gt_track, rec_track),
+                _track_distance(gt_track, rec_track),
                 1,
                 places=self.tolerance_places)
 
@@ -109,7 +112,7 @@ class TestValidationMetric(unittest.TestCase):
             second_rec_track.nodes[node_id]['x'] += 5
         self.assertAlmostEqual(
                 validation_score(gt_track, rec_track),
-                length * norm_distance(1),
+                length * _norm_distance(1),
                 places=self.tolerance_places)
 
     def test_choosing_continuous(self):
@@ -127,7 +130,7 @@ class TestValidationMetric(unittest.TestCase):
         self.assertAlmostEqual(
                 validation_score(gt_track, rec_track),
                 min(shorter_segment_len,
-                    length * norm_distance(10)),
+                    length * _norm_distance(10)),
                 places=self.tolerance_places)
 
     # Multiple GT, One Rec
@@ -157,7 +160,7 @@ class TestValidationMetric(unittest.TestCase):
         gt_track = nx.union(gt_track, second_gt_track)
         self.assertAlmostEqual(
                 validation_score(gt_track, rec_track),
-                length * norm_distance(10),
+                length * _norm_distance(10),
                 places=self.tolerance_places)
 
     # track creation helper

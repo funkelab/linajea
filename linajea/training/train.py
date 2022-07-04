@@ -2,15 +2,12 @@
 
 Create model and train
 """
-from __future__ import print_function
 import warnings
-warnings.filterwarnings("once", category=FutureWarning)
 
-import argparse
+
 import logging
 import time
 import os
-import sys
 
 import numpy as np
 import torch
@@ -28,7 +25,6 @@ from . import torch_model
 from . import torch_loss
 from .utils import (get_latest_checkpoint,
                     normalize)
-
 
 logger = logging.getLogger(__name__)
 

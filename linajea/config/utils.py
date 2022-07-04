@@ -100,8 +100,8 @@ def ensure_cls_list(cl):
         if isinstance(vals, str) and vals.endswith(".toml"):
             vals = load_config(vals)
 
-        assert isinstance(vals, list), "list of {} expected ({})".format(
-            cl, vals)
+        if not isinstance(vals, list):
+            vals = [vals]
         converted = []
         for val in vals:
             if isinstance(val, cl) or val is None:

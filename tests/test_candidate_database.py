@@ -1,11 +1,13 @@
-from linajea import CandidateDatabase
-import linajea.tracking
-from linajea.evaluation import Report
-from daisy import Roi
-from unittest import TestCase
 import logging
 import multiprocessing as mp
 import pymongo
+from unittest import TestCase
+
+from daisy import Roi
+
+from linajea.utils import CandidateDatabase
+import linajea.tracking
+from linajea.evaluation import Report
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -111,7 +113,7 @@ class DatabaseTestCase(TestCase):
         db_name = 'test_linajea_db_node_roi'
         db_host = 'localhost'
         roi = Roi((0, 0, 0, 0), (5, 10, 10, 10))
-        db = linajea.CandidateDatabase(
+        db = CandidateDatabase(
                 db_name,
                 db_host,
                 mode='w')
@@ -142,7 +144,7 @@ class DatabaseTestCase(TestCase):
                 "block_size": [5, 100, 100, 100],
                 "context": [2, 100, 100, 100],
             }
-        parameters = linajea.config.SolveParametersMinimalConfig(**ps)
+        parameters = linajea.config.SolveParametersConfig(**ps)
 
         db = CandidateDatabase(
                 db_name,
@@ -188,7 +190,7 @@ class TestParameterIds(TestCase):
                 db_host,
                 mode='w')
         for i in range(10):
-            tp = linajea.config.SolveParametersMinimalConfig(
+            tp = linajea.config.SolveParametersConfig(
                     **self.get_tracking_params())
             tp.track_cost = i
             _id = db.get_parameters_id(tp)
@@ -198,13 +200,13 @@ class TestParameterIds(TestCase):
     def test_unique_id_multi_worker(self):
         db_name = 'test_linajea_db_multi_worker'
         db_host = 'localhost'
-        db = linajea.CandidateDatabase(
+        db = CandidateDatabase(
                 db_name,
                 db_host,
                 mode='w')
         tps = []
         for i in range(10):
-            tp = linajea.config.SolveParametersMinimalConfig(
+            tp = linajea.config.SolveParametersConfig(
                     **self.get_tracking_params())
             tp.cost_appear = i
             tps.append(tp)

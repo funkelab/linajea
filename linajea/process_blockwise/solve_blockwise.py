@@ -222,7 +222,7 @@ def solve_in_block(linajea_config,
               read_roi.get_offset()[0] + read_roi.get_shape()[0]]
     if linajea_config.solve.greedy:
         greedy_track(graph=graph, selected_key=selected_keys[0],
-                     cell_indicator_threshold=0.2)
+                     node_threshold=0.2)
     else:
         track(graph, linajea_config, selected_keys,
               frames=frames, block_id=block.block_id[1])

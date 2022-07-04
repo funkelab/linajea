@@ -47,7 +47,7 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
     #           list of (neighboring node in y, distance)
     node_pairs_xy_by_frame = {}
     edge_matches = []
-    edge_fps = 0
+    edge_fps = []
 
     avg_dist = []
     avg_dist_target = []
@@ -107,7 +107,7 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
             logger.debug("finding matches in frame %d" % t)
             node_pairs_two_frames = node_pairs_xy.copy()
             node_pairs_two_frames.update(node_pairs_xy_by_frame[t-1])
-            edge_costs = _get_edge_costs(
+            edge_costs = get_edge_costs(
                     edges_x, edges_y_by_source, node_pairs_two_frames)
             if edge_costs == {}:
                 logger.info("No potential matches with source in frame %d" % t)
@@ -115,15 +115,16 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
             logger.debug("costs: %s" % edge_costs)
             y_edges_in_range = set(edge[1] for edge in edge_costs.keys())
             logger.debug("Y edges in range: %s" % y_edges_in_range)
-            edge_matches_in_frame, _ = _match(edge_costs,
-                                              2*matching_threshold + 1)
+            edge_matches_in_frame, _ = match(edge_costs,
+                                             2*matching_threshold + 1)
             edge_matches.extend(edge_matches_in_frame)
-            edge_fps_in_frame = len(y_edges_in_range) -\
-                len(edge_matches_in_frame)
-            edge_fps += edge_fps_in_frame
+            y_edge_matches_in_frame = [edge[1] for edge in edge_matches_in_frame]
+            edge_fps_in_frame = set(y_edges_in_range) -\
+                set(y_edge_matches_in_frame)
+            edge_fps += list(edge_fps_in_frame)
             logger.debug(
                     "Done matching frame %d, found %d matches and %d edge fps",
-                    t, len(edge_matches_in_frame), edge_fps_in_frame)
+                    t, len(edge_matches_in_frame), len(edge_fps_in_frame))
 
             for exid, eyid in edge_matches_in_frame:
                 node_xid_source = edges_x[exid][0]
@@ -206,11 +207,11 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
                      np.min(avg_dist),
                      np.max(avg_dist))
     logger.info("Done matching, found %d matches and %d edge fps"
-                % (len(edge_matches), edge_fps))
+                % (len(edge_matches), len(edge_fps)))
     return edges_x, edges_y, edge_matches, edge_fps
 
 
-def _get_edge_costs(edges_x, edges_y_by_source, node_pairs_xy):
+def get_edge_costs(edges_x, edges_y_by_source, node_pairs_xy):
     '''
     Arguments:
         edges_x (list of int):
@@ -250,7 +251,7 @@ def _get_edge_costs(edges_x, edges_y_by_source, node_pairs_xy):
     return edge_costs
 
 
-def _match(costs, no_match_cost):
+def match(costs, no_match_cost):
     ''' Arguments:
 
         costs (``dict`` from ``tuple`` of ids to ``float``):

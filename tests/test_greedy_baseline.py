@@ -1,9 +1,11 @@
-import linajea.tracking
 import logging
-import linajea
-import unittest
-import daisy
 import pymongo
+import unittest
+
+import daisy
+
+import linajea.utils
+import linajea.tracking
 
 logging.basicConfig(level=logging.INFO)
 
@@ -40,9 +42,10 @@ class TestGreedy(unittest.TestCase):
         ]
         db_name = 'linajea_test_solver'
         db_host = 'localhost'
-        graph_provider = linajea.CandidateDatabase(
-                db_name,
-                db_host)
+        graph_provider = linajea.utils.CandidateDatabase(
+            db_name,
+            db_host,
+            mode='w')
         roi = daisy.Roi((0, 0, 0, 0), (4, 5, 5, 5))
         graph = graph_provider[roi]
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
@@ -92,9 +95,10 @@ class TestGreedy(unittest.TestCase):
         ]
         db_name = 'linajea_test_solver'
         db_host = 'localhost'
-        graph_provider = linajea.CandidateDatabase(
-                db_name,
-                db_host)
+        graph_provider = linajea.utils.CandidateDatabase(
+            db_name,
+            db_host,
+            mode='w')
         roi = daisy.Roi((0, 0, 0, 0), (4, 5, 5, 5))
         graph = graph_provider[roi]
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
@@ -111,7 +115,6 @@ class TestGreedy(unittest.TestCase):
                 selected_edges.append((u, v))
         expected_result = [
                 (1, 0),
-                (2, 1),
                 (3, 1),
                 (5, 3)
                 ]
@@ -145,9 +148,10 @@ class TestGreedy(unittest.TestCase):
         ]
         db_name = 'linajea_test_solver'
         db_host = 'localhost'
-        graph_provider = linajea.CandidateDatabase(
-                db_name,
-                db_host)
+        graph_provider = linajea.utils.CandidateDatabase(
+            db_name,
+            db_host,
+            mode='w')
         roi = daisy.Roi((0, 0, 0, 0), (4, 5, 5, 5))
         graph = graph_provider[roi]
         graph.add_nodes_from([(cell['id'], cell) for cell in cells])
@@ -165,7 +169,6 @@ class TestGreedy(unittest.TestCase):
                 selected_edges.append((u, v))
         expected_result = [
                 (1, 0),
-                (2, 1),
                 (4, 1),
                 (5, 4)
                 ]

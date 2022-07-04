@@ -124,16 +124,11 @@ class Evaluator:
         If dense, this is the total number of unmatched rec edges.
         '''
         if self.sparse:
-            num_fp_edges = self.unselected_potential_matches
+            fp_edges = self.unselected_potential_matches
         else:
-            num_fp_edges = self.report.rec_edges - self.report.matched_edges
-
-        matched_edges = set([match[1] for match in self.edge_matches])
-        rec_edges = set(self.rec_track_graph.edges)
-        fp_edges = list(rec_edges - matched_edges)
-        assert len(fp_edges) == num_fp_edges, "List of fp edges "\
-            "has %d edges, but calculated %d fp edges"\
-            % (len(fp_edges), num_fp_edges)
+            matched_edges = set([match[1] for match in self.edge_matches])
+            rec_edges = set(self.rec_track_graph.edges)
+            fp_edges = list(rec_edges - matched_edges)
 
         self.report.set_fp_edges(fp_edges)
 

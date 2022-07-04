@@ -1,12 +1,16 @@
 import logging
+import os
+import unittest
+
+import numpy as np
+
+import gunpowder as gp
+
+from linajea.gunpowder_nodes import TracksSource, AddMovementVectors
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 logging.getLogger('linajea').setLevel(logging.DEBUG)
-from linajea.gunpowder import TracksSource, AddParentVectors
-import os
-import gunpowder as gp
-import unittest
-import numpy as np
 
 
 TEST_FILE = 'testdata.txt'
@@ -88,15 +92,15 @@ class TracksSourceTestCase(unittest.TestCase):
 
     def test_delete_points_in_context(self):
         points = gp.GraphKey("POINTS")
-        pv_array = gp.ArrayKey("PARENT_VECTORS")
+        mv_array = gp.ArrayKey("MOVEMENT_VECTORS")
         mask = gp.ArrayKey("MASK")
         radius = [0.1, 0.1, 0.1, 0.1]
         ts = TracksSource(
                 TEST_FILE,
                 points)
-        apv = AddParentVectors(
+        amv = AddMovementVectors(
                 points,
-                pv_array,
+                mv_array,
                 mask,
                 radius)
         request = gp.BatchRequest()
@@ -104,7 +108,7 @@ class TracksSourceTestCase(unittest.TestCase):
                 points,
                 gp.Coordinate((1, 4, 4, 4)))
         request.add(
-                pv_array,
+                mv_array,
                 gp.Coordinate((1, 4, 4, 4)))
         request.add(
                 mask,
@@ -113,21 +117,21 @@ class TracksSourceTestCase(unittest.TestCase):
         pipeline = (
                 ts +
                 gp.Pad(points, None) +
-                apv)
+                amv)
         with gp.build(pipeline):
             pipeline.request_batch(request)
 
-    def test_add_parent_vectors(self):
+    def test_add_movement_vectors(self):
         points = gp.GraphKey("POINTS")
-        pv_array = gp.ArrayKey("PARENT_VECTORS")
+        mv_array = gp.ArrayKey("MOVEMENT_VECTORS")
         mask = gp.ArrayKey("MASK")
         radius = [0.1, 0.1, 0.1, 0.1]
         ts = TracksSource(
                 TEST_FILE,
                 points)
-        apv = AddParentVectors(
+        amv = AddMovementVectors(
                 points,
-                pv_array,
+                mv_array,
                 mask,
                 radius)
         request = gp.BatchRequest()
@@ -135,7 +139,7 @@ class TracksSourceTestCase(unittest.TestCase):
                 points,
                 gp.Coordinate((3, 4, 4, 4)))
         request.add(
-                pv_array,
+                mv_array,
                 gp.Coordinate((1, 4, 4, 4)))
         request.add(
                 mask,
@@ -144,7 +148,7 @@ class TracksSourceTestCase(unittest.TestCase):
         pipeline = (
                 ts +
                 gp.Pad(points, None) +
-                apv)
+                amv)
         with gp.build(pipeline):
             batch = pipeline.request_batch(request)
 
@@ -153,22 +157,22 @@ class TracksSourceTestCase(unittest.TestCase):
         expected_mask[0, 0, 0, 0] = 1
         expected_mask[0, 1, 2, 3] = 1
 
-        expected_parent_vectors_z = np.zeros(shape=(1, 4, 4, 4))
-        expected_parent_vectors_z[0, 1, 2, 3] = -1.0
+        expected_movement_vectors_z = np.zeros(shape=(1, 4, 4, 4))
+        expected_movement_vectors_z[0, 1, 2, 3] = -1.0
 
-        expected_parent_vectors_y = np.zeros(shape=(1, 4, 4, 4))
-        expected_parent_vectors_y[0, 1, 2, 3] = -2.0
+        expected_movement_vectors_y = np.zeros(shape=(1, 4, 4, 4))
+        expected_movement_vectors_y[0, 1, 2, 3] = -2.0
 
-        expected_parent_vectors_x = np.zeros(shape=(1, 4, 4, 4))
-        expected_parent_vectors_x[0, 1, 2, 3] = -3.0
+        expected_movement_vectors_x = np.zeros(shape=(1, 4, 4, 4))
+        expected_movement_vectors_x[0, 1, 2, 3] = -3.0
         # print("MASK")
         # print(batch[mask].data)
         self.assertListEqual(expected_mask.tolist(), batch[mask].data.tolist())
 
-        parent_vectors = batch[pv_array].data
-        self.assertListEqual(expected_parent_vectors_z.tolist(),
-                             parent_vectors[0].tolist())
-        self.assertListEqual(expected_parent_vectors_y.tolist(),
-                             parent_vectors[1].tolist())
-        self.assertListEqual(expected_parent_vectors_x.tolist(),
-                             parent_vectors[2].tolist())
+        movement_vectors = batch[mv_array].data
+        self.assertListEqual(expected_movement_vectors_z.tolist(),
+                             movement_vectors[0].tolist())
+        self.assertListEqual(expected_movement_vectors_y.tolist(),
+                             movement_vectors[1].tolist())
+        self.assertListEqual(expected_movement_vectors_x.tolist(),
+                             movement_vectors[2].tolist())
