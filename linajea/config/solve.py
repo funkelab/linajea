@@ -27,6 +27,8 @@ class SolveParametersConfig:
     division_constant, weight_child, weight_continuation,
     weight_edge_score: float
         main ILP hyperparameters
+    cell_state_key: str
+        key defining which cell state classifier to use
     block_size: list of int
         ILP is solved in blocks, defines size of each block
     context: list of int
@@ -60,6 +62,7 @@ class SolveParametersConfig:
     weight_child = attr.ib(type=float, default=0.0)
     weight_continuation = attr.ib(type=float, default=0.0)
     weight_edge_score = attr.ib(type=float)
+    cell_state_key = attr.ib(type=str, default=None)
     block_size = attr.ib(type=Tuple[int, int, int, int])
     context = attr.ib(type=Tuple[int, int, int, int])
     max_cell_move = attr.ib(type=int, default=None)
@@ -123,6 +126,7 @@ class SolveParametersSearchConfig:
     weight_child = attr.ib(type=List[float], default=None)
     weight_continuation = attr.ib(type=List[float], default=None)
     weight_edge_score = attr.ib(type=List[float])
+    cell_state_key = attr.ib(type=str, default=None)
     block_size = attr.ib(type=List[List[int]])
     context = attr.ib(type=List[List[int]])
     max_cell_move = attr.ib(type=List[int], default=None)
@@ -205,6 +209,12 @@ def write_solve_parameters_configs(parameters_search, grid):
                 conf[k] = value
             search_configs.append(conf)
     else:
+        if params.get('cell_state_key') == '':
+            params['cell_state_key'] = None
+        elif isinstance(params.get('cell_state_key'), list) and \
+             '' in params['cell_state_key']:
+            params['cell_state_key'] = [k if k != '' else None
+                                        for k in params['cell_state_key']]
         search_configs = [
             dict(zip(params.keys(), x))
             for x in itertools.product(*params.values())]
@@ -250,6 +260,10 @@ class SolveConfig:
     grid_search, random_search: bool
         If grid and/or random search over ILP parameters should be
         performed
+    solver_type: str
+        Select preset type of Solver (set of constraints, indicators and
+        cost functions), if None those have to be defined by calling
+        function. Current options: `basic` and `cell_state`
 
     Notes
     -----
@@ -267,11 +281,16 @@ class SolveConfig:
     parameters_search_random = attr.ib(
         converter=ensure_cls(SolveParametersSearchConfig), default=None)
     greedy = attr.ib(type=bool, default=False)
+    write_struct_svm = attr.ib(type=str, default=None)
     check_node_close_to_roi = attr.ib(type=bool, default=True)
     timeout = attr.ib(type=int, default=120)
     clip_low_score = attr.ib(type=float, default=None)
     grid_search = attr.ib(type=bool, default=False)
     random_search = attr.ib(type=bool, default=False)
+    solver_type = attr.ib(type=str, default=None,
+                          validator=attr.validators.optional(attr.validators.in_([
+                              "basic",
+                              "cell_state"])))
 
     def __attrs_post_init__(self):
         assert self.parameters is not None or \

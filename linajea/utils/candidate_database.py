@@ -214,10 +214,10 @@ class CandidateDatabase(MongoDbGraphProvider):
                            (entry['roi']['offset'] != query['roi']['offset'] or \
                            entry['roi']['shape'] != query['roi']['shape']):
                             break
-                        elif param == 'cell_cycle_key':
-                            if '$exists' in query['cell_cycle_key'] and \
-                               query['cell_cycle_key']['$exists'] == False and \
-                               'cell_cycle_key' in entry:
+                        elif param == 'cell_state_key':
+                            if '$exists' in query['cell_state_key'] and \
+                               query['cell_state_key']['$exists'] == False and \
+                               'cell_state_key' in entry:
                                 break
                     elif isinstance(query[param], str):
                         if param not in entry or \

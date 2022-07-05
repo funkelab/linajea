@@ -99,6 +99,8 @@ def ensure_cls_list(cl):
 
         if isinstance(vals, str) and vals.endswith(".toml"):
             vals = load_config(vals)
+            assert len(vals) == 1, "expects dict with single entry"
+            vals = list(vals.values())[0]
 
         if not isinstance(vals, list):
             vals = [vals]

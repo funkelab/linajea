@@ -37,7 +37,7 @@ if __name__ == "__main__":
                         help='get test parameters from validation parameters_id')
     parser.add_argument('--param_id', type=int, default=None,
                         help='process parameters with parameters_id (e.g. resolve set of parameters)')
-    parser.add_argument('--param_ids', default=None, nargs=+,
+    parser.add_argument('--param_ids', default=None, nargs="+",
                         help='start/end range or list of eval parameters_ids')
     parser.add_argument('--param_list_idx', type=str, default=None,
                         help='only solve idx parameter set in config')

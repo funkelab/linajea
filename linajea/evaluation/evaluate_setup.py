@@ -6,6 +6,7 @@ import logging
 import os
 import time
 
+import networkx as nx
 import daisy
 
 import linajea.tracking
@@ -65,8 +66,8 @@ def evaluate_setup(linajea_config):
         old_score = results_db.get_score(parameters_id,
                                          linajea_config.evaluate.parameters)
         if old_score:
-            logger.info("Already evaluated %d (%s). Skipping" %
-                        (parameters_id, linajea_config.evaluate.parameters))
+            logger.info("Already evaluated %d (%s). Skipping",
+                        parameters_id, linajea_config.evaluate.parameters)
             score = {}
             for k, v in old_score.items():
                 if not isinstance(k, list) or k != "roi":
@@ -83,19 +84,19 @@ def evaluate_setup(linajea_config):
     edges_db = linajea.utils.CandidateDatabase(db_name, db_host,
                                                parameters_id=parameters_id)
 
-    logger.info("Reading cells and edges in db %s with parameter_id %d"
-                % (db_name, parameters_id))
+    logger.info("Reading cells and edges in db %s with parameter_id %d",
+                db_name, parameters_id)
     start_time = time.time()
     subgraph = edges_db.get_selected_graph(evaluate_roi)
 
-    logger.info("Read %d cells and %d edges in %s seconds"
-                % (subgraph.number_of_nodes(),
-                   subgraph.number_of_edges(),
-                   time.time() - start_time))
+    logger.info("Read %d cells and %d edges in %s seconds",
+                subgraph.number_of_nodes(),
+                subgraph.number_of_edges(),
+                time.time() - start_time)
 
     if subgraph.number_of_edges() == 0:
-        logger.warn("No selected edges for parameters_id %d. Skipping"
-                    % parameters_id)
+        logger.warn("No selected edges for parameters_id %d. Skipping",
+                    parameters_id)
         return False
 
     track_graph = linajea.tracking.TrackGraph(
@@ -104,21 +105,21 @@ def evaluate_setup(linajea_config):
     gt_db = linajea.utils.CandidateDatabase(
         linajea_config.inference_data.data_source.gt_db_name, db_host)
 
-    logger.info("Reading ground truth cells and edges in db %s"
-                % linajea_config.inference_data.data_source.gt_db_name)
+    logger.info("Reading ground truth cells and edges in db %s",
+                linajea_config.inference_data.data_source.gt_db_name)
     start_time = time.time()
     gt_subgraph = gt_db.get_graph(
         evaluate_roi,
     )
-    logger.info("Read %d cells and %d edges in %s seconds"
-                % (gt_subgraph.number_of_nodes(),
-                   gt_subgraph.number_of_edges(),
-                   time.time() - start_time))
+    logger.info("Read %d cells and %d edges in %s seconds",
+                gt_subgraph.number_of_nodes(),
+                gt_subgraph.number_of_edges(),
+                time.time() - start_time)
 
     gt_track_graph = linajea.tracking.TrackGraph(
         gt_subgraph, frame_key='t', roi=gt_subgraph.roi)
 
-    logger.info("Matching edges for parameters with id %d" % parameters_id)
+    logger.info("Matching edges for parameters with id %d", parameters_id)
     matching_threshold = linajea_config.evaluate.parameters.matching_threshold
     validation_score = linajea_config.evaluate.parameters.validation_score
     ignore_one_off_div_errors = \
@@ -137,8 +138,8 @@ def evaluate_setup(linajea_config):
             ignore_one_off_div_errors,
             fn_div_count_unconnected_parent)
 
-    logger.info("Done evaluating results for %d. Saving results to mongo."
-                % parameters_id)
+    logger.info("Done evaluating results for %d. Saving results to mongo.",
+                parameters_id)
     logger.debug("Result summary: %s", report.get_short_report())
     results_db.write_score(parameters_id, report,
                            eval_params=linajea_config.evaluate.parameters)

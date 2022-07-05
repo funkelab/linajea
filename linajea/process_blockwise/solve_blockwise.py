@@ -181,13 +181,15 @@ def solve_in_block(linajea_config,
         db_name,
         db_host,
         mode='r+')
+    parameters = graph_provider.get_parameters(parameters_id[0])
     start_time = time.time()
     selected_keys = ['selected_' + str(pid) for pid in parameters_id]
     edge_attrs = selected_keys.copy()
     edge_attrs.extend(["prediction_distance", "distance"])
     graph = graph_provider.get_graph(
             read_roi,
-            edge_attrs=edge_attrs
+            edge_attrs=edge_attrs,
+            join_collection=parameters["cell_state_key"]
             )
 
     # remove dangling nodes and edges
@@ -218,14 +220,12 @@ def solve_in_block(linajea_config,
         write_done(block, step_name, db_name, db_host)
         return 0
 
-    frames = [read_roi.get_offset()[0],
-              read_roi.get_offset()[0] + read_roi.get_shape()[0]]
     if linajea_config.solve.greedy:
         greedy_track(graph=graph, selected_key=selected_keys[0],
                      node_threshold=0.2)
     else:
         track(graph, linajea_config, selected_keys,
-              frames=frames, block_id=block.block_id[1])
+              block_id=block.block_id[1])
 
     start_time = time.time()
     graph.update_edge_attrs(

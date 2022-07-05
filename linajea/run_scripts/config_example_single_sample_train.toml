@@ -48,27 +48,24 @@ upsampling = "sep_transposed_conv"
 average_vectors = false
 # nms_window_shape = [ 3, 11, 11,]
 nms_window_shape = [ 3, 9, 9,]
-path_to_script = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/celegans_setups/mknet_celegans.py"
 cell_indicator_weighted = 0.01
 cell_indicator_cutoff = 0.01
 # cell_indicator_weighted = true
-latent_temp_conv = false
 train_only_cell_indicator = false
 
 [train]
 # val_log_step = 25
 # radius for binary map -> *2 (in world units)
 # in which to draw parent vectors (not used if use_radius)
-parent_radius = [ 0.1, 8.0, 8.0, 8.0,]
+object_radius = [ 0.1, 8.0, 8.0, 8.0,]
 # upper bound for dist cell moved between two frames (needed for context)
 move_radius = 25
 # sigma for Gauss -> ~*4 (5 in z -> in 3 slices) (not used if use_radius)
 rasterize_radius = [ 0.1, 5.0, 3.0, 3.0,]
 cache_size = 1
-parent_vectors_loss_transition_offset = 20000
-parent_vectors_loss_transition_factor = 0.001
+movement_vectors_loss_transition_offset = 20000
+movement_vectors_loss_transition_factor = 0.001
 #use_radius = true
-path_to_script = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/celegans_setups/train_val_celegans_torch.py"
 max_iterations = 11
 checkpoint_stride = 10
 snapshot_stride = 5

@@ -47,5 +47,4 @@ queue = "local"
 
 [evaluate.parameters]
 matching_threshold = 15
-sparse = false
 

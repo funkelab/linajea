@@ -3,9 +3,15 @@
 # -*- coding: utf-8 -*-
 import logging
 
-import numpy as np
-
 import pylp
+
+from .constraints import (ensure_at_most_two_successors,
+                          ensure_edge_endpoints,
+                          ensure_one_predecessor,
+                          ensure_pinned_edge,
+                          ensure_split_set_for_divs,
+                          ensure_one_state,
+                          ensure_split_child)
 
 logger = logging.getLogger(__name__)
 
@@ -15,24 +21,15 @@ class Solver(object):
     Class for initializing and solving the ILP problem for
     creating tracks from candidate nodes and edges using pylp.
     '''
-    def __init__(self, track_graph, parameters, selected_key, frames=None,
-                 block_id=None, check_node_close_to_roi=True, timeout=120):
-        # frames: [start_frame, end_frame] where start_frame is inclusive
-        # and end_frame is exclusive. Defaults to track_graph.begin,
-        # track_graph.end
-        self.check_node_close_to_roi = check_node_close_to_roi
-        self.block_id = block_id
+    def __init__(self, track_graph,
+                 node_indicator_keys, edge_indicator_keys,
+                 pin_constraints_fn_list, edge_constraints_fn_list,
+                 node_constraints_fn_list, inter_frame_constraints_fn_list,
+                 timeout=120):
 
         self.graph = track_graph
-        self.start_frame = frames[0] if frames else self.graph.begin
-        self.end_frame = frames[1] if frames else self.graph.end
         self.timeout = timeout
 
-        self.node_selected = {}
-        self.edge_selected = {}
-        self.node_appear = {}
-        self.node_disappear = {}
-        self.node_split = {}
         self.pinned_edges = {}
 
         self.num_vars = None
@@ -41,13 +38,26 @@ class Solver(object):
         self.pin_constraints = []  # list of LinearConstraint objects
         self.solver = None
 
+        self.node_indicator_keys = set(node_indicator_keys)
+        self.edge_indicator_keys = set(edge_indicator_keys)
+
+        self.pin_constraints_fn_list = pin_constraints_fn_list
+        self.edge_constraints_fn_list = edge_constraints_fn_list
+        self.node_constraints_fn_list = node_constraints_fn_list
+        self.inter_frame_constraints_fn_list = inter_frame_constraints_fn_list
+
         self._create_indicators()
         self._create_solver()
         self._create_constraints()
-        self.update_objective(parameters, selected_key)
 
-    def update_objective(self, parameters, selected_key):
-        self.parameters = parameters
+    def update_objective(self, node_indicator_fn_map, edge_indicator_fn_map,
+                         selected_key):
+        self.node_indicator_fn_map = node_indicator_fn_map
+        self.edge_indicator_fn_map = edge_indicator_fn_map
+        assert (set(self.node_indicator_fn_map.keys()) == self.node_indicator_keys and
+                set(self.edge_indicator_fn_map.keys()) == self.edge_indicator_keys), \
+            "cannot change set of indicators during one run!"
+
         self.selected_key = selected_key
 
         self._set_objective()
@@ -74,33 +84,35 @@ class Solver(object):
         logger.info(message)
         logger.info("costs of solution: %f", solution.get_value())
 
+        return solution
+
+    def solve_and_set(self, node_key="node_selected", edge_key="edge_selected"):
+        solution = self.solve()
+
         for v in self.graph.nodes:
             self.graph.nodes[v][self.selected_key] = solution[
-                    self.node_selected[v]] > 0.5
+                self.indicators[node_key][v]] > 0.5
 
         for e in self.graph.edges:
             self.graph.edges[e][self.selected_key] = solution[
-                    self.edge_selected[e]] > 0.5
+                self.indicators[edge_key][e]] > 0.5
 
     def _create_indicators(self):
 
+        self.indicators = {}
         self.num_vars = 0
 
-        # four indicators per node:
-        #   1. selected
-        #   2. appear
-        #   3. disappear
-        #   4. split
-        for node in self.graph.nodes:
-            self.node_selected[node] = self.num_vars
-            self.node_appear[node] = self.num_vars + 1
-            self.node_disappear[node] = self.num_vars + 2
-            self.node_split[node] = self.num_vars + 3
-            self.num_vars += 6
+        for k in self.node_indicator_keys:
+            self.indicators[k] = {}
+            for node in self.graph.nodes:
+                self.indicators[k][node] = self.num_vars
+                self.num_vars += 1
 
-        for edge in self.graph.edges():
-            self.edge_selected[edge] = self.num_vars
-            self.num_vars += 1
+        for k in self.edge_indicator_keys:
+            self.indicators[k] = {}
+            for edge in self.graph.edges():
+                self.indicators[k][edge] = self.num_vars
+                self.num_vars += 1
 
     def _set_objective(self):
 
@@ -108,89 +120,24 @@ class Solver(object):
 
         objective = pylp.LinearObjective(self.num_vars)
 
-        # node selection and cell cycle costs
-        for node in self.graph.nodes:
-            objective.set_coefficient(
-                self.node_selected[node],
-                self._node_costs(node))
-            objective.set_coefficient(
-                self.node_split[node], 1)
+        # node costs
+        for k, fn in self.node_indicator_fn_map.items():
+            for n_id, node in self.graph.nodes(data=True):
+                objective.set_coefficient(self.indicators[k][n_id], sum(fn(node)))
 
-        # edge selection costs
-        for edge in self.graph.edges():
-            objective.set_coefficient(
-                self.edge_selected[edge],
-                self._edge_costs(edge))
-
-        # node appear (skip first frame)
-        for t in range(self.start_frame + 1, self.end_frame):
-            for node in self.graph.cells_by_frame(t):
-                objective.set_coefficient(
-                    self.node_appear[node],
-                    self.parameters.track_cost)
-        for node in self.graph.cells_by_frame(self.start_frame):
-            objective.set_coefficient(
-                self.node_appear[node],
-                0)
-
-        # remove node appear costs at edge of roi
-        if self.check_node_close_to_roi:
-            for node, data in self.graph.nodes(data=True):
-                if self._check_node_close_to_roi_edge(
-                        node,
-                        data,
-                        self.parameters.max_cell_move):
-                    objective.set_coefficient(
-                            self.node_appear[node],
-                            0)
+        # edge costs
+        for k, fn in self.edge_indicator_fn_map.items():
+            for u, v, edge in self.graph.edges(data=True):
+                objective.set_coefficient(self.indicators[k][(u, v)], sum(fn(edge)))
 
         self.objective = objective
-
-    def _check_node_close_to_roi_edge(self, node, data, distance):
-        '''Return true if node is within distance to the z,y,x edge
-        of the roi. Assumes 4D data with t,z,y,x'''
-        if isinstance(distance, dict):
-            distance = min(distance.values())
-
-        begin = self.graph.roi.get_begin()[1:]
-        end = self.graph.roi.get_end()[1:]
-        for index, dim in enumerate(['z', 'y', 'x']):
-            node_dim = data[dim]
-            begin_dim = begin[index]
-            end_dim = end[index]
-            if node_dim + distance >= end_dim or\
-                    node_dim - distance < begin_dim:
-                logger.debug("Node %d with value %s in dimension %s "
-                             "is within %s of range [%d, %d]" %
-                             (node, node_dim, dim, distance,
-                              begin_dim, end_dim))
-                return True
-        logger.debug("Node %d with position [%s, %s, %s] is not within "
-                     "%s to edge of roi %s" %
-                     (node, data['z'], data['y'], data['x'], distance,
-                         self.graph.roi))
-        return False
-
-    def _node_costs(self, node):
-        # node score times a weight plus a threshold
-        score_costs = ((self.graph.nodes[node]['score'] *
-                        self.parameters.weight_node_score) +
-                       self.parameters.selection_constant)
-
-        return score_costs
-
-    def _edge_costs(self, edge):
-        # edge score times a weight
-        edge_costs = (self.graph.edges[edge]['prediction_distance'] *
-                      self.parameters.weight_edge_score)
-
-        return edge_costs
 
     def _create_constraints(self):
 
         self.main_constraints = []
 
         self._add_edge_constraints()
+        self._add_node_constraints()
 
         for t in range(self.graph.begin, self.graph.end):
             self._add_inter_frame_constraints(t)
@@ -198,138 +145,93 @@ class Solver(object):
 
     def _add_pin_constraints(self):
 
-        for e in self.graph.edges():
+        logger.debug("setting pin constraints: %s",
+                     self.pin_constraints_fn_list)
 
-            if self.selected_key in self.graph.edges[e]:
+        for edge in self.graph.edges():
+            if self.selected_key in self.graph.edges[edge]:
+                selected = self.graph.edges[edge][self.selected_key]
+                self.pinned_edges[edge] = selected
 
-                selected = self.graph.edges[e][self.selected_key]
-                self.pinned_edges[e] = selected
-
-                ind_e = self.edge_selected[e]
-                constraint = pylp.LinearConstraint()
-                constraint.set_coefficient(ind_e, 1)
-                constraint.set_relation(pylp.Relation.Equal)
-                constraint.set_value(1 if selected else 0)
-                self.pin_constraints.append(constraint)
+                for fn in self.pin_constraints_fn_list:
+                    self.pin_constraints.extend(
+                        fn(edge, self.indicators, selected))
 
     def _add_edge_constraints(self):
 
-        logger.debug("setting edge constraints")
+        logger.debug("setting edge constraints: %s",
+                     self.edge_constraints_fn_list)
 
-        for e in self.graph.edges():
+        for edge in self.graph.edges():
+            for fn in self.edge_constraints_fn_list:
+                self.main_constraints.extend(fn(edge, self.indicators))
 
-            # if e is selected, u and v have to be selected
-            u, v = e
-            ind_e = self.edge_selected[e]
-            ind_u = self.node_selected[u]
-            ind_v = self.node_selected[v]
+    def _add_node_constraints(self):
 
-            constraint = pylp.LinearConstraint()
-            constraint.set_coefficient(ind_e, 2)
-            constraint.set_coefficient(ind_u, -1)
-            constraint.set_coefficient(ind_v, -1)
-            constraint.set_relation(pylp.Relation.LessEqual)
-            constraint.set_value(0)
-            self.main_constraints.append(constraint)
+        logger.debug("setting node constraints: %s",
+                     self.node_constraints_fn_list)
 
-            logger.debug("set edge constraint %s", constraint)
+        for node in self.graph.nodes():
+            for fn in self.node_constraints_fn_list:
+                self.main_constraints.extend(fn(node, self.indicators))
+
 
     def _add_inter_frame_constraints(self, t):
         '''Linking constraints from t to t+1.'''
 
-        logger.debug("setting inter-frame constraints for frame %d", t)
+        logger.debug("setting inter-frame constraints for frame %d: %s", t,
+                     self.inter_frame_constraints_fn_list)
 
-        # Every selected node has exactly one selected edge to the previous and
-        # one or two to the next frame. This includes the special "appear" and
-        # "disappear" edges.
         for node in self.graph.cells_by_frame(t):
-            # we model this as three constraints:
-            #  sum(prev) -   node  = 0 # exactly one prev edge,
-            #                               iff node selected
-            #  sum(next) - 2*node <= 0 # at most two next edges
-            # -sum(next) +   node <= 0 # at least one next, iff node selected
+            for fn in self.inter_frame_constraints_fn_list:
+                self.main_constraints.extend(
+                    fn(node, self.indicators, self.graph, pinned_edges=self.pinned_edges))
 
-            constraint_prev = pylp.LinearConstraint()
-            constraint_next_1 = pylp.LinearConstraint()
-            constraint_next_2 = pylp.LinearConstraint()
 
-            # all neighbors in previous frame
-            pinned_to_1 = []
-            for edge in self.graph.prev_edges(node):
-                constraint_prev.set_coefficient(self.edge_selected[edge], 1)
-                if edge in self.pinned_edges and self.pinned_edges[edge]:
-                    pinned_to_1.append(edge)
-            if len(pinned_to_1) > 1:
-                raise RuntimeError(
-                    "Node %d has more than one prev edge pinned: %s"
-                    % (node, pinned_to_1))
-            # plus "appear"
-            constraint_prev.set_coefficient(self.node_appear[node], 1)
+class BasicSolver(Solver):
+    '''Specialized class initialized with the basic indicators and constraints
+    '''
+    def __init__(self, track_graph, timeout=120):
 
-            for edge in self.graph.next_edges(node):
-                constraint_next_1.set_coefficient(self.edge_selected[edge], 1)
-                constraint_next_2.set_coefficient(self.edge_selected[edge], -1)
-            # plus "disappear"
-            constraint_next_1.set_coefficient(self.node_disappear[node], 1)
-            constraint_next_2.set_coefficient(self.node_disappear[node], -1)
-            # node
+        pin_constraints_fn_list = [ensure_pinned_edge]
+        edge_constraints_fn_list = [ensure_edge_endpoints]
+        node_constraints_fn_list = []
+        inter_frame_constraints_fn_list = [
+            ensure_one_predecessor,
+            ensure_at_most_two_successors,
+            ensure_split_set_for_divs]
 
-            constraint_prev.set_coefficient(self.node_selected[node], -1)
-            constraint_next_1.set_coefficient(self.node_selected[node], -2)
-            constraint_next_2.set_coefficient(self.node_selected[node], 1)
-            # relation, value
+        node_indicator_keys = ["node_selected", "node_appear", "node_split"]
+        edge_indicator_keys = ["edge_selected"]
 
-            constraint_prev.set_relation(pylp.Relation.Equal)
-            constraint_next_1.set_relation(pylp.Relation.LessEqual)
-            constraint_next_2.set_relation(pylp.Relation.LessEqual)
+        super(BasicSolver, self).__init__(
+            track_graph, node_indicator_keys, edge_indicator_keys,
+            pin_constraints_fn_list, edge_constraints_fn_list,
+            node_constraints_fn_list, inter_frame_constraints_fn_list,
+            timeout=timeout)
 
-            constraint_prev.set_value(0)
-            constraint_next_1.set_value(0)
-            constraint_next_2.set_value(0)
 
-            self.main_constraints.append(constraint_prev)
-            self.main_constraints.append(constraint_next_1)
-            self.main_constraints.append(constraint_next_2)
+class CellStateSolver(Solver):
+    '''Specialized class initialized with the indicators and constraints
+    necessary to include cell state information in addition to the basic
+    indicators and constraints
+    '''
+    def __init__(self, track_graph, timeout=120):
 
-            logger.debug(
-                "set inter-frame constraints:\t%s\n\t%s\n\t%s",
-                constraint_prev, constraint_next_1, constraint_next_2)
+        pin_constraints_fn_list = [ensure_pinned_edge]
+        edge_constraints_fn_list = [ensure_edge_endpoints, ensure_split_child]
+        node_constraints_fn_list = [ensure_one_state]
+        inter_frame_constraints_fn_list = [
+            ensure_one_predecessor,
+            ensure_at_most_two_successors,
+            ensure_split_set_for_divs]
 
-        # Ensure that the split indicator is set for every cell that splits
-        # into two daughter cells.
-        for node in self.graph.cells_by_frame(t):
+        node_indicator_keys = ["node_selected", "node_appear", "node_split",
+                               "node_child", "node_continuation"]
+        edge_indicator_keys = ["edge_selected"]
 
-            # I.e., each node with two forwards edges is a split node.
-
-            # Constraint 1
-            # sum(forward edges) - split   <= 1
-            # sum(forward edges) >  1 => split == 1
-
-            # Constraint 2
-            # sum(forward edges) - 2*split >= 0
-            # sum(forward edges) <= 1 => split == 0
-
-            constraint_1 = pylp.LinearConstraint()
-            constraint_2 = pylp.LinearConstraint()
-
-            # sum(forward edges)
-            for edge in self.graph.next_edges(node):
-                constraint_1.set_coefficient(self.edge_selected[edge], 1)
-                constraint_2.set_coefficient(self.edge_selected[edge], 1)
-
-            # -[2*]split
-            constraint_1.set_coefficient(self.node_split[node], -1)
-            constraint_2.set_coefficient(self.node_split[node], -2)
-
-            constraint_1.set_relation(pylp.Relation.LessEqual)
-            constraint_2.set_relation(pylp.Relation.GreaterEqual)
-
-            constraint_1.set_value(1)
-            constraint_2.set_value(0)
-
-            self.main_constraints.append(constraint_1)
-            self.main_constraints.append(constraint_2)
-
-            logger.debug(
-                "set split-indicator constraints:\n\t%s\n\t%s",
-                constraint_1, constraint_2)
+        super(CellStateSolver, self).__init__(
+            track_graph, node_indicator_keys, edge_indicator_keys,
+            pin_constraints_fn_list, edge_constraints_fn_list,
+            node_constraints_fn_list, inter_frame_constraints_fn_list,
+            timeout=timeout)

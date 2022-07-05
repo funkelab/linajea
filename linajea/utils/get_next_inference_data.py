@@ -108,10 +108,12 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
         if hasattr(args, "val_param_id") and (is_solve or is_evaluate) and \
            args.val_param_id is not None:
             config = _fix_val_param_pid(args, config, checkpoint)
+            solve_parameters_sets = deepcopy(config.solve.parameters)
         if hasattr(args, "param_id") and (is_solve or is_evaluate) and \
            (args.param_id is not None or
             (hasattr(args, "param_ids") and args.param_ids is not None)):
             config = _fix_param_pid(args, config, checkpoint, inference_data)
+            solve_parameters_sets = deepcopy(config.solve.parameters)
         inference_data_tmp = {
             'checkpoint': checkpoint,
             'cell_score_threshold': inference_data.cell_score_threshold}
@@ -182,7 +184,8 @@ def _fix_param_pid(args, config, checkpoint, inference_data):
         db_meta_info = {
             "sample": inference_data.data_sources[0].datafile.filename,
             "iteration": checkpoint,
-            "cell_score_threshold": inference_data.cell_score_threshold
+            "cell_score_threshold": inference_data.cell_score_threshold,
+            "roi": inference_data.data_sources[0].roi
         }
         db_name = None
     else:
