@@ -11,8 +11,7 @@ import attr
 from .data import DataROIConfig
 from .job import JobConfig
 from .utils import (ensure_cls,
-                    ensure_cls_list,
-                    load_config)
+                    ensure_cls_list)
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +50,6 @@ class SolveParametersConfig:
         as part of cross-validation)
     tag: str
         To automatically tag e.g. ssvm/greedy solutions
-
-
     """
     track_cost = attr.ib(type=float)
     weight_node_score = attr.ib(type=float)
@@ -171,8 +168,8 @@ def write_solve_parameters_configs(parameters_search, grid):
         itertools.product. If num_configs is set, shuffle list and take
         the num_configs first ones.
     """
-    params = {k:v
-              for k,v in attr.asdict(parameters_search).items()
+    params = {k: v
+              for k, v in attr.asdict(parameters_search).items()
               if v is not None}
     params.pop('num_configs', None)
 
@@ -190,8 +187,9 @@ def write_solve_parameters_configs(parameters_search, grid):
                     value = v[0]
                 elif isinstance(v[0], str) or len(v) > 2:
                     value = random.choice(v)
-                elif len(v) == 2 and isinstance(v[0], list) and isinstance(v[1], list) and \
-                     isinstance(v[0][0], str) and isinstance(v[1][0], str):
+                elif (len(v) == 2 and isinstance(v[0], list) and
+                      isinstance(v[1], list) and
+                      isinstance(v[0][0], str) and isinstance(v[1][0], str)):
                     subset = random.choice(v)
                     value = random.choice(subset)
                 else:
@@ -211,8 +209,8 @@ def write_solve_parameters_configs(parameters_search, grid):
     else:
         if params.get('cell_state_key') == '':
             params['cell_state_key'] = None
-        elif isinstance(params.get('cell_state_key'), list) and \
-             '' in params['cell_state_key']:
+        elif (isinstance(params.get('cell_state_key'), list) and
+              '' in params['cell_state_key']):
             params['cell_state_key'] = [k if k != '' else None
                                         for k in params['cell_state_key']]
         search_configs = [
@@ -245,7 +243,8 @@ class SolveConfig:
         If solution should be recomputed if it already exists
     parameters: SolveParametersConfig
         Fixed set of ILP parameters
-    parameters_search_grid, parameters_search_random: SolveParametersSearchConfig
+    parameters_search_grid
+    parameters_search_random: SolveParametersSearchConfig
         Ranges/sets per ILP parameter to create parameter search
     greedy: bool
         Do not use ILP for solving, greedy nearest neighbor tracking
@@ -288,9 +287,10 @@ class SolveConfig:
     grid_search = attr.ib(type=bool, default=False)
     random_search = attr.ib(type=bool, default=False)
     solver_type = attr.ib(type=str, default=None,
-                          validator=attr.validators.optional(attr.validators.in_([
-                              "basic",
-                              "cell_state"])))
+                          validator=attr.validators.optional(
+                              attr.validators.in_([
+                                  "basic",
+                                  "cell_state"])))
 
     def __attrs_post_init__(self):
         assert self.parameters is not None or \
@@ -303,13 +303,14 @@ class SolveConfig:
             assert self.grid_search != self.random_search, \
                 "choose either grid or random search!"
             assert self.parameters is None, \
-                ("overwriting explicit solve parameters with grid/random search "
-                 "parameters not supported. For search please either (1) "
-                 "precompute search parameters (e.g. using write_config_files.py) "
-                 "and set solve.parameters to point to resulting file or (2) "
-                 "let search parameters be created automatically by setting "
-                 "solve.grid/random_search to true (only supported when using "
-                 "the getNextInferenceData facility to loop over data samples)")
+                ("overwriting explicit solve parameters with grid/random "
+                 "search parameters not supported. For search please either "
+                 "(1) precompute search parameters (e.g. using "
+                 "write_config_files.py) and set solve.parameters to point to "
+                 "resulting file or (2) let search parameters be created "
+                 "automatically by setting solve.grid/random_search to true "
+                 "(only supported when using the getNextInferenceData "
+                 "facility to loop over data samples)")
             if self.parameters is not None:
                 logger.warning("overwriting explicit solve parameters with "
                                "grid/random search parameters!")
@@ -318,7 +319,7 @@ class SolveConfig:
                     "provide grid search values for solve parameters " \
                     "if grid search activated"
                 parameters_search = self.parameters_search_grid
-            else: #if self.random_search:
+            else:
                 assert self.parameters_search_random is not None, \
                     "provide random search values for solve parameters " \
                     "if random search activated"

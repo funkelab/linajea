@@ -2,9 +2,6 @@
 
 Create model and train
 """
-import warnings
-
-
 import logging
 import time
 import os
@@ -80,7 +77,8 @@ def train(config):
             "your model to device in the main process."
         ) from e
 
-    input_shape, output_shape_1, output_shape_2 = model.inout_shapes(device=device)
+    input_shape, output_shape_1, output_shape_2 = model.inout_shapes(
+        device=device)
     logger.debug("Model: %s", model)
 
     voxel_size = gp.Coordinate(config.train_data.data_sources[0].voxel_size)
@@ -122,7 +120,6 @@ def train(config):
         snapshot_request.add(grad_movement_vectors, output_size_1)
     logger.debug("Snapshot request: %s" % str(snapshot_request))
 
-
     train_sources = get_sources(config, raw, anchor, tracks, center_tracks,
                                 config.train_data.data_sources, val=False)
 
@@ -135,6 +132,7 @@ def train(config):
     # load data source and
     # choose augmentations depending on config
     augment = config.train.augment
+    use_fast_points_transform = augment.elastic.use_fast_points_transform
     train_pipeline = (
         tuple(train_sources) +
         gp.RandomProvider() +
@@ -146,24 +144,24 @@ def train(config):
              augment.elastic.rotation_max*np.pi/180.0],
             rotation_3d=augment.elastic.rotation_3d,
             subsample=augment.elastic.subsample,
-            use_fast_points_transform=augment.elastic.use_fast_points_transform,
+            use_fast_points_transform=use_fast_points_transform,
             spatial_dims=3,
-            temporal_dim=True) \
+            temporal_dim=True)
          if augment.elastic is not None else NoOp()) +
 
         (ShiftAugment(
             prob_slip=augment.shift.prob_slip,
             prob_shift=augment.shift.prob_shift,
             sigma=augment.shift.sigma,
-            shift_axis=0) \
+            shift_axis=0)
          if augment.shift is not None else NoOp()) +
 
-        (ShuffleChannels(raw) \
+        (ShuffleChannels(raw)
          if augment.shuffle_channels else NoOp()) +
 
         (gp.SimpleAugment(
             mirror_only=augment.simple.mirror,
-            transpose_only=augment.simple.transpose) \
+            transpose_only=augment.simple.transpose)
          if augment.simple is not None else NoOp()) +
 
         (gp.ZoomAugment(
@@ -171,7 +169,7 @@ def train(config):
             factor_max=augment.zoom.factor_max,
             spatial_dims=augment.zoom.spatial_dims,
             order={raw: 1,
-                   }) \
+                   })
          if augment.zoom is not None else NoOp()) +
 
         (gp.NoiseAugment(
@@ -179,7 +177,7 @@ def train(config):
             mode='gaussian',
             var=augment.noise_gaussian.var,
             clip=False,
-            check_val_range=False) \
+            check_val_range=False)
          if augment.noise_gaussian is not None else NoOp()) +
 
         (gp.NoiseAugment(
@@ -187,7 +185,7 @@ def train(config):
             mode='speckle',
             var=augment.noise_speckle.var,
             clip=False,
-            check_val_range=False) \
+            check_val_range=False)
          if augment.noise_speckle is not None else NoOp()) +
 
         (gp.NoiseAugment(
@@ -195,7 +193,7 @@ def train(config):
             mode='s&p',
             amount=augment.noise_saltpepper.amount,
             clip=False,
-            check_val_range=False) \
+            check_val_range=False)
          if augment.noise_saltpepper is not None else NoOp()) +
 
         (gp.HistogramAugment(
@@ -203,8 +201,8 @@ def train(config):
             # raw_tmp,
             range_low=augment.histogram.range_low,
             range_high=augment.histogram.range_high,
-            z_section_wise=False) \
-        if augment.histogram is not None else NoOp())  +
+            z_section_wise=False)
+         if augment.histogram is not None else NoOp()) +
 
         (gp.IntensityAugment(
             raw,
@@ -213,7 +211,7 @@ def train(config):
             shift_min=augment.intensity.shift[0],
             shift_max=augment.intensity.shift[1],
             z_section_wise=False,
-            clip=False) \
+            clip=False)
          if augment.intensity is not None else NoOp()) +
 
         (AddMovementVectors(
@@ -223,14 +221,13 @@ def train(config):
             array_spec=gp.ArraySpec(voxel_size=voxel_size),
             radius=config.train.object_radius,
             move_radius=config.train.move_radius,
-            dense=not config.general.sparse) \
+            dense=not config.general.sparse)
          if not config.model.train_only_cell_indicator else NoOp()) +
 
         (gp.Reject(
             ensure_nonempty=tracks,
             mask=cell_mask,
-            min_masked=0.0001,
-        ) \
+            min_masked=0.0001)
          if config.general.sparse else NoOp()) +
 
         gp.RasterizeGraph(
@@ -252,7 +249,7 @@ def train(config):
 
         (gp.PreCache(
             cache_size=config.train.cache_size,
-            num_workers=config.train.job.num_workers) \
+            num_workers=config.train.job.num_workers)
          if config.train.job.num_workers > 1 else NoOp())
     )
 
@@ -269,15 +266,14 @@ def train(config):
                 array_spec=gp.ArraySpec(voxel_size=voxel_size),
                 radius=config.train.object_radius,
                 move_radius=config.train.move_radius,
-                dense=not config.general.sparse) \
+                dense=not config.general.sparse)
              if not config.model.train_only_cell_indicator else NoOp()) +
 
             (gp.Reject(
                 ensure_nonempty=tracks,
                 mask=cell_mask,
                 min_masked=0.0001,
-                reject_probability=augment.reject_empty_prob
-            ) \
+                reject_probability=augment.reject_empty_prob)
              if config.general.sparse else NoOp()) +
 
             gp.Reject(
@@ -305,7 +301,7 @@ def train(config):
 
             (gp.PreCache(
                 cache_size=config.train.cache_size,
-                num_workers=1) \
+                num_workers=1)
              if config.train.job.num_workers > 1 else NoOp())
         )
 
@@ -317,15 +313,14 @@ def train(config):
     else:
         pipeline = train_pipeline
 
-
-    inputs={
+    inputs = {
         'raw': raw,
     }
     if not config.model.train_only_cell_indicator:
         inputs['cell_mask'] = cell_mask
         inputs['gt_movement_vectors'] = movement_vectors
 
-    outputs={
+    outputs = {
         0: pred_cell_indicator,
         1: maxima,
         2: raw_cropped,
@@ -333,7 +328,7 @@ def train(config):
     if not config.model.train_only_cell_indicator:
         outputs[3] = pred_movement_vectors
 
-    loss_inputs={
+    loss_inputs = {
         'gt_cell_indicator': cell_indicator,
         'cell_indicator': pred_cell_indicator,
         'maxima': maxima,
@@ -364,8 +359,10 @@ def train(config):
     if not config.model.train_only_cell_indicator:
         snapshot_datasets[cell_mask] = 'volumes/cell_mask'
         snapshot_datasets[movement_vectors] = 'volumes/movement_vectors'
-        snapshot_datasets[pred_movement_vectors] = 'volumes/pred_movement_vectors'
-        snapshot_datasets[grad_movement_vectors] = 'volumes/grad_movement_vectors'
+        snapshot_datasets[pred_movement_vectors] = \
+            'volumes/pred_movement_vectors'
+        snapshot_datasets[grad_movement_vectors] = \
+            'volumes/grad_movement_vectors'
 
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug("requires_grad enabled for:")
@@ -413,13 +410,14 @@ def train(config):
 
         # visualize
         gp.Snapshot(snapshot_datasets,
-            output_dir=os.path.join(config.general.setup_dir, 'snapshots'),
-            output_filename='snapshot_{iteration}.hdf',
-            additional_request=snapshot_request,
-            every=config.train.snapshot_stride,
-            dataset_dtypes={
-                maxima: np.float32
-            }) +
+                    output_dir=os.path.join(config.general.setup_dir,
+                                            'snapshots'),
+                    output_filename='snapshot_{iteration}.hdf',
+                    additional_request=snapshot_request,
+                    every=config.train.snapshot_stride,
+                    dataset_dtypes={
+                        maxima: np.float32
+                    }) +
         gp.PrintProfilingStats(every=config.train.profiling_stride)
     )
 
@@ -487,11 +485,11 @@ def get_sources(config, raw, anchor, tracks, center_tracks, data_sources,
                     filename_divisions = os.path.join(
                         d, data_config['general']['divisions_file'])
                 except KeyError:
-                    logger.warning("Cannot find divisions_file in data_config, "
+                    logger.warning("Cannot find divisions_file in data_config,"
                                    "falling back to using tracks_file"
-                                   "(usually ok unless they are not included and "
-                                   "there is a separate file containing the "
-                                   "divisions)")
+                                   "(usually ok unless they are not included "
+                                   "and there is a separate file containing "
+                                   "the divisions)")
                     filename_divisions = os.path.join(
                         d, data_config['general']['tracks_file'])
             filename_daughters = os.path.join(
@@ -542,6 +540,7 @@ def get_sources(config, raw, anchor, tracks, center_tracks, data_sources,
             random_location = gp.RandomLocation
             args = [raw]
 
+        point_balance_radius = config.train.augment.point_balance_radius
         track_source = (
             merge_sources(
                 file_source,
@@ -555,7 +554,7 @@ def get_sources(config, raw, anchor, tracks, center_tracks, data_sources,
                 *args,
                 ensure_nonempty=center_tracks,
                 p_nonempty=config.train.augment.reject_empty_prob,
-                point_balance_radius=config.train.augment.point_balance_radius)
+                point_balance_radius=point_balance_radius)
         )
 
         # if division nodes should be sampled more often
@@ -573,7 +572,7 @@ def get_sources(config, raw, anchor, tracks, center_tracks, data_sources,
                     *args,
                     ensure_nonempty=center_tracks,
                     p_nonempty=config.train.augment.reject_empty_prob,
-                    point_balance_radius=config.train.augment.point_balance_radius)
+                    point_balance_radius=point_balance_radius)
             )
 
             track_source = (track_source, div_source) + \
@@ -584,7 +583,6 @@ def get_sources(config, raw, anchor, tracks, center_tracks, data_sources,
         sources.append(track_source)
 
     return sources
-
 
 
 def merge_sources(
@@ -606,7 +604,7 @@ def merge_sources(
         (raw,
          # tracks
          TracksSource(
-                track_file,
+             track_file,
              tracks,
              points_spec=gp.PointsSpec(roi=roi),
              scale=scale,

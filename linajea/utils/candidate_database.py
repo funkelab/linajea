@@ -204,20 +204,21 @@ class CandidateDatabase(MongoDbGraphProvider):
                 if "context" not in entry:
                     continue
                 for param in params:
-                    if isinstance(query[param], float) or \
-                       (isinstance(query[param], int) and
-                        not isinstance(query[param], bool)):
+                    if (isinstance(query[param], float) or
+                        (isinstance(query[param], int) and
+                         not isinstance(query[param], bool))):
                         if round(entry[param], 10) != round(query[param], 10):
                             break
                     elif isinstance(query[param], dict):
-                        if param == 'roi' and \
-                           (entry['roi']['offset'] != query['roi']['offset'] or \
-                           entry['roi']['shape'] != query['roi']['shape']):
-                            break
+                        if param == 'roi':
+                            e_roi = entry['roi']
+                            q_roi = query['roi']
+                            if (e_roi['offset'] != q_roi['offset'] or
+                                    e_roi['shape'] != q_roi['shape']):
+                                break
                         elif param == 'cell_state_key':
-                            if '$exists' in query['cell_state_key'] and \
-                               query['cell_state_key']['$exists'] == False and \
-                               'cell_state_key' in entry:
+                            if query[param].get("$exists") is False and \
+                               param in entry:
                                 break
                     elif isinstance(query[param], str):
                         if param not in entry or \
@@ -383,26 +384,6 @@ class CandidateDatabase(MongoDbGraphProvider):
             logger.info("Query: %s", query)
             scores = list(score_collection.find(query))
             logger.info("Found %d scores" % len(scores))
-            if len(scores) == 0:
-                if "fn_div_count_unconnected_parent" in query and \
-                   query["fn_div_count_unconnected_parent"] == True:
-                    del query["fn_div_count_unconnected_parent"]
-                if "validation_score" in query and \
-                   query["validation_score"] == False:
-                    del query["validation_score"]
-                if "window_size" in query and \
-                   query["window_size"] == 50:
-                    del query["window_size"]
-                if "filter_short_tracklets_len" in query and \
-                   query["filter_short_tracklets_len"] == -1:
-                    del query["filter_short_tracklets_len"]
-                if "ignore_one_off_div_errors" in query and \
-                   query["ignore_one_off_div_errors"] == False:
-                    del query["ignore_one_off_div_errors"]
-                logger.info("Query: %s", query)
-                scores = list(score_collection.find(query))
-                logger.info("Found %d scores" % len(scores))
-
         finally:
             self._MongoDbGraphProvider__disconnect()
         return scores
@@ -437,7 +418,9 @@ class CandidateDatabase(MongoDbGraphProvider):
                 query.update(eval_params.valid())
 
             cnt = score_collection.count_documents(query)
-            assert cnt <= 1, "multiple scores for query %s exist, don't know which to overwrite" % query
+            assert cnt <= 1, (
+                "multiple scores for query %s exist, don't know which to "
+                "overwrite" % query)
 
             if parameters is None:
                 parameters = {}

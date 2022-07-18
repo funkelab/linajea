@@ -5,7 +5,6 @@ import logging
 import os
 import time
 
-import numpy as np
 import pylp
 
 from .solver import Solver
@@ -68,7 +67,7 @@ def track(graph, config, selected_key, frame_key='t',
 
         pin_constraints_fn_list (list of Callable)
 
-            A list of Callable that return a list of pylp.LinearConstraint each.
+            List of Callable that return a list of pylp.LinearConstraint each.
             Use this to add constraints to pin edge indicators to specific
             states. Called only if edge has already been set by neighboring
             blocks.
@@ -79,7 +78,7 @@ def track(graph, config, selected_key, frame_key='t',
 
         edge_constraints_fn_list (list of Callable)
 
-            A list of Callable that return a list of pylp.LinearConstraint each.
+            List of Callable that return a list of pylp.LinearConstraint each.
             Use this to add constraints on a specific edge.
             Interface: fn(edge, indicators)
               edge: Create constraints for this edge
@@ -87,7 +86,7 @@ def track(graph, config, selected_key, frame_key='t',
 
         node_constraints_fn_list (list of Callable)
 
-            A list of Callable that return a list of pylp.LinearConstraint each.
+            List of Callable that return a list of pylp.LinearConstraint each.
             Use this to add constraints on a specific node.
             Interface: fn(node, indicators)
               node: Create constraints for this node
@@ -95,7 +94,7 @@ def track(graph, config, selected_key, frame_key='t',
 
         inter_frame_constraints_fn_list (list of Callable)
 
-            A list of Callable that return a list of pylp.LinearConstraint each.
+            List of Callable that return a list of pylp.LinearConstraint each.
             d
             Interface: fn(node, indicators, graph, **kwargs)
               node: Create constraints for this node
@@ -129,7 +128,6 @@ def track(graph, config, selected_key, frame_key='t',
     logger.debug("Creating solver...")
     solver = None
     total_solve_time = 0
-
 
     if config.solve.solver_type is not None:
         constrs = constraints.get_constraints_default(config)
@@ -184,10 +182,11 @@ def track(graph, config, selected_key, frame_key='t',
 
 def write_struct_svm(solver, block_id, output_dir):
     os.makedirs(output_dir, exist_ok=True)
+    block_id = str(block_id)
 
     # write all indicators as "object_id, indicator_id"
     for k, objs in solver.indicators.items():
-        with open(os.path.join(output_dir, k + "_b" + str(block_id)), 'w') as f:
+        with open(os.path.join(output_dir, k + "_b" + block_id), 'w') as f:
             for obj, v in objs.items():
                 f.write(f"{obj} {v}\n")
 
@@ -215,7 +214,7 @@ def write_struct_svm(solver, block_id, output_dir):
     num_features = acc
     assert sorted(indicators.keys()) == list(range(len(indicators))), \
         "some error reading indicators and features"
-    with open(os.path.join(output_dir, "features_b" + str(block_id)), 'w') as f:
+    with open(os.path.join(output_dir, "features_b" + block_id), 'w') as f:
         for ind in sorted(indicators.keys()):
             k, costs = indicators[ind]
             features = [0]*num_features
@@ -234,10 +233,11 @@ def write_struct_svm(solver, block_id, output_dir):
         else:
             raise RuntimeError("invalid pylp.Relation: %s", rel)
 
-    with open(os.path.join(output_dir, "constraints_b" + str(block_id)), 'w') as f:
+    with open(os.path.join(output_dir, "constraints_b" + block_id), 'w') as f:
         for constraint in solver.main_constraints:
             val = constraint.get_value()
             rel = rel_to_str(constraint.get_relation())
-            coeffs = " ".join([f"{v}*{idx}"
-                               for idx, v in constraint.get_coefficients().items()])
+            coeffs = " ".join(
+                [f"{v}*{idx}"
+                 for idx, v in constraint.get_coefficients().items()])
             f.write(f"{coeffs} {rel} {val}\n")

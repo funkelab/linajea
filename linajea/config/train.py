@@ -6,7 +6,6 @@ import attr
 
 from .augment import (AugmentTrackingConfig,
                       NormalizeConfig)
-from .train_test_validate_data import TrainDataTrackingConfig
 from .job import JobConfig
 from .utils import ensure_cls
 
@@ -73,11 +72,13 @@ class _TrainConfig:
     swa_freq_it = attr.ib(type=int, default=None)
     use_grad_norm = attr.ib(type=bool, default=False)
     val_log_step = attr.ib(type=int, default=None)
-    normalization = attr.ib(converter=ensure_cls(NormalizeConfig), default=None)
+    normalization = attr.ib(converter=ensure_cls(NormalizeConfig),
+                            default=None)
 
     def __attrs_post_init__(self):
         if self.use_swa:
-            assert self.swa_start_it is not None and self.swa_freq_it is not None, \
+            assert (self.swa_start_it is not None and
+                    self.swa_freq_it is not None), \
                 "if swa is used, please set start and freq it"
 
 

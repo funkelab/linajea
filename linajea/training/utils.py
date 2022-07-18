@@ -1,13 +1,19 @@
 """Utility functions for training process
 """
-import copy
 import glob
+import logging
 import math
 import re
 
 import numpy as np
 
 import gunpowder as gp
+
+from linajea.gunpowder_nodes import (Clip,
+                                     NormalizeAroundZero,
+                                     NormalizeLowerUpper)
+
+logger = logging.getLogger(__name__)
 
 
 def get_latest_checkpoint(basename):
@@ -33,7 +39,7 @@ def get_latest_checkpoint(basename):
         return int(text) if text.isdigit() else text
 
     def natural_keys(text):
-        return [ atoi(c) for c in re.split(r'(\d+)', text) ]
+        return [atoi(c) for c in re.split(r'(\d+)', text)]
 
     checkpoints = glob.glob(basename + '_checkpoint_*')
     checkpoints.sort(key=natural_keys)
@@ -191,7 +197,8 @@ def normalize(pipeline, config, raw, data_config=None):
         logger.info("mean normalization %s %s %s %s", mean, std, mn, mx)
         pipeline = pipeline + \
             Clip(raw, mn=mn, mx=mx) + \
-            NormalizeAroundZero(raw, mapped_to_zero=mean, diff_mapped_to_one=std)
+            NormalizeAroundZero(raw, mapped_to_zero=mean,
+                                diff_mapped_to_one=std)
     elif config.train.normalization.type == 'median':
         median = data_config['stats']['median']
         mad = data_config['stats']['mad']
@@ -200,7 +207,8 @@ def normalize(pipeline, config, raw, data_config=None):
         logger.info("median normalization %s %s %s %s", median, mad, mn, mx)
         pipeline = pipeline + \
             Clip(raw, mn=mn, mx=mx) + \
-            NormalizeAroundZero(raw, mapped_to_zero=median, diff_mapped_to_one=mad)
+            NormalizeAroundZero(raw, mapped_to_zero=median,
+                                diff_mapped_to_one=mad)
     else:
         raise RuntimeError("invalid normalization method %s",
                            config.train.normalization.type)

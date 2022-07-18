@@ -22,7 +22,7 @@ class LossWrapper(torch.nn.Module):
             ws = weight.sum() * inputs.size()[0] / weight.size()[0]
             if abs(ws) <= 0.001:
                 ws = 1
-            return (weight * ((inputs - target) ** 2)).sum()/ ws
+            return (weight * ((inputs - target) ** 2)).sum() / ws
 
         def weighted_mse_loss2(inputs, target, weight):
             return (weight * ((inputs - target) ** 2)).mean()
@@ -58,7 +58,6 @@ class LossWrapper(torch.nn.Module):
                          maxima,
                          maxima_in_cell_mask,
                          output_shape_2):
-
 
         # ground truth cell locations
         gt_max_loc = torch.nonzero(gt_cell_center > 0.5)
@@ -163,7 +162,6 @@ class LossWrapper(torch.nn.Module):
             self.summaries['par_vec_diff_mn_pred'][0] = par_vec_diff_mn_pred
             self.summaries['par_vec_tpr_pred'][0] = par_vec_tpr_pred
 
-
     def forward(self, *,
                 gt_cell_indicator,
                 cell_indicator,
@@ -239,7 +237,8 @@ class LossWrapper(torch.nn.Module):
                 self.config.model.cell_indicator_weighted = 0.00001
             cond = gt_cell_indicator < self.config.model.cell_indicator_cutoff
             weight = torch.where(cond,
-                                 self.config.model.cell_indicator_weighted, 1.0)
+                                 self.config.model.cell_indicator_weighted,
+                                 1.0)
         else:
             weight = torch.tensor(1.0)
 
@@ -249,8 +248,8 @@ class LossWrapper(torch.nn.Module):
             # l=1, d, h, w
             cell_indicator,
             # l=1, d, h, w
-            weight)
             # cell_mask)
+            weight)
 
         if self.config.model.train_only_cell_indicator:
             loss = cell_indicator_loss
@@ -259,12 +258,11 @@ class LossWrapper(torch.nn.Module):
             if self.config.train.movement_vectors_loss_transition_offset:
                 # smooth transition from training movement vectors on complete
                 # cell mask to only on maxima
-                # https://www.wolframalpha.com/input/?i=1.0%2F(1.0+%2B+exp(0.01*(-x%2B20000)))+x%3D0+to+40000
-                alpha = (1.0 /
-                         (1.0 + torch.exp(
-                    self.config.train.movement_vectors_loss_transition_factor *
-                    (-self.current_step +
-                     self.config.train.movement_vectors_loss_transition_offset))))
+                # https://www.wolframalpha.com/input/?
+                # i=1.0%2F(1.0+%2B+exp(0.01*(-x%2B20000)))+x%3D0+to+40000
+                f = self.config.train.movement_vectors_loss_transition_factor
+                o = self.config.train.movement_vectors_loss_transition_offset
+                alpha = (1.0 / (1.0 + torch.exp(f * (-self.current_step + o))))
                 self.summaries['alpha'][0] = alpha
 
                 movement_vectors_loss = (

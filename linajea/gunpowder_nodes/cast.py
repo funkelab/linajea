@@ -1,7 +1,10 @@
 """Provides a gunpowder node to cast array from one type to another
 """
+import copy
+
 import gunpowder as gp
 import numpy as np
+
 
 class Cast(gp.BatchFilter):
     """Gunpowder node to cast array to dtype

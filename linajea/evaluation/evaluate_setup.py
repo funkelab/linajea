@@ -49,7 +49,8 @@ def evaluate_setup(linajea_config):
     logger.debug("ROI used for evaluation: %s %s",
                  linajea_config.evaluate.parameters.roi, data.roi)
     if linajea_config.evaluate.parameters.roi is not None:
-        assert linajea_config.evaluate.parameters.roi.shape[0] <= data.roi.shape[0], \
+        assert (linajea_config.evaluate.parameters.roi.shape[0] <=
+                data.roi.shape[0]), \
             "your evaluation ROI is larger than your data roi!"
         data.roi = linajea_config.evaluate.parameters.roi
     else:
@@ -126,7 +127,7 @@ def evaluate_setup(linajea_config):
         linajea_config.evaluate.parameters.ignore_one_off_div_errors
     fn_div_count_unconnected_parent = \
         linajea_config.evaluate.parameters.fn_div_count_unconnected_parent
-    window_size=linajea_config.evaluate.parameters.window_size
+    window_size = linajea_config.evaluate.parameters.window_size
 
     report = evaluate(
             gt_track_graph,

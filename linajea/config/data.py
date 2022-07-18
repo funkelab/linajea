@@ -11,7 +11,6 @@ from typing import List
 
 import attr
 import daisy
-import zarr
 
 from .utils import (ensure_cls,
                     load_config,
@@ -82,8 +81,9 @@ class DataFileConfig:
             dataset = daisy.open_ds(self.filename, self.group)
 
             self.file_voxel_size = dataset.voxel_size
-            self.file_roi = DataROIConfig(offset=dataset.roi.get_offset(),
-                                          shape=dataset.roi.get_shape())  # type: ignore
+            self.file_roi = DataROIConfig(
+                offset=dataset.roi.get_offset(),
+                shape=dataset.roi.get_shape())  # type: ignore
         else:
             filename = self.filename
             is_polar = "polar" in filename
@@ -99,8 +99,9 @@ class DataFileConfig:
             self.file_voxel_size = data_config['general']['resolution']
             self.file_roi = DataROIConfig(
                 offset=data_config['general']['offset'],
-                shape=[s*v for s,v in zip(data_config['general']['shape'],
-                                          self.file_voxel_size)])  # type: ignore
+                shape=[s*v for s, v in zip(
+                    data_config['general']['shape'],
+                    self.file_voxel_size)])  # type: ignore
             if self.group is None:
                 self.group = data_config['general']['group']
 

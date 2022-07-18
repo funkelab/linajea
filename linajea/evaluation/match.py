@@ -118,7 +118,8 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
             edge_matches_in_frame, _ = match(edge_costs,
                                              2*matching_threshold + 1)
             edge_matches.extend(edge_matches_in_frame)
-            y_edge_matches_in_frame = [edge[1] for edge in edge_matches_in_frame]
+            y_edge_matches_in_frame = [edge[1]
+                                       for edge in edge_matches_in_frame]
             edge_fps_in_frame = set(y_edges_in_range) -\
                 set(y_edge_matches_in_frame)
             edge_fps += list(edge_fps_in_frame)
@@ -327,7 +328,7 @@ def match(costs, no_match_cost):
     solver.set_timeout(240)
 
     logger.debug("start solving (num vars %d, num constr. %d, num costs %d)",
-                num_variables, len(constraints), len(costs))
+                 num_variables, len(constraints), len(costs))
     start = time.time()
     solution, message = solver.solve()
     end = time.time()

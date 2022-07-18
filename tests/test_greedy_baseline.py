@@ -120,7 +120,7 @@ class TestGreedy(unittest.TestCase):
                 ]
         self.assertCountEqual(selected_edges, expected_result)
         self.delete_db(db_name, db_host)
-    
+
     def test_greedy_node_threshold(self):
         #   x
         #  3|         /-4 \

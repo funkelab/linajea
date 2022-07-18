@@ -23,11 +23,13 @@ def backup_and_copy_file(source, target, fn):
     if os.path.exists(target_fn):
         os.makedirs(os.path.join(target, "backup"), exist_ok=True)
         shutil.copy2(target_fn,
-                     os.path.join(target, "backup", fn + "_backup" + str(int(time.time()))))
+                     os.path.join(target, "backup",
+                                  fn + "_backup" + str(int(time.time()))))
     if source is not None:
         source_fn = os.path.join(source, fn)
         if source_fn != target_fn:
             shutil.copy2(source_fn, target_fn)
+
 
 def do_train(args, config, cmd):
     queue = config.train.job.queue
@@ -39,6 +41,7 @@ def do_train(args, config, cmd):
             queue, num_gpus, num_cpus,
             flags=flags)
 
+
 def do_predict(args, config, cmd):
     queue = 'interactive' if args.interactive else 'local'
     num_gpus = 0
@@ -49,6 +52,7 @@ def do_predict(args, config, cmd):
             queue, num_gpus, num_cpus,
             flags=flags)
 
+
 def do_extract_edges(args, config, cmd):
     queue = 'interactive' if args.interactive else config.extract.job.queue
     num_gpus = 0
@@ -58,6 +62,7 @@ def do_extract_edges(args, config, cmd):
     run_cmd(args, config, cmd, "extract",
             queue, num_gpus, num_cpus,
             flags=flags)
+
 
 def do_solve(args, config, cmd, wait=True):
     queue = 'interactive' if args.interactive else config.solve.job.queue
@@ -96,11 +101,12 @@ def do_solve(args, config, cmd, wait=True):
         wait = False
 
     jobid = run_cmd(args, config, cmd, "solve",
-            queue, num_gpus, num_cpus,
-            array_limit=array_limit,
-            array_start=array_start, array_end=array_end,
-            flags=flags, wait=wait)
+                    queue, num_gpus, num_cpus,
+                    array_limit=array_limit,
+                    array_start=array_start, array_end=array_end,
+                    flags=flags, wait=wait)
     return jobid
+
 
 def do_evaluate(args, config, cmd, jobid=None, wait=True):
     queue = 'interactive' if args.interactive else config.evaluate.job.queue
@@ -166,8 +172,8 @@ def run_cmd(args, config, cmd, job_name,
     print(cmd)
     print(' '.join(cmd))
 
-
-    if not args.array_job and not args.eval_array_job and (args.slurm or args.gridengine):
+    if not args.array_job and not args.eval_array_job and \
+       (args.slurm or args.gridengine):
         if args.slurm:
             if num_gpus > 0:
                 cmd = ['sbatch', '../run_slurm_gpu.sh'] + cmd[1:]
@@ -195,7 +201,7 @@ def run_cmd(args, config, cmd, job_name,
 
         jobid = None
         if not args.local:
-            bsub_stdout_regex = re.compile("Job <(\d+)> is submitted*")
+            bsub_stdout_regex = re.compile(r"Job <(\d+)> is submitted*")
             logger.debug("Command output: %s" % output)
             print(output.stdout)
             print(output.stderr)
@@ -247,7 +253,8 @@ if __name__ == "__main__":
     parser.add_argument("--interactive", action="store_true",
                         help='run on interactive node on cluster?')
     parser.add_argument('--array_job', action="store_true",
-                        help='submit each parameter set for solving/eval as one job?')
+                        help=('submit each parameter set for '
+                              'solving/eval as one job?'))
     parser.add_argument('--eval_array_job', action="store_true",
                         help='submit each parameter set for eval as one job?')
     parser.add_argument('--param_ids', default=None, nargs=2,
@@ -257,7 +264,6 @@ if __name__ == "__main__":
     parser.add_argument("--no_block_after_eval", dest="block_after_eval",
                         action="store_false",
                         help='block after starting eval jobs?')
-
 
     args = parser.parse_args()
     config = maybe_fix_config_paths_to_machine_and_load(args.config)
@@ -269,13 +275,13 @@ if __name__ == "__main__":
     os.makedirs(setup_dir, exist_ok=True)
     os.makedirs(os.path.join(setup_dir, "tmp_configs"), exist_ok=True)
 
-    if not is_new_run and \
-       os.path.dirname(os.path.abspath(args.config)) != \
-           os.path.abspath(setup_dir) and \
+    if not is_new_run:
+        config_dir = os.path.dirname(os.path.abspath(args.config))
+        if config_dir != os.path.abspath(setup_dir) and \
            "tmp_configs" not in args.config:
-        raise RuntimeError(
-            "overwriting config with external config file (%s - %s)",
-            args.config, setup_dir)
+            raise RuntimeError(
+                "overwriting config with external config file (%s - %s)",
+                args.config, setup_dir)
     config_file = os.path.basename(args.config)
     if "tmp_configs" not in args.config:
         backup_and_copy_file(os.path.dirname(args.config),
@@ -308,7 +314,6 @@ if __name__ == "__main__":
     if args.run_evaluate:
         run_steps.append("05_evaluate.py")
 
-
     config.path = os.path.join("tmp_configs", "config_{}.toml".format(
         time.time()))
     config_dict = attr.asdict(config)
@@ -340,7 +345,8 @@ if __name__ == "__main__":
         elif step == "04_solve.py":
             jobid = do_solve(args, config, cmd)
         elif step == "05_evaluate.py":
-            do_evaluate(args, config, cmd, jobid=jobid, wait=args.block_after_eval)
+            do_evaluate(args, config, cmd, jobid=jobid,
+                        wait=args.block_after_eval)
 
         else:
             raise RuntimeError("invalid processing step! %s", step)

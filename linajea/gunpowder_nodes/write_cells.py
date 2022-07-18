@@ -1,4 +1,5 @@
-"""Provides a gunpowder node to write node indicators and movement vectors to database
+"""Provides a gunpowder node to write node indicators and movement vectors to
+database
 """
 import logging
 import pymongo
@@ -155,7 +156,6 @@ class WriteCells(gp.BatchFilter):
                 logger.error(bwe.details)
                 raise
 
-
     def get_avg_mv(movement_vectors, index, edge_length):
         ''' Computes the average movement vector offset from the movement vectors
         in a cube centered at index. Accounts for the fact that each movement
@@ -205,5 +205,5 @@ class WriteCells(gp.BatchFilter):
                     offsets.append(offset_relative_to_c + relative_pos)
         logger.debug("Offsets to average: %s" + str(offsets))
         movement_vector = tuple(float(sum(col) / len(col))
-                              for col in zip(*offsets))
+                                for col in zip(*offsets))
         return movement_vector

@@ -186,10 +186,14 @@ def solve_in_block(linajea_config,
     selected_keys = ['selected_' + str(pid) for pid in parameters_id]
     edge_attrs = selected_keys.copy()
     edge_attrs.extend(["prediction_distance", "distance"])
+    join_collection = parameters["cell_state_key"]
+    logger.info("join collection %s", join_collection)
+    if join_collection.endswith("_"):
+        join_collection = join_collection[:-1]
     graph = graph_provider.get_graph(
             read_roi,
             edge_attrs=edge_attrs,
-            join_collection=parameters["cell_state_key"]
+            join_collection=join_collection
             )
 
     # remove dangling nodes and edges

@@ -67,8 +67,8 @@ def evaluate(
     logger.info("Done matching. Evaluating")
     edge_matches = [(gt_edges[gt_ind], rec_edges[rec_ind])
                     for gt_ind, rec_ind in edge_matches]
-    unselected_potential_matches = [rec_edges[rec_ind]
-                                    for rec_ind in unselected_potential_matches]
+    unselected_potential_matches = [
+        rec_edges[rec_ind] for rec_ind in unselected_potential_matches]
     evaluator = Evaluator(
             gt_track_graph,
             rec_track_graph,

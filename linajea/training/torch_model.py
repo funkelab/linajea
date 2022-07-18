@@ -9,7 +9,7 @@ import torch
 from funlib.learn.torch.models import UNet, ConvPass
 
 from .utils import (crop,
-                   crop_to_factor)
+                    crop_to_factor)
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,8 @@ class UnetModelWrapper(torch.nn.Module):
         elif config.model.unet_style == "multihead":
             num_heads = 2
         else:
-            raise RuntimeError("invalid unet style, should be split, single or multihead")
+            raise RuntimeError("invalid unet style, should be split, single "
+                               "or multihead")
 
         self.unet_cell_ind = UNet(
             in_channels=1,
@@ -78,7 +79,8 @@ class UnetModelWrapper(torch.nn.Module):
         self.parent_vectors_batched = ConvPass(num_fmaps[1], 3, [[1, 1, 1]],
                                                activation=None)
 
-        self.nms = torch.nn.MaxPool3d(config.model.nms_window_shape, stride=1, padding=0)
+        self.nms = torch.nn.MaxPool3d(config.model.nms_window_shape, stride=1,
+                                      padding=0)
 
     def init_layers(self):
         # the default init in pytorch is a bit strange
@@ -93,6 +95,7 @@ class UnetModelWrapper(torch.nn.Module):
                 # torch.nn.init.xavier_uniform(m.weight)
                 torch.nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
                 m.bias.data.fill_(0.0)
+
         # activation func sigmoid
         def init_weights_sig(m):
             if isinstance(m, torch.nn.Conv3d):
@@ -111,8 +114,9 @@ class UnetModelWrapper(torch.nn.Module):
         input_shape_predict = self.config.model.predict_input_shape
         self.eval()
         with torch.no_grad():
-            trial_run_predict = self.forward(torch.zeros(input_shape_predict,
-                                                         dtype=torch.float32).to(device))
+            trial_run_predict = self.forward(
+                torch.zeros(input_shape_predict,
+                            dtype=torch.float32).to(device))
         self.train()
         logger.info("test done")
         if self.config.model.train_only_cell_indicator:
@@ -129,7 +133,8 @@ class UnetModelWrapper(torch.nn.Module):
             json.dump(net_config, f)
 
         input_shape = self.config.model.train_input_shape
-        trial_run = self.forward(torch.zeros(input_shape, dtype=torch.float32).to(device))
+        trial_run = self.forward(torch.zeros(input_shape,
+                                             dtype=torch.float32).to(device))
         if self.config.model.train_only_cell_indicator:
             trial_ci, _, trial_max = trial_run
         else:
@@ -147,31 +152,33 @@ class UnetModelWrapper(torch.nn.Module):
             json.dump(net_config, f)
         return input_shape, output_shape_1, output_shape_2
 
-
     def forward(self, raw):
         if self.config.model.latent_temp_conv:
             raw = torch.reshape(raw, [raw.size()[0], 1] + list(raw.size())[1:])
         else:
             raw = torch.reshape(raw, [1, 1] + list(raw.size()))
-        model_out_1 = self.unet_cell_ind(raw)
+        model_out = self.unet_cell_ind(raw)
         if self.config.model.unet_style != "multihead" or \
            self.config.model.train_only_cell_indicator:
-            model_out_1 = [model_out_1]
-        cell_indicator_batched = self.cell_indicator_batched(model_out_1[0])
+            model_out = [model_out]
+        cell_indicator_batched = self.cell_indicator_batched(model_out[0])
         output_shape_1 = list(cell_indicator_batched.size())[1:]
         cell_indicator = torch.reshape(cell_indicator_batched, output_shape_1)
 
         if self.config.model.unet_style == "single":
-            parent_vectors_batched = self.parent_vectors_batched(model_out_1[0])
-            parent_vectors = torch.reshape(parent_vectors_batched, [3] + output_shape_1)
-        elif self.config.model.unet_style == "split" and \
-           not self.config.model.train_only_cell_indicator:
+            parent_vectors_batched = self.parent_vectors_batched(model_out[0])
+            parent_vectors = torch.reshape(parent_vectors_batched,
+                                           [3] + output_shape_1)
+        elif (self.config.model.unet_style == "split" and
+              not self.config.model.train_only_cell_indicator):
             model_par_vec = self.unet_par_vec(raw)
             parent_vectors_batched = self.parent_vectors_batched(model_par_vec)
-            parent_vectors = torch.reshape(parent_vectors_batched, [3] + output_shape_1)
-        else: # self.config.model.unet_style == "multihead"
-            parent_vectors_batched = self.parent_vectors_batched(model_out_1[1])
-            parent_vectors = torch.reshape(parent_vectors_batched, [3] + output_shape_1)
+            parent_vectors = torch.reshape(parent_vectors_batched,
+                                           [3] + output_shape_1)
+        else:  # self.config.model.unet_style == "multihead"
+            parent_vectors_batched = self.parent_vectors_batched(model_out[1])
+            parent_vectors = torch.reshape(parent_vectors_batched,
+                                           [3] + output_shape_1)
 
         maxima = self.nms(cell_indicator_batched)
         if not self.training:

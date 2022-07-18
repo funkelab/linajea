@@ -429,14 +429,16 @@ class Evaluator:
                     while len(next_edges) > 0:
                         if correct:
                             # check current node and next edge
-                            for current_node in current_nodes:
-                                if current_node != start_node:
-                                    if ('IS' in self.gt_track_graph.nodes[current_node] or
-                                        'FP_D' in self.gt_track_graph.nodes[current_node] or
-                                        'FN_D' in self.gt_track_graph.nodes[current_node]):
+                            for cn in current_nodes:
+                                if cn != start_node:
+                                    ns = self.gt_track_graph.nodes[cn]
+                                    if 'IS' in ns or \
+                                       'FP_D' in ns or \
+                                       'FN_D' in ns:
                                         correct = False
                             for next_edge in next_edges:
-                                if 'FN' in self.gt_track_graph.get_edge_data(*next_edge):
+                                if 'FN' in self.gt_track_graph.get_edge_data(
+                                        *next_edge):
                                     correct = False
                         # update segment counts
                         total_segments[frames] += 1
@@ -549,21 +551,18 @@ class Evaluator:
     def _get_local_graphs(self, div_node, g1, g2, rec_to_gt=False):
 
         g1_nodes = []
-        try:
-            for n1 in g1.successors(div_node):
-                g1_nodes.append(n1)
-                for n2 in g1.successors(n1):
-                    g1_nodes.append(n2)
-                for n2 in g1.predecessors(n1):
-                    g1_nodes.append(n2)
-            for n1 in g1.predecessors(div_node):
-                g1_nodes.append(n1)
-                for n2 in g1.successors(n1):
-                    g1_nodes.append(n2)
-                for n2 in g1.predecessors(n1):
-                    g1_nodes.append(n2)
-        except:
-            raise RuntimeError("Overlooked edge case in _get_local_graph?")
+        for n1 in g1.successors(div_node):
+            g1_nodes.append(n1)
+            for n2 in g1.successors(n1):
+                g1_nodes.append(n2)
+            for n2 in g1.predecessors(n1):
+                g1_nodes.append(n2)
+        for n1 in g1.predecessors(div_node):
+            g1_nodes.append(n1)
+            for n2 in g1.successors(n1):
+                g1_nodes.append(n2)
+            for n2 in g1.predecessors(n1):
+                g1_nodes.append(n2)
 
         prev_edge = list(g1.prev_edges(div_node))
         prev_edge = prev_edge[0] if len(prev_edge) > 0 else None

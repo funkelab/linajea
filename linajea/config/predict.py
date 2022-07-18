@@ -29,6 +29,7 @@ class _PredictConfig:
     normalization = attr.ib(converter=ensure_cls(NormalizeConfig),
                             default=None)
 
+
 @attr.s(kw_only=True)
 class PredictTrackingConfig(_PredictConfig):
     """Defines specialized class for configuration of tracking prediction
@@ -61,6 +62,6 @@ class PredictTrackingConfig(_PredictConfig):
         assert self.write_to_zarr or self.write_to_db, \
             "prediction not written, set write_to_zarr or write_to_db to true!"
         assert not ((self.write_to_db or self.write_db_from_zarr) and
-                    self.no_db_access), \
-                    ("no_db_access can only be set if no data is written "
-                     "to db (it then disables db done checks for write to zarr)")
+                    self.no_db_access), (
+                "no_db_access can only be set if no data is written "
+                "to db (it then disables db done checks for write to zarr)")

@@ -2,9 +2,6 @@
 
 Predicts cells/nodes and writes them to database
 """
-import warnings
-warnings.filterwarnings("once", category=FutureWarning)
-
 import argparse
 import logging
 import os
@@ -79,7 +76,7 @@ def predict(config):
         filename_mask = os.path.join(
             sample,
             data_config['general'].get('mask_file', os.path.splitext(
-                    data_config['general']['zarr_file'])[0] + "_mask.hdf"))
+                filename_data)[0] + "_mask.hdf"))
         z_range = data_config['general']['z_range']
         if z_range[1] < 0:
             z_range[1] = data_config['general']['shape'][1] - z_range[1]
@@ -112,17 +109,17 @@ def predict(config):
 
     source = normalize(source, config, raw, data_config)
 
-    inputs={
+    inputs = {
         'raw': raw
     }
-    outputs={
+    outputs = {
         0: cell_indicator,
         1: maxima,
     }
     if not config.model.train_only_cell_indicator:
         outputs[3] = movement_vectors
 
-    dataset_names={
+    dataset_names = {
         cell_indicator: 'volumes/cell_indicator',
     }
     if not config.model.train_only_cell_indicator:
@@ -182,7 +179,6 @@ def predict(config):
             db_name=config.inference_data.data_source.db_name,
             db_host=config.general.db_host))
 
-
     roi_map = {
         raw: 'read_roi',
         cell_indicator: 'write_roi',
@@ -200,11 +196,10 @@ def predict(config):
             roi_map=roi_map,
             num_workers=1,
             block_done_callback=lambda b, st, et: all([f(b) for f in cb])
-    ))
+        ))
 
     with gp.build(pipeline):
         pipeline.request_batch(gp.BatchRequest())
-
 
 
 if __name__ == "__main__":

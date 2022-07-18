@@ -7,7 +7,6 @@ import numpy as np
 
 from gunpowder.roi import Roi
 from gunpowder.coordinate import Coordinate
-from gunpowder.batch_request import BatchRequest
 from gunpowder import BatchFilter
 
 logger = logging.getLogger(__name__)
@@ -161,9 +160,9 @@ class ShiftAugment(BatchFilter):
             assert (request[array_key].roi.get_shape() ==
                     Coordinate(array.data.shape[-ndims:])
                     * self.lcm_voxel_size), \
-                    ("request roi shape {} is not the same as "
-                     "generated array shape {}").format(
-                         request[array_key].roi.get_shape(), array.data.shape)
+                ("request roi shape {} is not the same as "
+                 "generated array shape {}").format(
+                     request[array_key].roi.get_shape(), array.data.shape)
             batch[array_key] = array
 
         for points_key, points in batch.graphs.items():
@@ -250,8 +249,9 @@ class ShiftAugment(BatchFilter):
         for node in nodes:
             loc = node.location
             shift_axis_position = loc[shift_axis]
-            shift_array_index = int((shift_axis_position - shift_axis_start_pos)
-                                    // lcm_voxel_size[shift_axis])
+            shift_array_index = int(
+                (shift_axis_position - shift_axis_start_pos)
+                // lcm_voxel_size[shift_axis])
             assert(shift_array_index >= 0)
             shift = Coordinate(sub_shift_array[shift_array_index])
             loc += shift

@@ -5,6 +5,7 @@ write_done*: Write into database that block has been processed
 """
 import pymongo
 
+
 def get_daisy_collection_name(step_name):
     return step_name + "_daisy"
 

@@ -30,7 +30,8 @@ if __name__ == "__main__":
     logging.basicConfig(
         level=config.general.logging,
         handlers=[
-            logging.FileHandler(os.path.join(config.general.setup_dir, 'run.log'),
+            logging.FileHandler(os.path.join(config.general.setup_dir,
+                                             'run.log'),
                                 mode='a'),
             logging.StreamHandler(sys.stdout),
         ],

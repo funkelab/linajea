@@ -52,11 +52,12 @@ class Solver(object):
 
     def update_objective(self, node_indicator_fn_map, edge_indicator_fn_map,
                          selected_key):
+        assert (
+            set(node_indicator_fn_map.keys()) == self.node_indicator_keys and
+            set(edge_indicator_fn_map.keys()) == self.edge_indicator_keys), \
+            "cannot change set of indicators during one run!"
         self.node_indicator_fn_map = node_indicator_fn_map
         self.edge_indicator_fn_map = edge_indicator_fn_map
-        assert (set(self.node_indicator_fn_map.keys()) == self.node_indicator_keys and
-                set(self.edge_indicator_fn_map.keys()) == self.edge_indicator_keys), \
-            "cannot change set of indicators during one run!"
 
         self.selected_key = selected_key
 
@@ -86,7 +87,8 @@ class Solver(object):
 
         return solution
 
-    def solve_and_set(self, node_key="node_selected", edge_key="edge_selected"):
+    def solve_and_set(self, node_key="node_selected",
+                      edge_key="edge_selected"):
         solution = self.solve()
 
         for v in self.graph.nodes:
@@ -123,12 +125,14 @@ class Solver(object):
         # node costs
         for k, fn in self.node_indicator_fn_map.items():
             for n_id, node in self.graph.nodes(data=True):
-                objective.set_coefficient(self.indicators[k][n_id], sum(fn(node)))
+                objective.set_coefficient(self.indicators[k][n_id],
+                                          sum(fn(node)))
 
         # edge costs
         for k, fn in self.edge_indicator_fn_map.items():
             for u, v, edge in self.graph.edges(data=True):
-                objective.set_coefficient(self.indicators[k][(u, v)], sum(fn(edge)))
+                objective.set_coefficient(self.indicators[k][(u, v)],
+                                          sum(fn(edge)))
 
         self.objective = objective
 
@@ -141,7 +145,6 @@ class Solver(object):
 
         for t in range(self.graph.begin, self.graph.end):
             self._add_inter_frame_constraints(t)
-
 
     def _add_pin_constraints(self):
 
@@ -175,7 +178,6 @@ class Solver(object):
             for fn in self.node_constraints_fn_list:
                 self.main_constraints.extend(fn(node, self.indicators))
 
-
     def _add_inter_frame_constraints(self, t):
         '''Linking constraints from t to t+1.'''
 
@@ -185,7 +187,8 @@ class Solver(object):
         for node in self.graph.cells_by_frame(t):
             for fn in self.inter_frame_constraints_fn_list:
                 self.main_constraints.extend(
-                    fn(node, self.indicators, self.graph, pinned_edges=self.pinned_edges))
+                    fn(node, self.indicators, self.graph,
+                       pinned_edges=self.pinned_edges))
 
 
 class BasicSolver(Solver):

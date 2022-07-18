@@ -78,7 +78,8 @@ def _checkOrCreateDBMeta(db_host, db_meta_info, prefix="linajea_",
             assert query_result == 1
             query_result = db["db_meta_info"].find_one()
             del query_result["_id"]
-            if query_result == db_meta_info or query_result == db_meta_info_no_roi:
+            if query_result == db_meta_info or \
+               query_result == db_meta_info_no_roi:
                 logger.info("{}: {} (accessed)".format(db_name, query_result))
                 break
     else:

@@ -89,4 +89,5 @@ class EvaluateTrackingConfig(_EvaluateConfig):
         Which evaluation parameters to use
     """
     from_scratch = attr.ib(type=bool, default=False)
-    parameters = attr.ib(converter=ensure_cls(EvaluateParametersTrackingConfig))
+    parameters = attr.ib(converter=ensure_cls(
+        EvaluateParametersTrackingConfig))

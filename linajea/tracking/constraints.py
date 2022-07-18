@@ -43,7 +43,7 @@ def ensure_one_predecessor(node, indicators, graph, **kwargs):
     # plus "appear"
     constraint_prev.set_coefficient(indicators["node_appear"][node], 1)
 
-    #node
+    # node
     constraint_prev.set_coefficient(indicators["node_selected"][node], -1)
 
     # relation, value

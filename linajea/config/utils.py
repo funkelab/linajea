@@ -84,9 +84,9 @@ def ensure_cls(cl):
 def ensure_cls_list(cl):
     """attrs converter to ensure type of values in list
 
-    If the attribute is an list of instances of cls, pass, else try constructing.
-    This way a list of instances of an attrs config object can be passed
-    or a list of dicts that can be used to construct such instances.
+    If the attribute is an list of instances of cls, pass, else try
+    constructing. This way a list of instances of an attrs config object can be
+    passed or a list of dicts that can be used to construct such instances.
 
     Raises
     ------
@@ -126,6 +126,7 @@ def _check_nd_shape(ndims):
             raise ValueError("{} must be {}d".format(attribute, ndims))
     return _check_shape
 
+
 def _check_nested_nd_shape(ndims):
     """attrs validator to verify length of list
 
@@ -137,6 +138,7 @@ def _check_nested_nd_shape(ndims):
             if len(v) != ndims:
                 raise ValueError("{} must be {}d".format(attribute, ndims))
     return _check_shape
+
 
 """
 _int_list_validator:
@@ -152,17 +154,20 @@ _list_int_list_validator = attr.validators.deep_iterable(
     member_validator=_int_list_validator,
     iterable_validator=attr.validators.instance_of(list))
 
+
 def _check_possible_nested_lists(self, attribute, value):
     """attrs validator to verify list of ints or list of lists of ints
     """
     try:
         attr.validators.deep_iterable(
             member_validator=_int_list_validator,
-            iterable_validator=attr.validators.instance_of(list))(self,attribute, value)
-    except:
+            iterable_validator=attr.validators.instance_of(list))(
+                self, attribute, value)
+    except TypeError:
         attr.validators.deep_iterable(
             member_validator=_list_int_list_validator,
-            iterable_validator=attr.validators.instance_of(list))(self, attribute, value)
+            iterable_validator=attr.validators.instance_of(list))(
+                self, attribute, value)
 
 
 def maybe_fix_config_paths_to_machine_and_load(config):
@@ -184,7 +189,8 @@ def maybe_fix_config_paths_to_machine_and_load(config):
     config_dict["path"] = config
 
     if os.path.isfile(os.path.join(os.environ['HOME'], "linajea_paths.toml")):
-        paths = load_config(os.path.join(os.environ['HOME'], "linajea_paths.toml"))
+        paths = load_config(os.path.join(os.environ['HOME'],
+                                         "linajea_paths.toml"))
 
         if "general" in config_dict:
             config_dict["general"]["setup_dir"] = \

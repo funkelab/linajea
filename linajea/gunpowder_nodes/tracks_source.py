@@ -36,6 +36,7 @@ class TrackNode(Node):
                  "value": value}
         super(TrackNode, self).__init__(id, location, attrs=attrs)
 
+
 class TracksSource(BatchProvider):
     '''Gunpowder source node: read tracks of points from a csv file.
 
@@ -91,7 +92,7 @@ class TracksSource(BatchProvider):
         self.points_spec = points_spec
         self.scale = scale
         if isinstance(use_radius, dict):
-            self.use_radius = {int(k):v for k,v in use_radius.items()}
+            self.use_radius = {int(k): v for k, v in use_radius.items()}
         else:
             self.use_radius = use_radius
         self.locations = None
@@ -214,4 +215,4 @@ class TracksSource(BatchProvider):
             self.track_info = np.concatenate(
                 (self.track_info, np.reshape(shuffled_norm_idcs,
                                              shuffled_norm_idcs.shape + (1,))),
-                 axis=1, dtype=object)
+                axis=1, dtype=object)

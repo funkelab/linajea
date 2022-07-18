@@ -36,7 +36,8 @@ if __name__ == "__main__":
     parser.add_argument('--swap_val_test', action="store_true",
                         help='swap validation and test data?')
     parser.add_argument('--sort_by', type=str, default="sum_errors",
-                        help='Which metric to use to select best parameters/weights')
+                        help=('Which metric to use to select best '
+                              'parameters/weights'))
     args = parser.parse_args()
 
     config = maybe_fix_config_paths_to_machine_and_load(args.config)
@@ -44,8 +45,8 @@ if __name__ == "__main__":
 
     results = {}
     args.validation = not args.swap_val_test
-    for sample_idx, inf_config in enumerate(getNextInferenceData(args,
-                                                                 is_evaluate=True)):
+    for sample_idx, inf_config in enumerate(getNextInferenceData(
+            args, is_evaluate=True)):
         sample = inf_config.inference_data.data_source.datafile.filename
         logger.debug("getting results for:", sample)
 
@@ -62,7 +63,8 @@ if __name__ == "__main__":
     del results['param_id']
 
     solve_params = attr.fields_dict(SolveParametersConfig)
-    results = results.groupby(lambda x: str(x), dropna=False, as_index=False).agg(
+    results = results.groupby(lambda x: str(x), dropna=False,
+                              as_index=False).agg(
         lambda x:
         -1
         if len(x) != sample_idx+1

@@ -5,9 +5,7 @@ from typing import List
 
 import attr
 
-from .job import JobConfig
-from .utils import (ensure_cls,
-                    _check_nd_shape,
+from .utils import (_check_nd_shape,
                     _int_list_validator,
                     _list_int_list_validator,
                     _check_possible_nested_lists)
@@ -87,15 +85,16 @@ class UnetConfig:
                              default=None,
                              validator=_check_possible_nested_lists)
     upsampling = attr.ib(type=str, default=None,
-                         validator=attr.validators.optional(attr.validators.in_([
-                             "transposed_conv",
-                             "sep_transposed_conv", # depthwise + pixelwise
-                             "resize_conv",
-                             "uniform_transposed_conv",
-                             "pixel_shuffle",
-                             "trilinear", # aka 3d bilinear
-                             "nearest"
-                         ])))
+                         validator=attr.validators.optional(
+                             attr.validators.in_([
+                                 "transposed_conv",
+                                 "sep_transposed_conv",  # depthwise+pixelwise
+                                 "resize_conv",
+                                 "uniform_transposed_conv",
+                                 "pixel_shuffle",
+                                 "trilinear",  # aka 3d bilinear
+                                 "nearest"
+                             ])))
     constant_upsample = attr.ib(type=bool, default=None)
     nms_window_shape = attr.ib(type=List[int],
                                validator=[_int_list_validator,

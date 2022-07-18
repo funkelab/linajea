@@ -123,7 +123,6 @@ def predict_blockwise(linajea_config):
     logger.info("Sample: %s", data.datafile.filename)
     logger.info("DB: %s", data.db_name)
 
-
     # process block-wise
     cf = []
     if linajea_config.predict.write_to_zarr:

@@ -54,8 +54,8 @@ def write_search_configs(config, random_search, output_file, num_configs=None):
         itertools.product. If num_configs is set, shuffle list and take
         the num_configs first ones.
     """
-    params = {k:v
-              for k,v in config.items()
+    params = {k: v
+              for k, v in config.items()
               if v is not None}
     params.pop('num_configs', None)
 
@@ -73,8 +73,9 @@ def write_search_configs(config, random_search, output_file, num_configs=None):
                     value = v[0]
                 elif isinstance(v[0], str) or len(v) > 2:
                     value = random.choice(v)
-                elif len(v) == 2 and isinstance(v[0], list) and isinstance(v[1], list) and \
-                     isinstance(v[0][0], str) and isinstance(v[1][0], str):
+                elif (len(v) == 2 and isinstance(v[0], list) and
+                      isinstance(v[1], list) and
+                      isinstance(v[0][0], str) and isinstance(v[1][0], str)):
                     subset = random.choice(v)
                     value = random.choice(subset)
                 else:
@@ -104,7 +105,6 @@ def write_search_configs(config, random_search, output_file, num_configs=None):
     with open(output_file, 'w') as f:
         print(search_configs)
         toml.dump(search_configs, f)
-
 
 
 if __name__ == "__main__":

@@ -80,17 +80,14 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
     if hasattr(args, "checkpoint") and args.checkpoint > 0:
         checkpoints = [args.checkpoint]
 
-    try:
-        max_cell_move = max(config.extract.edge_move_threshold.values())
-    except:
-        max_cell_move = None
+    max_cell_move = max(config.extract.edge_move_threshold.values())
     for pid in range(len(config.solve.parameters)):
         if config.solve.parameters[pid].max_cell_move is None:
             assert max_cell_move is not None, (
                 "Please provide a max_cell_move value, either as "
-                "extract.edge_move_threshold or directly in the parameter sets "
-                "in solve.parameters! (What is the maximum distance that a cell "
-                "can move between two adjacent frames?)")
+                "extract.edge_move_threshold or directly in the parameter "
+                "sets in solve.parameters! (What is the maximum distance that "
+                "a cell can move between two adjacent frames?)")
             config.solve.parameters[pid].max_cell_move = max_cell_move
 
     os.makedirs("tmp_configs", exist_ok=True)
@@ -109,9 +106,10 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
            args.val_param_id is not None:
             config = _fix_val_param_pid(args, config, checkpoint)
             solve_parameters_sets = deepcopy(config.solve.parameters)
-        if hasattr(args, "param_id") and (is_solve or is_evaluate) and \
-           (args.param_id is not None or
-            (hasattr(args, "param_ids") and args.param_ids is not None)):
+        if (hasattr(args, "param_id") and
+            (is_solve or is_evaluate) and
+            (args.param_id is not None or
+             (hasattr(args, "param_ids") and args.param_ids is not None))):
             config = _fix_param_pid(args, config, checkpoint, inference_data)
             solve_parameters_sets = deepcopy(config.solve.parameters)
         inference_data_tmp = {
@@ -130,7 +128,8 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
                     roi=attr.asdict(sample.roi),
                     tag=config.general.tag)
             inference_data_tmp['data_source'] = sample
-            config.inference_data = InferenceDataTrackingConfig(**inference_data_tmp) # type: ignore
+            config.inference_data = InferenceDataTrackingConfig(
+                **inference_data_tmp)  # type: ignore
             if is_solve:
                 config = _fix_solve_roi(config)
 
@@ -194,13 +193,15 @@ def _fix_param_pid(args, config, checkpoint, inference_data):
 
     if hasattr(args, "param_ids") and args.param_ids is not None:
         if len(args.param_ids) == 2:
-            pids = list(range(int(args.param_ids[0]), int(args.param_ids[1])+1))
+            pids = list(range(int(args.param_ids[0]),
+                              int(args.param_ids[1])+1))
         else:
             pids = args.param_ids
     else:
         pids = [args.param_id]
 
-    config = _fix_solve_parameters_with_pids(config, pids, db_meta_info, db_name)
+    config = _fix_solve_parameters_with_pids(config, pids, db_meta_info,
+                                             db_name)
     return config
 
 
@@ -210,7 +211,8 @@ def _fix_solve_roi(config):
     return config
 
 
-def _fix_solve_parameters_with_pids(config, pids, db_meta_info=None, db_name=None):
+def _fix_solve_parameters_with_pids(config, pids, db_meta_info=None,
+                                    db_name=None):
     if db_name is None:
         db_name = checkOrCreateDB(
             config.general.db_host,
@@ -241,7 +243,8 @@ def _fix_solve_parameters_with_pids(config, pids, db_meta_info=None, db_name=Non
             continue
         logger.info("getting params %s (id: %s) from database %s (sample: %s)",
                     parameters, pid, db_name,
-                    db_meta_info["sample"] if db_meta_info is not None else None)
-        solve_parameters = SolveParametersConfig(**parameters) # type: ignore
+                    db_meta_info["sample"] if db_meta_info is not None
+                    else None)
+        solve_parameters = SolveParametersConfig(**parameters)  # type: ignore
         config.solve.parameters.append(solve_parameters)
     return config

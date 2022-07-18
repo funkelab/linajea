@@ -54,7 +54,8 @@ class AddMovementVectors(BatchFilter):
         self.points = points
         self.array = array
         self.mask = mask
-        self.object_radius = np.array([object_radius]).flatten().astype(np.float32)
+        self.object_radius = np.array([object_radius]).flatten().astype(
+            np.float32)
         self.move_radius = move_radius
         if array_spec is None:
             self.array_spec = ArraySpec()
@@ -98,7 +99,7 @@ class AddMovementVectors(BatchFilter):
         for i in range(1, len(context)):
             context[i] = max(context[i], self.move_radius)
 
-        logger.debug ("movement vector context %s", context)
+        logger.debug("movement vector context %s", context)
         # request points in a larger area
         points_roi = request[self.array].roi.grow(
                 Coordinate(context),
@@ -148,8 +149,10 @@ class AddMovementVectors(BatchFilter):
         movement_vectors = Array(
             data=movement_vectors_data,
             spec=spec)
-        logger.debug("Cropping movement vectors to %s", request[self.array].roi)
-        batch.arrays[self.array] = movement_vectors.crop(request[self.array].roi)
+        logger.debug("Cropping movement vectors to %s",
+                     request[self.array].roi)
+        batch.arrays[self.array] = movement_vectors.crop(
+            request[self.array].roi)
 
         # create mask and crop it to requested roi
         spec = self.spec[self.mask].copy()

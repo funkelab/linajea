@@ -2,9 +2,6 @@
 
 Writes cells/nodes from predicted zarr to database
 """
-import warnings
-warnings.filterwarnings("once", category=FutureWarning)
-
 import argparse
 import logging
 import os
@@ -12,14 +9,14 @@ import os
 import h5py
 import numpy as np
 
+import daisy
 import gunpowder as gp
 
-from linajea.config import TrackingConfig
+from linajea.config import (load_config,
+                            TrackingConfig)
 from linajea.gunpowder_nodes import WriteCells
 from linajea.process_blockwise import write_done
-from linajea.utils import (load_config,
-                           construct_zarr_filename)
-
+from linajea.utils import construct_zarr_filename
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +40,8 @@ def write_cells_from_zarr(config):
         movement_vectors = gp.ArrayKey('MOVEMENT_VECTORS')
 
     voxel_size = gp.Coordinate(config.inference_data.data_source.voxel_size)
-    output_size = gp.Coordinate(output_shape) * voxel_size
+    input_shape = config.model.predict_input_shape
+    output_size = gp.Coordinate(input_shape) * voxel_size
 
     chunk_request = gp.BatchRequest()
     chunk_request.add(cell_indicator, output_size)
@@ -55,10 +53,16 @@ def write_cells_from_zarr(config):
     if os.path.isfile(os.path.join(sample, "data_config.toml")):
         data_config = load_config(
             os.path.join(sample, "data_config.toml"))
+        try:
+            filename_data = os.path.join(
+                sample, data_config['general']['data_file'])
+        except KeyError:
+            filename_data = os.path.join(
+                sample, data_config['general']['zarr_file'])
         filename_mask = os.path.join(
             sample,
             data_config['general'].get('mask_file', os.path.splitext(
-                    data_config['general']['zarr_file'])[0] + "_mask.hdf"))
+                filename_data)[0] + "_mask.hdf"))
         z_range = data_config['general']['z_range']
         if z_range[1] < 0:
             z_range[1] = data_config['general']['shape'][1] - z_range[1]
@@ -127,7 +131,8 @@ def write_cells_from_zarr(config):
         WriteCells(
             maxima,
             cell_indicator,
-            movement_vectors if not config.model.train_only_cell_indicator else None,
+            movement_vectors if not config.model.train_only_cell_indicator
+            else None,
             score_threshold=config.inference_data.cell_score_threshold,
             db_host=config.general.db_host,
             db_name=config.inference_data.data_source.db_name,
@@ -144,7 +149,7 @@ def write_cells_from_zarr(config):
                 'predict_db',
                 config.inference_data.data_source.db_name,
                 config.general.db_host)
-    ))
+        ))
 
     with gp.build(pipeline):
         pipeline.request_batch(gp.BatchRequest())
@@ -155,7 +160,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str,
                         help='path to config file')
-
     args = parser.parse_args()
 
     config = TrackingConfig.from_file(args.config)

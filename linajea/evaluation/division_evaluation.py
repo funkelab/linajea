@@ -119,7 +119,7 @@ def evaluate_divisions(
                 matches = []
             else:
                 matches, soln_cost = match(costs,
-                        matching_threshold + 1)
+                                           matching_threshold + 1)
             logger.info("found %d matches in target frame" % len(matches))
             report = calculate_report(gt_node_ids, rec_node_ids, matches)
             reports.append(report)

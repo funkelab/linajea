@@ -6,7 +6,6 @@ are used define ValData and TestData (support multiple samples),
 otherwise define InferenceData (only a single sample, data source)
 """
 from copy import deepcopy
-import os
 from typing import List
 
 import attr
@@ -37,6 +36,7 @@ class _DataConfig():
     voxel_size = attr.ib(type=List[int], default=None)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
     group = attr.ib(type=str, default=None)
+
     def __attrs_post_init__(self):
         """Validate the supplied parameters and try to fix missing ones
 
@@ -82,7 +82,7 @@ class _DataConfig():
 
         assert all(ds.voxel_size == self.data_sources[0].voxel_size
                    for ds in self.data_sources), \
-                       "data sources with varying voxel_size not supported"
+            "data sources with varying voxel_size not supported"
 
 
 @attr.s(kw_only=True)
@@ -90,9 +90,10 @@ class TrainDataTrackingConfig(_DataConfig):
     """Defines a specialized class for the definition of a training data set
     """
     data_sources = attr.ib(converter=ensure_cls_list(DataSourceConfig))
+
     @data_sources.validator
     def _check_train_data_source(self, attribute, value):
-        """a train data source has to use datafiles and cannot have a database"""
+        """train data source has to use datafiles and cannot have a database"""
         for ds in value:
             if ds.db_name is not None:
                 raise ValueError("train data_sources must not have a db_name")
@@ -146,11 +147,13 @@ class InferenceDataTrackingConfig():
         database does not contain the respective information an error
         will be thrown later in the pipeline.
         """
-        if self.data_source.datafile is not None:
-            if self.data_source.voxel_size is None:
-                self.data_source.voxel_size = self.data_source.datafile.file_voxel_size
-            if self.data_source.roi is None:
-                self.data_source.roi = self.data_source.datafile.file_roi
+        d = self.data_source
+        if d.datafile is not None:
+            if d.voxel_size is None:
+                d.voxel_size = d.datafile.file_voxel_size
+            if d.roi is None:
+                d.roi = d.datafile.file_roi
+
 
 @attr.s(kw_only=True)
 class ValidateDataTrackingConfig(_DataConfig):

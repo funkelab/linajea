@@ -24,6 +24,7 @@ from .unet_config import UnetConfig
 from .utils import (ensure_cls,
                     load_config)
 
+
 @attr.s(kw_only=True)
 class TrackingConfig:
     """Defines the configuration for a tracking experiment
@@ -70,7 +71,8 @@ class TrackingConfig:
                             default=None)
     inference_data = attr.ib(converter=ensure_cls(InferenceDataTrackingConfig),
                              default=None)
-    predict = attr.ib(converter=ensure_cls(PredictTrackingConfig), default=None)
+    predict = attr.ib(converter=ensure_cls(PredictTrackingConfig),
+                      default=None)
     extract = attr.ib(converter=ensure_cls(ExtractConfig), default=None)
     solve = attr.ib(converter=ensure_cls(SolveConfig), default=None)
     evaluate = attr.ib(converter=ensure_cls(EvaluateTrackingConfig),
@@ -84,7 +86,7 @@ class TrackingConfig:
         """
         config_dict = load_config(path)
         config_dict["path"] = path
-        return cls(**config_dict) # type: ignore
+        return cls(**config_dict)  # type: ignore
 
     def __attrs_post_init__(self):
         """Validate supplied parameters
@@ -100,10 +102,14 @@ class TrackingConfig:
             self.predict.use_swa = self.train.use_swa
 
         dss = []
-        dss += self.train_data.data_sources if self.train_data is not None else []
-        dss += self.test_data.data_sources if self.test_data is not None else []
-        dss += self.validate_data.data_sources if self.validate_data is not None else []
-        dss += [self.inference_data.data_source] if self.inference_data is not None else []
+        dss += self.train_data.data_sources \
+            if self.train_data is not None else []
+        dss += self.test_data.data_sources \
+            if self.test_data is not None else []
+        dss += self.validate_data.data_sources \
+            if self.validate_data is not None else []
+        dss += [self.inference_data.data_source] \
+            if self.inference_data is not None else []
         for sample in dss:
             if sample.roi is None:
                 try:
@@ -114,7 +120,8 @@ class TrackingConfig:
                 except Exception as e:
                     raise RuntimeError(
                         "please specify roi for data! not set and unable to "
-                        "determine it automatically based on given db (db_name) (%s)" % e)
+                        "determine it automatically based on given db "
+                        "(db_name) (%s)" % e)
 
         if self.predict is not None:
             if self.predict.normalization is None and \

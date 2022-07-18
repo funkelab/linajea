@@ -74,7 +74,8 @@ class NormalizeAroundZero(gp.Normalize):
         array = batch.arrays[self.array]
         array.spec.dtype = self.dtype
         array.data = array.data.astype(self.dtype)
-        array.data = (array.data - self.mapped_to_zero) / self.diff_mapped_to_one
+        array.data = ((array.data - self.mapped_to_zero) /
+                      self.diff_mapped_to_one)
         array.data = array.data.astype(self.dtype)
 
 

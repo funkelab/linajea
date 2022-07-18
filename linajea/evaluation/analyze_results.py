@@ -140,7 +140,6 @@ def get_results_sorted_db(db_name,
     scores = candidate_db.get_scores(filters=filter_params,
                                      eval_params=eval_params)
 
-
     if len(scores) == 0:
         raise RuntimeError("no scores found!")
 

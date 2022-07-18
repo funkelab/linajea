@@ -8,6 +8,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+
 def score_times_weight_plus_th_costs_fn(weight, threshold, key="score",
                                         feature_func=lambda x: x):
 
@@ -83,7 +84,7 @@ def is_close_to_roi_border(roi, distance):
 
 def get_node_indicator_fn_map_default(config, parameters, graph):
     if parameters.feature_func == "noop":
-        feature_func = lambda x: x
+        feature_func = lambda x: x  # noqa: E731
     elif parameters.feature_func == "log":
         feature_func = np.log
     elif parameters.feature_func == "square":
@@ -129,7 +130,7 @@ def get_node_indicator_fn_map_default(config, parameters, graph):
 
 def get_edge_indicator_fn_map_default(config, parameters):
     if parameters.feature_func == "noop":
-        feature_func = lambda x: x
+        feature_func = lambda x: x  # noqa: E731
     elif parameters.feature_func == "log":
         feature_func = np.log
     elif parameters.feature_func == "square":
@@ -146,7 +147,7 @@ def get_edge_indicator_fn_map_default(config, parameters):
                                     feature_func=feature_func)
     }
     if solver_type == "basic":
-         pass
+        pass
     else:
         logger.info("solver_type %s unknown for edge indicators, skipping",
                     solver_type)

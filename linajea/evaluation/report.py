@@ -294,7 +294,6 @@ class Report:
         logger.debug("fp edges after iso_fp_div: %d", self.fp_edges)
         logger.debug("fn edges after iso_fp_div: %d", self.fn_edges)
 
-
     def get_report(self):
         """Long report
 

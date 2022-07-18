@@ -43,6 +43,7 @@ class OptimizerTorchKwargsConfig:
     nesterov = attr.ib(type=bool, default=None)
     weight_decay = attr.ib(type=float, default=None)
 
+
 @attr.s(kw_only=True)
 class OptimizerTorchConfig:
     """Defines which pytorch optimizer to use
@@ -65,4 +66,5 @@ class OptimizerTorchConfig:
 
     def get_kwargs(self):
         """Get dict of keyword parameters"""
-        return {a:v for a,v in attr.asdict(self.kwargs).items() if v is not None}
+        return {a: v for a, v in attr.asdict(self.kwargs).items()
+                if v is not None}

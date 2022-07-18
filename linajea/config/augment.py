@@ -120,6 +120,7 @@ class AugmentNoiseGaussianConfig:
     """
     var = attr.ib(type=float, default=0.01)
 
+
 @attr.s(kw_only=True)
 class AugmentNoiseSpeckleConfig:
     """Defines options for Speckle noise augment, uses scikit-image
@@ -131,6 +132,7 @@ class AugmentNoiseSpeckleConfig:
     """
     var = attr.ib(type=float, default=0.05)
 
+
 @attr.s(kw_only=True)
 class AugmentNoiseSaltPepperConfig:
     """Defines options for S&P noise augment, uses scikit-image
@@ -141,6 +143,7 @@ class AugmentNoiseSaltPepperConfig:
         Amount of S&P noise to be added
     """
     amount = attr.ib(type=float, default=0.0001)
+
 
 @attr.s(kw_only=True)
 class AugmentZoomConfig:
@@ -158,6 +161,7 @@ class AugmentZoomConfig:
     factor_min = attr.ib(type=float, default=0.85)
     factor_max = attr.ib(type=float, default=1.25)
     spatial_dims = attr.ib(type=int, default=3)
+
 
 @attr.s(kw_only=True)
 class AugmentHistogramConfig:
@@ -236,8 +240,9 @@ class _AugmentConfig:
     noise_gaussian = attr.ib(converter=ensure_cls(AugmentNoiseGaussianConfig),
                              default=None)
     noise_speckle = attr.ib(converter=ensure_cls(AugmentNoiseSpeckleConfig),
-                             default=None)
-    noise_saltpepper = attr.ib(converter=ensure_cls(AugmentNoiseSaltPepperConfig),
+                            default=None)
+    noise_saltpepper = attr.ib(converter=ensure_cls(
+        AugmentNoiseSaltPepperConfig),
                                default=None)
     zoom = attr.ib(converter=ensure_cls(AugmentZoomConfig),
                    default=None)
@@ -254,7 +259,7 @@ class AugmentTrackingConfig(_AugmentConfig):
     reject_empty_prob: float
         Probability that completely empty patches are discarded
     divisions: float
-        Choose (x*100)% of patches such that they include a division (e.g. 0.25)
+        Choose (x*100)% of patches such that they include a division (eg 0.25)
     point_balance_radius: int
         Defines radius per point, the more other points within radius
         the lower the probability that point is picked, helps to avoid
