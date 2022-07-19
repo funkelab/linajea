@@ -56,7 +56,7 @@ def greedy_track(
 
     Args
     ----
-    graph: nx.DiGraph
+    graph: daisy.SharedSubgraph
         Compute tracks from this graph, if None load graph from db
     db_name: str
         If graph not provided, load graph from this db

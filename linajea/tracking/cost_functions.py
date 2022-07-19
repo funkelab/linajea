@@ -82,7 +82,7 @@ def is_close_to_roi_border(roi, distance):
     return is_close
 
 
-def get_node_indicator_fn_map_default(config, parameters, graph):
+def get_default_node_indicator_costs(config, parameters, graph):
     if parameters.feature_func == "noop":
         feature_func = lambda x: x  # noqa: E731
     elif parameters.feature_func == "log":
@@ -128,7 +128,7 @@ def get_node_indicator_fn_map_default(config, parameters, graph):
     return fn_map
 
 
-def get_edge_indicator_fn_map_default(config, parameters):
+def get_default_edge_indicator_costs(config, parameters):
     if parameters.feature_func == "noop":
         feature_func = lambda x: x  # noqa: E731
     elif parameters.feature_func == "log":

@@ -2,9 +2,12 @@
 and a set of object and edge candidates.
 """
 import logging
+import os
 import time
 
 import daisy
+import pylp
+
 from linajea.utils import CandidateDatabase
 from .daisy_check_functions import (
         check_function, write_done,
@@ -228,8 +231,14 @@ def solve_in_block(linajea_config,
         greedy_track(graph=graph, selected_key=selected_keys[0],
                      node_threshold=0.2)
     else:
-        track(graph, linajea_config, selected_keys,
-              block_id=block.block_id[1])
+        solver = track(graph, linajea_config, selected_keys,
+                       return_solver=linajea_config.solve.write_struct_svm)
+
+    if linajea_config.solve.write_struct_svm:
+        write_struct_svm(solver, block.block_id[1],
+                         linajea_config.solve.write_struct_svm)
+        logger.info("wrote struct svm data, skipping solving")
+        return 0
 
     start_time = time.time()
     graph.update_edge_attrs(
@@ -241,3 +250,66 @@ def solve_in_block(linajea_config,
                 time.time() - start_time)
     write_done(block, step_name, db_name, db_host)
     return 0
+
+
+def write_struct_svm(solver, block_id, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+    block_id = str(block_id)
+
+    # write all indicators as "object_id, indicator_id"
+    for k, objs in solver.indicators.items():
+        with open(os.path.join(output_dir, k + "_b" + block_id), 'w') as f:
+            for obj, v in objs.items():
+                f.write(f"{obj} {v}\n")
+
+    # write features for objective
+    indicators = {}
+    num_features = {}
+    for k, fn in solver.node_indicator_fn_map.items():
+        for n_id, node in solver.graph.nodes(data=True):
+            ind = solver.indicators[k][n_id]
+            costs = fn(node)
+            indicators[ind] = (k, costs)
+            num_features[k] = len(costs)
+    for k, fn in solver.edge_indicator_fn_map.items():
+        for u, v, edge in solver.graph.edges(data=True):
+            ind = solver.indicators[k][(u, v)]
+            costs = fn(edge)
+            indicators[ind] = (k, costs)
+            num_features[k] = len(costs)
+
+    features_locs = {}
+    acc = 0
+    for k, v in num_features.items():
+        features_locs[k] = acc
+        acc += v
+    num_features = acc
+    assert sorted(indicators.keys()) == list(range(len(indicators))), \
+        "some error reading indicators and features"
+    with open(os.path.join(output_dir, "features_b" + block_id), 'w') as f:
+        for ind in sorted(indicators.keys()):
+            k, costs = indicators[ind]
+            features = [0]*num_features
+            features_loc = features_locs[k]
+            features[features_loc:features_loc+len(costs)] = costs
+            f.write(" ".join([str(f) for f in features]) + "\n")
+
+    # write constraints
+    def rel_to_str(rel):
+        if rel == pylp.Relation.Equal:
+            return " == "
+        elif rel == pylp.Relation.LessEqual:
+            return " <= "
+        elif rel == pylp.Relation.GreaterEqual:
+            return " >= "
+        else:
+            raise RuntimeError("invalid pylp.Relation: %s", rel)
+
+    with open(os.path.join(output_dir, "constraints_b" + block_id), 'w') as f:
+        for constraint in solver.main_constraints:
+            val = constraint.get_value()
+            rel = rel_to_str(constraint.get_relation())
+            coeffs = " ".join(
+                [f"{v}*{idx}"
+                 for idx, v in constraint.get_coefficients().items()])
+            f.write(f"{coeffs} {rel} {val}\n")

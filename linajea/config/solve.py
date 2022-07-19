@@ -282,7 +282,7 @@ class SolveConfig:
     greedy = attr.ib(type=bool, default=False)
     write_struct_svm = attr.ib(type=str, default=None)
     check_node_close_to_roi = attr.ib(type=bool, default=True)
-    timeout = attr.ib(type=int, default=120)
+    timeout = attr.ib(type=int, default=0)
     clip_low_score = attr.ib(type=float, default=None)
     grid_search = attr.ib(type=bool, default=False)
     random_search = attr.ib(type=bool, default=False)

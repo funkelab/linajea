@@ -2,15 +2,12 @@
 parameter sets
 """
 import logging
-import os
 import time
-
-import pylp
 
 from .solver import Solver
 from .track_graph import TrackGraph
-from .cost_functions import (get_edge_indicator_fn_map_default,
-                             get_node_indicator_fn_map_default)
+from .cost_functions import (get_default_edge_indicator_costs,
+                             get_default_node_indicator_costs)
 from linajea.tracking import constraints
 
 
@@ -18,10 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 def track(graph, config, selected_key, frame_key='t',
-          node_indicator_fn_map=None, edge_indicator_fn_map=None,
-          pin_constraints_fn_list=[], edge_constraints_fn_list=[],
-          node_constraints_fn_list=[], inter_frame_constraints_fn_list=[],
-          block_id=0):
+          node_indicator_costs=None, edge_indicator_costs=None,
+          constraints_fns=[], pin_constraints_fns=[],
+          return_solver=False):
     ''' A wrapper function that takes a daisy subgraph and input parameters,
     creates and solves the ILP to create tracks, and updates the daisy subgraph
     to reflect the selected nodes and edges.
@@ -49,63 +45,52 @@ def track(graph, config, selected_key, frame_key='t',
             The name of the node attribute that corresponds to the frame of the
             node. Defaults to "t".
 
-        node_indicator_fn_map (Callable):
+        node_indicator_costs (Callable):
 
             Callable that returns a dict of str: Callable.
+            Will be called once per set of parameters.
             One entry per type of node indicator the solver should have;
             The Callable stored in the value of each entry will be called
             on each node and should return the cost for this indicator in
             the objective.
 
-        edge_indicator_fn_map (Callable):
+        edge_indicator_costs (Callable):
 
             Callable that returns a dict of str: Callable.
+            Will be called once per set of parameters.
             One entry per type of edge indicator the solver should have;
             The Callable stored in the value of each entry will be called
             on each edge and should return the cost for this indicator in
             the objective.
 
-        pin_constraints_fn_list (list of Callable)
+        constraints_fns (list of Callable)
 
-            List of Callable that return a list of pylp.LinearConstraint each.
-            Use this to add constraints to pin edge indicators to specific
-            states. Called only if edge has already been set by neighboring
+            Each Callable should handle a single type of constraint.
+            It should create the respective constraints for all affected
+            objects in the graph and return them.
+            Add more Callable to this list to add additional constraints.
+            See tracking/constraints.py for examples.
+            Interface: fn(graph, indicators) -> constraints
+              graph: Create constraints for nodes/edges in this graph
+              indicators: The indicator dict created by this Solver object
+              constraints: list of pylp.LinearConstraint
+
+        pin_constraints_fns (list of Callable)
+
+            Each Callable should handle a single type of pin constraint.
+            Use this to add constraints to pin indicators to specific states.
+            Created only if indicator has already been set by neighboring
             blocks.
-            Interface: fn(edge, indicators, selected)
-              edge: Create constraints for this edge
-              indicators: The indicator map created by the Solver object
-              selected: Will be set to the selected state of this edge
+            Interface: fn(graph, indicators, selected) -> constraints
+              graph: Create constraints for nodes/edges in this graph
+              indicators: The indicator dict created by this Solver object
+              selected_key: Consider this property to determine state of
+                candidate
+              constraints: list of pylp.LinearConstraint
 
-        edge_constraints_fn_list (list of Callable)
+        return_solver (boolean)
 
-            List of Callable that return a list of pylp.LinearConstraint each.
-            Use this to add constraints on a specific edge.
-            Interface: fn(edge, indicators)
-              edge: Create constraints for this edge
-              indicators: The indicator map created by the Solver object
-
-        node_constraints_fn_list (list of Callable)
-
-            List of Callable that return a list of pylp.LinearConstraint each.
-            Use this to add constraints on a specific node.
-            Interface: fn(node, indicators)
-              node: Create constraints for this node
-              indicators: The indicator map created by the Solver object
-
-        inter_frame_constraints_fn_list (list of Callable)
-
-            List of Callable that return a list of pylp.LinearConstraint each.
-            d
-            Interface: fn(node, indicators, graph, **kwargs)
-              node: Create constraints for this node
-              indicators: The indicator map created by the Solver object
-              graph: The track graph that is solved.
-              **kwwargs: Additional parameters, so far only contains
-                `pinned_edges`, requires changes to Solver object to extend.
-
-        block_id (``int``, optional):
-
-            The ID of the current daisy block if data is processed block-wise.
+            If True the solver object is returned instead of solving directly.
     '''
     # assuming graph is a daisy subgraph
     if graph.number_of_nodes() == 0:
@@ -130,42 +115,38 @@ def track(graph, config, selected_key, frame_key='t',
     total_solve_time = 0
 
     if config.solve.solver_type is not None:
-        constrs = constraints.get_constraints_default(config)
-        pin_constraints_fn_list = constrs[0]
-        edge_constraints_fn_list = constrs[1]
-        node_constraints_fn_list = constrs[2]
-        inter_frame_constraints_fn_list = constrs[3]
+        constrs = constraints.get_default_constraints(config)
+        pin_constraints_fns = constrs[0]
+        constraints_fns = constrs[1]
 
     for parameters, key in zip(parameters_sets, selected_key):
-        if node_indicator_fn_map is None:
-            _node_indicator_fn_map = get_node_indicator_fn_map_default(
+        if node_indicator_costs is None:
+            _node_indicator_costs = get_default_node_indicator_costs(
                 config, parameters, track_graph)
         else:
-            _node_indicator_fn_map = node_indicator_fn_map(config, parameters,
-                                                           track_graph)
-        if edge_indicator_fn_map is None:
-            _edge_indicator_fn_map = get_edge_indicator_fn_map_default(
+            _node_indicator_costs = node_indicator_costs(config, parameters,
+                                                         track_graph)
+        if edge_indicator_costs is None:
+            _edge_indicator_costs = get_default_edge_indicator_costs(
                 config, parameters)
         else:
-            _edge_indicator_fn_map = edge_indicator_fn_map(config, parameters,
-                                                           track_graph)
+            _edge_indicator_costs = edge_indicator_costs(config, parameters,
+                                                         track_graph)
 
         if not solver:
             solver = Solver(
                 track_graph,
-                list(_node_indicator_fn_map.keys()),
-                list(_edge_indicator_fn_map.keys()),
-                pin_constraints_fn_list, edge_constraints_fn_list,
-                node_constraints_fn_list, inter_frame_constraints_fn_list,
+                list(_node_indicator_costs.keys()),
+                list(_edge_indicator_costs.keys()),
+                constraints_fns, pin_constraints_fns,
                 timeout=config.solve.timeout)
 
-        solver.update_objective(_node_indicator_fn_map,
-                                _edge_indicator_fn_map, key)
+        solver.update_objective(_node_indicator_costs,
+                                _edge_indicator_costs, key)
 
-        if config.solve.write_struct_svm:
-            write_struct_svm(solver, block_id, config.solve.write_struct_svm)
-            logger.info("wrote struct svm data, skipping solving")
-            break
+        if return_solver:
+            return solver
+
         logger.info("Solving for key %s", str(key))
         start_time = time.time()
         solver.solve_and_set()
@@ -178,66 +159,3 @@ def track(graph, config, selected_key, frame_key='t',
                 data[key] = track_graph.edges[(u, v)][key]
     logger.info("Solving ILP for all parameters took %s seconds",
                 str(total_solve_time))
-
-
-def write_struct_svm(solver, block_id, output_dir):
-    os.makedirs(output_dir, exist_ok=True)
-    block_id = str(block_id)
-
-    # write all indicators as "object_id, indicator_id"
-    for k, objs in solver.indicators.items():
-        with open(os.path.join(output_dir, k + "_b" + block_id), 'w') as f:
-            for obj, v in objs.items():
-                f.write(f"{obj} {v}\n")
-
-    # write features for objective
-    indicators = {}
-    num_features = {}
-    for k, fn in solver.node_indicator_fn_map.items():
-        for n_id, node in solver.graph.nodes(data=True):
-            ind = solver.indicators[k][n_id]
-            costs = fn(node)
-            indicators[ind] = (k, costs)
-            num_features[k] = len(costs)
-    for k, fn in solver.edge_indicator_fn_map.items():
-        for u, v, edge in solver.graph.edges(data=True):
-            ind = solver.indicators[k][(u, v)]
-            costs = fn(edge)
-            indicators[ind] = (k, costs)
-            num_features[k] = len(costs)
-
-    features_locs = {}
-    acc = 0
-    for k, v in num_features.items():
-        features_locs[k] = acc
-        acc += v
-    num_features = acc
-    assert sorted(indicators.keys()) == list(range(len(indicators))), \
-        "some error reading indicators and features"
-    with open(os.path.join(output_dir, "features_b" + block_id), 'w') as f:
-        for ind in sorted(indicators.keys()):
-            k, costs = indicators[ind]
-            features = [0]*num_features
-            features_loc = features_locs[k]
-            features[features_loc:features_loc+len(costs)] = costs
-            f.write(" ".join([str(f) for f in features]) + "\n")
-
-    # write constraints
-    def rel_to_str(rel):
-        if rel == pylp.Relation.Equal:
-            return " == "
-        elif rel == pylp.Relation.LessEqual:
-            return " <= "
-        elif rel == pylp.Relation.GreaterEqual:
-            return " >= "
-        else:
-            raise RuntimeError("invalid pylp.Relation: %s", rel)
-
-    with open(os.path.join(output_dir, "constraints_b" + block_id), 'w') as f:
-        for constraint in solver.main_constraints:
-            val = constraint.get_value()
-            rel = rel_to_str(constraint.get_relation())
-            coeffs = " ".join(
-                [f"{v}*{idx}"
-                 for idx, v in constraint.get_coefficients().items()])
-            f.write(f"{coeffs} {rel} {val}\n")
