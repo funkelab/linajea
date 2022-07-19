@@ -24,24 +24,22 @@ kernel_size_up = [[ [3, 3, 3], [3, 3, 3],],
 upsampling = "trilinear"
 average_vectors = false
 nms_window_shape = [ 3, 15, 15,]
-path_to_script = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/mknet_drosophila.py"
 latent_temp_conv = false
 train_only_cell_indicator = false
 
 
 [train]
 # radius for binary map -> *2 (in world units)
-# in which to draw parent vectors (not used if use_radius)
-parent_radius = [ 0.1, 10.0, 10.0, 10.0,]
+# in which to draw movement vectors (not used if use_radius)
+object_radius = [ 0.1, 10.0, 10.0, 10.0,]
 # sigma for Gauss -> ~*4 (5 in z -> in 3 slices) (not used if use_radius)
 rasterize_radius = [ 0.1, 5.0, 5.0, 5.0,]
 # upper bound for dist cell moved between two frames (needed for context)
 move_radius = 10
 cache_size = 1
 use_radius = false
-parent_vectors_loss_transition_offset = 20000
-parent_vectors_loss_transition_factor = 0.01
-path_to_script = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/train_drosophila.py"
+movement_vectors_loss_transition_offset = 20000
+movement_vectors_loss_transition_factor = 0.01
 max_iterations = 11
 checkpoint_stride = 10
 snapshot_stride = 5
@@ -89,9 +87,7 @@ eps = 1e-8
 
 
 [predict]
-path_to_script = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/predict.py"
-path_to_script_db_from_zarr = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/write_cells.py"
-output_zarr_prefix = "/nrs/funke/hirschp/linajea_experiments"
+output_zarr_dir = "/nrs/funke/hirschp/linajea_experiments"
 write_to_zarr = false
 write_to_db = true
 write_db_from_zarr = false

@@ -80,7 +80,7 @@ def predict_blockwise(linajea_config):
 
     # prepare output zarr, if necessary
     if linajea_config.predict.write_to_zarr:
-        parent_vectors_ds = 'volumes/parent_vectors'
+        movement_vectors_ds = 'volumes/movement_vectors'
         cell_indicator_ds = 'volumes/cell_indicator'
         maxima_ds = 'volumes/maxima'
         output_path = os.path.join(setup_dir, output_zarr)
@@ -90,7 +90,7 @@ def predict_blockwise(linajea_config):
 
         daisy.prepare_ds(
                 output_path,
-                parent_vectors_ds,
+                movement_vectors_ds,
                 file_roi,
                 voxel_size,
                 dtype=np.float32,

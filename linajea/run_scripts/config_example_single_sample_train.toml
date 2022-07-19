@@ -56,7 +56,7 @@ train_only_cell_indicator = false
 [train]
 # val_log_step = 25
 # radius for binary map -> *2 (in world units)
-# in which to draw parent vectors (not used if use_radius)
+# in which to draw movement vectors (not used if use_radius)
 object_radius = [ 0.1, 8.0, 8.0, 8.0,]
 # upper bound for dist cell moved between two frames (needed for context)
 move_radius = 25

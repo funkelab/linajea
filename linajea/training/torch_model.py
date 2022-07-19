@@ -76,8 +76,8 @@ class UnetModelWrapper(torch.nn.Module):
 
         self.cell_indicator_batched = ConvPass(num_fmaps[0], 1, [[1, 1, 1]],
                                                activation='Sigmoid')
-        self.parent_vectors_batched = ConvPass(num_fmaps[1], 3, [[1, 1, 1]],
-                                               activation=None)
+        self.movement_vectors_batched = ConvPass(num_fmaps[1], 3, [[1, 1, 1]],
+                                                 activation=None)
 
         self.nms = torch.nn.MaxPool3d(config.model.nms_window_shape, stride=1,
                                       padding=0)
@@ -107,7 +107,7 @@ class UnetModelWrapper(torch.nn.Module):
         self.apply(init_weights)
         self.cell_indicator_batched.apply(init_weights_sig)
         if not self.config.model.train_only_cell_indicator:
-            self.parent_vectors_batched.apply(init_weights)
+            self.movement_vectors_batched.apply(init_weights)
 
     def inout_shapes(self, device):
         logger.info("getting train/test output shape by running model twice")
@@ -166,19 +166,22 @@ class UnetModelWrapper(torch.nn.Module):
         cell_indicator = torch.reshape(cell_indicator_batched, output_shape_1)
 
         if self.config.model.unet_style == "single":
-            parent_vectors_batched = self.parent_vectors_batched(model_out[0])
-            parent_vectors = torch.reshape(parent_vectors_batched,
-                                           [3] + output_shape_1)
+            movement_vectors_batched = self.movement_vectors_batched(
+                model_out[0])
+            movement_vectors = torch.reshape(movement_vectors_batched,
+                                             [3] + output_shape_1)
         elif (self.config.model.unet_style == "split" and
               not self.config.model.train_only_cell_indicator):
             model_par_vec = self.unet_par_vec(raw)
-            parent_vectors_batched = self.parent_vectors_batched(model_par_vec)
-            parent_vectors = torch.reshape(parent_vectors_batched,
-                                           [3] + output_shape_1)
+            movement_vectors_batched = self.movement_vectors_batched(
+                model_par_vec)
+            movement_vectors = torch.reshape(movement_vectors_batched,
+                                             [3] + output_shape_1)
         else:  # self.config.model.unet_style == "multihead"
-            parent_vectors_batched = self.parent_vectors_batched(model_out[1])
-            parent_vectors = torch.reshape(parent_vectors_batched,
-                                           [3] + output_shape_1)
+            movement_vectors_batched = self.movement_vectors_batched(
+                model_out[1])
+            movement_vectors = torch.reshape(movement_vectors_batched,
+                                             [3] + output_shape_1)
 
         maxima = self.nms(cell_indicator_batched)
         if not self.training:
@@ -202,7 +205,7 @@ class UnetModelWrapper(torch.nn.Module):
             cell_indicator = crop(cell_indicator, output_shape_2)
             maxima = torch.eq(maxima, cell_indicator)
             if not self.config.model.train_only_cell_indicator:
-                parent_vectors = crop(parent_vectors, output_shape_2)
+                movement_vectors = crop(movement_vectors, output_shape_2)
         else:
             cell_indicator_cropped = crop(cell_indicator, output_shape_2)
             maxima = torch.eq(maxima, cell_indicator_cropped)
@@ -218,4 +221,4 @@ class UnetModelWrapper(torch.nn.Module):
         if self.config.model.train_only_cell_indicator:
             return cell_indicator, maxima, raw_cropped
         else:
-            return cell_indicator, maxima, raw_cropped, parent_vectors
+            return cell_indicator, maxima, raw_cropped, movement_vectors
