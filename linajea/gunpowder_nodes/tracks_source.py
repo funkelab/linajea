@@ -85,7 +85,7 @@ class TracksSource(BatchProvider):
     '''
 
     def __init__(self, filename, points, points_spec=None, scale=1.0,
-                 use_radius=False, subsampling_seed=42):
+                 use_radius=False):
 
         self.filename = filename
         self.points = points
@@ -97,7 +97,6 @@ class TracksSource(BatchProvider):
             self.use_radius = use_radius
         self.locations = None
         self.track_info = None
-        self.subsampling_seed = subsampling_seed
 
     def setup(self):
 
@@ -155,41 +154,21 @@ class TracksSource(BatchProvider):
         nodes = []
         for location, track_info in zip(filtered_locations,
                                         filtered_track_info):
-            # frame of current point
-            t = location[0]
-            if not isinstance(self.use_radius, dict):
-                # if use_radius is boolean, take radius from file if set
-                value = track_info[3] if self.use_radius else None
-            else:
-                # otherwise use_radius should be a dict mapping from
-                # frame thresholds to radii
-                if len(self.use_radius.keys()) > 1:
-                    value = None
-                    for th in sorted(self.use_radius.keys()):
-                        # find entry that is closest but larger than
-                        # frame of current point
-                        if t < int(th):
-                            # get value object (list) from track info
-                            value = track_info[3]
-                            # radius stored at first position (None if not set)
-                            value[0] = self.use_radius[th]
-                            break
-                    assert value is not None, \
-                        "verify value of use_radius in config"
-                else:
-                    value = (track_info[3] if list(self.use_radius.values())[0]
-                             else None)
-
+            track_info["attrs"]["radius"] = self._set_point_radius(location,
+                                                                   track_info)
+            logger.debug("%s", track_info)
+            print(track_info)
             node = TrackNode(
                 # point_id
-                track_info[0],
+                track_info["cell_id"],
                 location,
                 # parent_id
-                track_info[1] if track_info[1] > 0 else None,
+                track_info["parent_id"]
+                if track_info["parent_id"] > 0 else None,
                 # track_id
-                track_info[2],
-                # radius
-                value=value)
+                track_info["track_id"],
+                # optional attributes, e.g. radius
+                value=track_info["attrs"])
             nodes.append(node)
         return nodes
 
@@ -199,20 +178,27 @@ class TracksSource(BatchProvider):
             self.filename,
             scale=self.scale,
             limit_to_roi=roi)
-        cnt_points = len(self.locations)
-        rng = np.random.default_rng(self.subsampling_seed)
-        shuffled_norm_idcs = rng.permutation(cnt_points)/(cnt_points-1)
-        logger.debug("permutation (seed %s): %s (min %s, max %s, cnt %s)",
-                     self.subsampling_seed,
-                     shuffled_norm_idcs,
-                     np.min(shuffled_norm_idcs),
-                     np.max(shuffled_norm_idcs),
-                     len(shuffled_norm_idcs))
-        if self.track_info.dtype == object:
-            for idx, tri in zip(shuffled_norm_idcs, self.track_info):
-                tri[3].append(idx)
+
+    def _set_point_radius(self, location, track_info):
+        t = location[0]
+        radius = None
+        if not isinstance(self.use_radius, dict):
+            # if use_radius is boolean, take radius from file if set
+            if self.use_radius is True:
+                radius = track_info["attrs"].get("radius",
+                                                 track_info["attrs"][0])
         else:
-            self.track_info = np.concatenate(
-                (self.track_info, np.reshape(shuffled_norm_idcs,
-                                             shuffled_norm_idcs.shape + (1,))),
-                axis=1, dtype=object)
+            # otherwise use_radius should be a dict mapping from
+            # frame thresholds to radii
+            if len(self.use_radius.keys()) > 1:
+                for th in sorted(self.use_radius.keys()):
+                    # find entry that is closest but larger than
+                    # frame of current point
+                    if t < int(th):
+                        radius = self.use_radius[th]
+                        break
+                assert radius is not None, \
+                    "verify value of use_radius in config"
+            else:
+                radius = list(self.use_radius.values())[0]
+        return radius

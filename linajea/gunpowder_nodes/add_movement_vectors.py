@@ -221,8 +221,9 @@ class AddMovementVectors(BatchFilter):
         # radius for current frame and use that to draw mask and vectors
         avg_object_radius = []
         for point in points.nodes:
-            if point.attrs.get('value') is not None:
-                r = point.attrs['value'][0]
+            if point.attrs.get('value') is not None and \
+               point.attrs['value'].get('radius') is not None:
+                r = point.attrs['value']['radius']
                 avg_object_radius.append(r)
         avg_object_radius = (int(np.ceil(np.mean(avg_object_radius)))
                              if len(avg_object_radius) > 0 else object_radius)
