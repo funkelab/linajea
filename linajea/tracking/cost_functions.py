@@ -83,6 +83,19 @@ def is_close_to_roi_border(roi, distance):
 
 
 def get_default_node_indicator_costs(config, parameters, graph):
+    """Get a predefined map of node indicator costs functions
+
+    Args
+    ----
+    config: TrackingConfig
+        Configuration object used, should contain information on which solver
+        type to use.
+    parameters: SolveParametersConfig
+        Current set of weights and parameters used to compute costs.
+    graph: TrackGraph
+        Graph containing the node candidates for which the costs will be
+        computed.
+    """
     if parameters.feature_func == "noop":
         feature_func = lambda x: x  # noqa: E731
     elif parameters.feature_func == "log":
@@ -129,6 +142,16 @@ def get_default_node_indicator_costs(config, parameters, graph):
 
 
 def get_default_edge_indicator_costs(config, parameters):
+    """Get a predefined map of edge indicator costs functions
+
+    Args
+    ----
+    config: TrackingConfig
+        Configuration object used, should contain information on which solver
+        type to use.
+    parameters: SolveParametersConfig
+        Current set of weights and parameters used to compute costs.
+    """
     if parameters.feature_func == "noop":
         feature_func = lambda x: x  # noqa: E731
     elif parameters.feature_func == "log":

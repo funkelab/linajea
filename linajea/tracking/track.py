@@ -49,19 +49,23 @@ def track(graph, config, selected_key, frame_key='t',
 
             Callable that returns a dict of str: Callable.
             Will be called once per set of parameters.
-            One entry per type of node indicator the solver should have;
+            See cost_functions.py:get_default_node_indicator_costs for an
+            example.
+            One entry per type of node indicator the solver should have.
             The Callable stored in the value of each entry will be called
-            on each node and should return the cost for this indicator in
-            the objective.
+            on each node and should return a list of costs for this indicator
+            in the objective.
 
         edge_indicator_costs (Callable):
 
             Callable that returns a dict of str: Callable.
             Will be called once per set of parameters.
-            One entry per type of edge indicator the solver should have;
+            See cost_functions.py:get_default_edge_indicator_costs for an
+            example.
+            One entry per type of edge indicator the solver should have.
             The Callable stored in the value of each entry will be called
-            on each edge and should return the cost for this indicator in
-            the objective.
+            on each edge and should return a list of costs for this indicator
+            in the objective.
 
         constraints_fns (list of Callable)
 
@@ -115,21 +119,28 @@ def track(graph, config, selected_key, frame_key='t',
     total_solve_time = 0
 
     if config.solve.solver_type is not None:
+        assert (not pin_constraints_fns and
+                not constraints_fns), (
+                    "Either set solve.solver_type or "
+                    "explicitly provide lists of constraint functions")
         constrs = constraints.get_default_constraints(config)
         pin_constraints_fns = constrs[0]
         constraints_fns = constrs[1]
 
     for parameters, key in zip(parameters_sets, selected_key):
-        if node_indicator_costs is None:
+        # set costs depending on current set of parameters
+        if config.solve.solver_type is not None:
+            assert (not node_indicator_costs and
+                    not edge_indicator_costs), (
+                        "Either set solve.solver_type or "
+                        "explicitly provide cost functions")
             _node_indicator_costs = get_default_node_indicator_costs(
                 config, parameters, track_graph)
-        else:
-            _node_indicator_costs = node_indicator_costs(config, parameters,
-                                                         track_graph)
-        if edge_indicator_costs is None:
             _edge_indicator_costs = get_default_edge_indicator_costs(
                 config, parameters)
         else:
+            _node_indicator_costs = node_indicator_costs(config, parameters,
+                                                         track_graph)
             _edge_indicator_costs = edge_indicator_costs(config, parameters,
                                                          track_graph)
 
