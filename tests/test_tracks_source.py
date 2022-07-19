@@ -47,7 +47,7 @@ class TracksSourceTestCase(unittest.TestCase):
     def test_parent_location(self):
         points = gp.GraphKey("POINTS")
         ts = TracksSource(
-                TEST_FILE,
+                TEST_FILE_WITH_HEADER,
                 points)
 
         request = gp.BatchRequest()
@@ -66,6 +66,20 @@ class TracksSourceTestCase(unittest.TestCase):
                              list(points[2]))
         self.assertListEqual([2.0, 2.0, 2.0, 2.0],
                              list(points[3]))
+
+    def test_has_header(self):
+        points = gp.GraphKey("POINTS")
+        ts = TracksSource(
+                TEST_FILE,
+                points)
+
+        request = gp.BatchRequest()
+        request.add(
+                points,
+                gp.Coordinate((5, 5, 5, 5)))
+
+        with self.assertRaises(AssertionError):
+            ts.setup()
 
     def test_csv_header(self):
         points = gp.GraphKey("POINTS")
@@ -96,7 +110,7 @@ class TracksSourceTestCase(unittest.TestCase):
         mask = gp.ArrayKey("MASK")
         radius = [0.1, 0.1, 0.1, 0.1]
         ts = TracksSource(
-                TEST_FILE,
+                TEST_FILE_WITH_HEADER,
                 points)
         amv = AddMovementVectors(
                 points,
@@ -127,7 +141,7 @@ class TracksSourceTestCase(unittest.TestCase):
         mask = gp.ArrayKey("MASK")
         radius = [0.1, 0.1, 0.1, 0.1]
         ts = TracksSource(
-                TEST_FILE,
+                TEST_FILE_WITH_HEADER,
                 points)
         amv = AddMovementVectors(
                 points,

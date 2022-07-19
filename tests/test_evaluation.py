@@ -1,6 +1,7 @@
 import logging
 import unittest
-import pymongo
+
+import networkx as nx
 
 import daisy
 
@@ -15,16 +16,12 @@ logging.getLogger('linajea.evaluation').setLevel(logging.DEBUG)
 
 class EvaluationTestCase(unittest.TestCase):
 
-    def delete_db(self):
-        client = pymongo.MongoClient('localhost')
-        client.drop_database('test_eval')
-
     def create_graph(self, cells, edges, roi):
-        db = linajea.utils.CandidateDatabase('test_eval', 'localhost')
-        graph = db[roi]
+        graph = nx.DiGraph()
         graph.add_nodes_from(cells)
         graph.add_edges_from(edges)
-        tg = linajea.tracking.TrackGraph(graph_data=graph, frame_key='t')
+        tg = linajea.tracking.TrackGraph(graph_data=graph, frame_key='t',
+                                         roi=roi)
         return tg
 
     def getTrack1(self):
@@ -93,7 +90,6 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.correct_segments["1"], (3, 3))
         self.assertEqual(scores.correct_segments["2"], (2, 2))
         self.assertEqual(scores.correct_segments["3"], (1, 1))
-        self.delete_db()
 
     def test_imperfect_evaluation(self):
         cells, edges, roi = self.getTrack1()
@@ -127,7 +123,6 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.correct_segments["1"], (2, 3))
         self.assertEqual(scores.correct_segments["2"], (0, 2))
         self.assertEqual(scores.correct_segments["3"], (0, 1))
-        self.delete_db()
 
     def test_fn_division_evaluation(self):
         cells, edges, roi = self.getDivisionTrack()
@@ -165,7 +160,6 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.correct_segments["2"], (2, 4))
         self.assertEqual(scores.correct_segments["3"], (0, 2))
         self.assertEqual(scores.correct_segments["4"], (0, 1))
-        self.delete_db()
 
     def test_fn_division_evaluation2(self):
         cells, edges, roi = self.getDivisionTrack()
@@ -203,7 +197,6 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.correct_segments["1"], (4, 5))
         self.assertEqual(scores.correct_segments["2"], (2, 3))
         self.assertEqual(scores.correct_segments["3"], (0, 1))
-        self.delete_db()
 
     def test_fn_division_evaluation3(self):
         cells, edges, roi = self.getDivisionTrack()
@@ -234,7 +227,6 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.fp_divisions, 0)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 5./6)
-        self.delete_db()
 
     def test_fp_division_evaluation(self):
         cells, edges, roi = self.getDivisionTrack()
@@ -270,7 +262,6 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.correct_segments["1"], (5, 5))
         self.assertEqual(scores.correct_segments["2"], (2, 3))
         self.assertEqual(scores.correct_segments["3"], (0, 1))
-        self.delete_db()
 
     def test_fp_division_evaluation_at_beginning_of_gt(self):
         cells, edges, roi = self.getTrack1()
@@ -306,7 +297,6 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.fp_divisions, 1)
         self.assertAlmostEqual(scores.precision, 1.0)
         self.assertAlmostEqual(scores.recall, 1.0)
-        self.delete_db()
 
     def test_one_off_fp_division_evaluation(self):
         roi = daisy.Roi((0, 0, 0, 0), (5, 5, 5, 5))
@@ -366,7 +356,6 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.fn_divisions, 1)
         self.assertEqual(scores.fp_divisions, 1)
         self.assertEqual(scores.fn_edges, 0)
-        self.delete_db()
 
     def test_one_off_fp_division_evaluation2(self):
         roi = daisy.Roi((0, 0, 0, 0), (10, 5, 5, 5))
@@ -434,4 +423,3 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertEqual(scores.fn_divisions, 1)
         self.assertEqual(scores.fp_divisions, 1)
         self.assertEqual(scores.fn_edges, 0)
-        self.delete_db()
