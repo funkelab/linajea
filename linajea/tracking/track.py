@@ -47,25 +47,25 @@ def track(graph, config, selected_key, frame_key='t',
 
         node_indicator_costs (Callable):
 
-            Callable that returns a dict of str: Callable.
+            Callable that returns a dict of str: list of Callable.
             Will be called once per set of parameters.
             See cost_functions.py:get_default_node_indicator_costs for an
             example.
-            One entry per type of node indicator the solver should have.
-            The Callable stored in the value of each entry will be called
-            on each node and should return a list of costs for this indicator
-            in the objective.
+            The dict should have one entry per type of node indicator.
+            The value of each entry is a list of Callables. Each Callable will
+            be called on each node and should return a cost. The sum of costs
+            is the cost for this indicator in the objective.
 
         edge_indicator_costs (Callable):
 
-            Callable that returns a dict of str: Callable.
+            Callable that returns a dict of str: list of Callable.
             Will be called once per set of parameters.
             See cost_functions.py:get_default_edge_indicator_costs for an
             example.
-            One entry per type of edge indicator the solver should have.
-            The Callable stored in the value of each entry will be called
-            on each edge and should return a list of costs for this indicator
-            in the objective.
+            The dict should have one entry per type of edge indicator.
+            The value of each entry is a list of Callables. Each Callable will
+            be called on each edge and should return a cost. The sum of costs
+            is the cost for this indicator in the objective.
 
         constraints_fns (list of Callable)
 
@@ -124,8 +124,8 @@ def track(graph, config, selected_key, frame_key='t',
                     "Either set solve.solver_type or "
                     "explicitly provide lists of constraint functions")
         constrs = constraints.get_default_constraints(config)
-        pin_constraints_fns = constrs[0]
-        constraints_fns = constrs[1]
+        constraints_fns = constrs[0]
+        pin_constraints_fns = constrs[1]
 
     for parameters, key in zip(parameters_sets, selected_key):
         # set costs depending on current set of parameters
@@ -139,9 +139,9 @@ def track(graph, config, selected_key, frame_key='t',
             _edge_indicator_costs = get_default_edge_indicator_costs(
                 config, parameters)
         else:
-            _node_indicator_costs = node_indicator_costs(config, parameters,
+            _node_indicator_costs = node_indicator_costs(parameters,
                                                          track_graph)
-            _edge_indicator_costs = edge_indicator_costs(config, parameters,
+            _edge_indicator_costs = edge_indicator_costs(parameters,
                                                          track_graph)
 
         if not solver:

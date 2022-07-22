@@ -265,18 +265,18 @@ def write_struct_svm(solver, block_id, output_dir):
     # write features for objective
     indicators = {}
     num_features = {}
-    for k, fn in solver.node_indicator_fn_map.items():
+    for k, fns in solver.node_indicator_costs.items():
         for n_id, node in solver.graph.nodes(data=True):
             ind = solver.indicators[k][n_id]
-            costs = fn(node)
-            indicators[ind] = (k, costs)
-            num_features[k] = len(costs)
-    for k, fn in solver.edge_indicator_fn_map.items():
+            features = [fn(node)[0] for fn in fns]
+            indicators[ind] = (k, features)
+            num_features[k] = len(features)
+    for k, fns in solver.edge_indicator_costs.items():
         for u, v, edge in solver.graph.edges(data=True):
             ind = solver.indicators[k][(u, v)]
-            costs = fn(edge)
-            indicators[ind] = (k, costs)
-            num_features[k] = len(costs)
+            features = [fn(edge) for fn in fns]
+            indicators[ind] = (k, features)
+            num_features[k] = len(features)
 
     features_locs = {}
     acc = 0
@@ -288,11 +288,11 @@ def write_struct_svm(solver, block_id, output_dir):
         "some error reading indicators and features"
     with open(os.path.join(output_dir, "features_b" + block_id), 'w') as f:
         for ind in sorted(indicators.keys()):
-            k, costs = indicators[ind]
-            features = [0]*num_features
+            k, features = indicators[ind]
+            all_features = [0]*num_features
             features_loc = features_locs[k]
-            features[features_loc:features_loc+len(costs)] = costs
-            f.write(" ".join([str(f) for f in features]) + "\n")
+            all_features[features_loc:features_loc+len(features)] = features
+            f.write(" ".join([str(f) for f in all_features]) + "\n")
 
     # write constraints
     def rel_to_str(rel):

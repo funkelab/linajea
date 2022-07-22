@@ -299,5 +299,5 @@ def get_default_constraints(config):
         raise RuntimeError("solver_type %s unknown for constraints",
                            solver_type)
 
-    return (pin_constraints_fn_list,
-            constraints_fn_list)
+    return (constraints_fn_list,
+            pin_constraints_fn_list)

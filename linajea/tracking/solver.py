@@ -2,6 +2,8 @@
 """
 import logging
 
+import numpy as np
+
 import pylp
 
 logger = logging.getLogger(__name__)
@@ -156,10 +158,10 @@ class Solver(object):
 
         Args
         ----
-        node_indicator_costs: dict str: Callable
-            Map from (node) indicator type to Callable. The Callable will be
-            executed for every indicator of the respective type. It returns
-            a list of costs for that indicator. The sum of costs will be
+        node_indicator_costs: dict str: list of Callable
+            Map from (node) indicator type to list of Callable. Each Callable
+            will be executed for every indicator of the respective type. It
+            returns a cost for that indicator. The sum of costs will be
             added as a coefficient for that indicator to the objective.
             See tracking/cost_functions.py for examples.
             Interface: fn(obj: dict[str, Number]) -> cost: list[Number]
@@ -171,10 +173,10 @@ class Solver(object):
               cost:
                 The computed cost that will be added to the objective for
                 the respective indicator
-        edge_indicator_costs: dict str: Callable
-            Map from (edge) indicator type to Callable. The Callable will be
-            executed for every indicator of the respective type. It returns
-            a list of costs for that indicator. The sum of costs will be
+        edge_indicator_costs: dict str: list of Callable
+            Map from (edge) indicator type to Callable. Each Callable
+            will be executed for every indicator of the respective type. It
+            returns a costs for that indicator. The sum of costs will be
             added as a coefficient for that indicator to the objective.
             See tracking/cost_functions.py for examples.
             Interface: fn(obj: dict[str, Number]) -> cost: list[Number]
@@ -281,24 +283,24 @@ class Solver(object):
         objective = pylp.LinearObjective(self.num_vars)
 
         # node costs
-        for k, fn in self.node_indicator_costs.items():
+        for k, fns in self.node_indicator_costs.items():
+            assert isinstance(fns, list), (
+                f"Please provide a list of cost functions for each indicator "
+                f"(indicator {k}: {fns})")
             for n_id, node in self.graph.nodes(data=True):
                 objective.set_coefficient(self.indicators[k][n_id],
-                                          sum(fn(node)))
+                                          sum(np.prod(fn(node)) for fn in fns))
 
         # edge costs
-        for k, fn in self.edge_indicator_costs.items():
+        for k, fns in self.edge_indicator_costs.items():
+            assert isinstance(fns, list), (
+                f"Please provide a list of cost functions for each indicator "
+                f"(indicator {k}: {fns})")
             for u, v, edge in self.graph.edges(data=True):
                 objective.set_coefficient(self.indicators[k][(u, v)],
-                                          sum(fn(edge)))
+                                          sum(np.prod(fn(edge)) for fn in fns))
 
         self.objective = objective
-
-    def _create_constraints(self):
-
-        self.main_constraints = []
-
-        self._add_constraints()
 
     def _add_pin_constraints(self):
 
@@ -309,7 +311,9 @@ class Solver(object):
             self.pin_constraints.extend(
                 fn(self.graph, self.indicators, self.selected_key))
 
-    def _add_constraints(self):
+    def _create_constraints(self):
+
+        self.main_constraints = []
 
         logger.debug("setting constraints: %s", self.constraints_fns)
 
