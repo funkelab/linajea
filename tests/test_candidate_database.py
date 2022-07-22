@@ -15,6 +15,13 @@ logging.basicConfig(level=logging.INFO)
 
 class DatabaseTestCase(TestCase):
 
+    def setUp(self):
+        db_host = 'localhost'
+        try:
+            _ = pymongo.MongoClient(db_host, serverSelectionTimeoutMS=0)
+        except pymongo.errors.ServerSelectionTimeoutError:
+            self.skipTest("No MongoDB server found")
+
     def delete_db(self, db_name, db_host):
         client = pymongo.MongoClient(db_host)
         client.drop_database(db_name)
