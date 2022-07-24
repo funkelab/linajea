@@ -13,15 +13,27 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 
 import gunpowder as gp
 
-from linajea.gunpowder_nodes import (TracksSource, AddMovementVectors,
-                                     ShiftAugment, ShuffleChannels,
-                                     NoOp, RandomLocationExcludeTime)
+from linajea.gunpowder_nodes import (
+    AddMovementVectors,
+    ElasticAugment,
+    HistogramAugment,
+    NoiseAugment,
+    NoOp,
+    RandomLocationExcludeTime,
+    RasterizeGraph,
+    ShiftAugment,
+    ShuffleChannels,
+    TracksSource,
+    TorchTrainExt,
+    TrainValProvider,
+    ZoomAugment)
 from linajea.config import load_config
 
 from . import torch_model
 from . import torch_loss
-from .utils import (get_latest_checkpoint,
-                    normalize)
+from .utils import (
+    get_latest_checkpoint,
+    normalize)
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +59,10 @@ def train(config):
     if trained_until >= config.train.max_iterations:
         return
 
-    anchor = gp.ArrayKey('ANCHOR')
     raw = gp.ArrayKey('RAW')
     raw_cropped = gp.ArrayKey('RAW_CROPPED')
-    tracks = gp.PointsKey('TRACKS')
-    center_tracks = gp.PointsKey('CENTER_TRACKS')
+    tracks = gp.GraphKey('TRACKS')
+    center_tracks = gp.GraphKey('CENTER_TRACKS')
     cell_indicator = gp.ArrayKey('CELL_INDICATOR')
     cell_center = gp.ArrayKey('CELL_CENTER')
     pred_cell_indicator = gp.ArrayKey('PRED_CELL_INDICATOR')
@@ -100,7 +111,6 @@ def train(config):
     request.add(center_tracks, center_size)
     request.add(cell_indicator, output_size_1)
     request.add(cell_center, output_size_1)
-    request.add(anchor, output_size_2)
     request.add(raw_cropped, output_size_2)
     request.add(maxima, output_size_2)
     if not config.model.train_only_cell_indicator:
@@ -120,12 +130,12 @@ def train(config):
         snapshot_request.add(grad_movement_vectors, output_size_1)
     logger.debug("Snapshot request: %s" % str(snapshot_request))
 
-    train_sources = get_sources(config, raw, anchor, tracks, center_tracks,
+    train_sources = get_sources(config, raw, tracks, center_tracks,
                                 config.train_data.data_sources, val=False)
 
     # Do interleaved validation?
     if config.train.val_log_step is not None:
-        val_sources = get_sources(config, raw, anchor, tracks, center_tracks,
+        val_sources = get_sources(config, raw, tracks, center_tracks,
                                   config.validate_data.data_sources, val=True)
 
     # set up pipeline:
@@ -137,7 +147,7 @@ def train(config):
         tuple(train_sources) +
         gp.RandomProvider() +
 
-        (gp.ElasticAugment(
+        (ElasticAugment(
             augment.elastic.control_point_spacing,
             augment.elastic.jitter_sigma,
             [augment.elastic.rotation_min*np.pi/180.0,
@@ -164,7 +174,7 @@ def train(config):
             transpose_only=augment.simple.transpose)
          if augment.simple is not None else NoOp()) +
 
-        (gp.ZoomAugment(
+        (ZoomAugment(
             factor_min=augment.zoom.factor_min,
             factor_max=augment.zoom.factor_max,
             spatial_dims=augment.zoom.spatial_dims,
@@ -172,7 +182,7 @@ def train(config):
                    })
          if augment.zoom is not None else NoOp()) +
 
-        (gp.NoiseAugment(
+        (NoiseAugment(
             raw,
             mode='gaussian',
             var=augment.noise_gaussian.var,
@@ -180,7 +190,7 @@ def train(config):
             check_val_range=False)
          if augment.noise_gaussian is not None else NoOp()) +
 
-        (gp.NoiseAugment(
+        (NoiseAugment(
             raw,
             mode='speckle',
             var=augment.noise_speckle.var,
@@ -188,7 +198,7 @@ def train(config):
             check_val_range=False)
          if augment.noise_speckle is not None else NoOp()) +
 
-        (gp.NoiseAugment(
+        (NoiseAugment(
             raw,
             mode='s&p',
             amount=augment.noise_saltpepper.amount,
@@ -196,7 +206,7 @@ def train(config):
             check_val_range=False)
          if augment.noise_saltpepper is not None else NoOp()) +
 
-        (gp.HistogramAugment(
+        (HistogramAugment(
             raw,
             # raw_tmp,
             range_low=augment.histogram.range_low,
@@ -230,7 +240,7 @@ def train(config):
             min_masked=0.0001)
          if config.general.sparse else NoOp()) +
 
-        gp.RasterizeGraph(
+        RasterizeGraph(
             tracks,
             cell_indicator,
             array_spec=gp.ArraySpec(voxel_size=voxel_size),
@@ -238,7 +248,7 @@ def train(config):
                 radius=config.train.rasterize_radius,
                 mode='peak')) +
 
-        gp.RasterizeGraph(
+        RasterizeGraph(
             tracks,
             cell_center,
             array_spec=gp.ArraySpec(voxel_size=voxel_size),
@@ -282,7 +292,7 @@ def train(config):
                 reject_probability=1.0
             ) +
 
-            gp.RasterizePoints(
+            RasterizeGraph(
                 tracks,
                 cell_indicator,
                 array_spec=gp.ArraySpec(voxel_size=voxel_size),
@@ -290,7 +300,7 @@ def train(config):
                     radius=config.train.rasterize_radius,
                     mode='peak')) +
 
-            gp.RasterizePoints(
+            RasterizeGraph(
                 tracks,
                 cell_center,
                 array_spec=gp.ArraySpec(voxel_size=voxel_size),
@@ -308,8 +318,8 @@ def train(config):
     if config.train.val_log_step is not None:
         pipeline = (
             (train_pipeline, val_pipeline) +
-            gp.TrainValProvider(step=config.train.val_log_step,
-                                init_step=trained_until))
+            TrainValProvider(
+                step=config.train.val_log_step, init_step=trained_until))
     else:
         pipeline = train_pipeline
 
@@ -347,7 +357,6 @@ def train(config):
 
     snapshot_datasets = {
         raw: 'volumes/raw',
-        anchor: 'volumes/anchor',
         raw_cropped: 'volumes/raw_cropped',
         cell_indicator: 'volumes/cell_indicator',
         cell_center: 'volumes/cell_center',
@@ -389,7 +398,7 @@ def train(config):
     # and add training gunpowder node
     pipeline = (
         pipeline +
-        gp.torch.Train(
+        TorchTrainExt(
             model=model,
             loss=loss,
             optimizer=opt,
@@ -436,7 +445,7 @@ def train(config):
                     i, time_of_iteration)
 
 
-def get_sources(config, raw, anchor, tracks, center_tracks, data_sources,
+def get_sources(config, raw, tracks, center_tracks, data_sources,
                 val=False):
     """Create gunpowder source nodes for each data source in config
 
@@ -446,8 +455,6 @@ def get_sources(config, raw, anchor, tracks, center_tracks, data_sources,
         Configuration object
     raw: gp.Array
         Raw data will be stored here.
-    anchor: gp.Array
-        Ignore this.
     tracks: gp.Graph
         Tracks/points will be stored here
     center_tracks: gp.Graph
@@ -508,21 +515,16 @@ def get_sources(config, raw, anchor, tracks, center_tracks, data_sources,
         logger.info("limiting to roi: %s", limit_to_roi)
 
         datasets = {
-            raw: ds.datafile.group,
-            anchor: ds.datafile.group
+            raw: ds.datafile.group
         }
         array_specs = {
             raw: gp.ArraySpec(
                 interpolatable=True,
-                voxel_size=voxel_size),
-            anchor: gp.ArraySpec(
-                interpolatable=False,
                 voxel_size=voxel_size)
         }
         file_source = gp.ZarrSource(
             filename_data,
             datasets=datasets,
-            nested="nested" in ds.datafile.group,
             array_specs=array_specs)
 
         file_source = file_source + \
@@ -606,14 +608,14 @@ def merge_sources(
          TracksSource(
              track_file,
              tracks,
-             points_spec=gp.PointsSpec(roi=roi),
+             points_spec=gp.GraphSpec(roi=roi),
              scale=scale,
              use_radius=use_radius),
          # center tracks
          TracksSource(
              center_cell_file,
              center_tracks,
-             points_spec=gp.PointsSpec(roi=roi),
+             points_spec=gp.GraphSpec(roi=roi),
              scale=scale,
              use_radius=use_radius),
          ) +
