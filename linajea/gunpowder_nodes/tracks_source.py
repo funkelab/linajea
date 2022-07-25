@@ -154,10 +154,6 @@ class TracksSource(BatchProvider):
         nodes = []
         for location, track_info in zip(filtered_locations,
                                         filtered_track_info):
-            track_info["attrs"]["radius"] = self._set_point_radius(location,
-                                                                   track_info)
-            logger.debug("%s", track_info)
-            print(track_info)
             node = TrackNode(
                 # point_id
                 track_info["cell_id"],
@@ -178,6 +174,10 @@ class TracksSource(BatchProvider):
             self.filename,
             scale=self.scale,
             limit_to_roi=roi)
+        for location, track_info in zip(self.locations,
+                                        self.track_info):
+            track_info["attrs"]["radius"] = self._set_point_radius(location,
+                                                                   track_info)
 
     def _set_point_radius(self, location, track_info):
         t = location[0]
@@ -185,8 +185,7 @@ class TracksSource(BatchProvider):
         if not isinstance(self.use_radius, dict):
             # if use_radius is boolean, take radius from file if set
             if self.use_radius is True:
-                radius = track_info["attrs"].get("radius",
-                                                 track_info["attrs"][0])
+                radius = track_info["attrs"].get("radius")
         else:
             # otherwise use_radius should be a dict mapping from
             # frame thresholds to radii

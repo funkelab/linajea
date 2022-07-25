@@ -45,8 +45,7 @@ class ZoomAugment(BatchFilter):
         self.factor = random.random() * self.factor_max_amount + \
             self.factor_min
         logger.debug("zoom factor %s", self.factor)
-        deps = BatchRequest(overwrite_roi=True)
-        # deps.overwrite_roi = True
+        deps = BatchRequest()
         for key, spec in request.items():
             spec = spec.copy()
 

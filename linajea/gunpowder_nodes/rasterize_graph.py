@@ -310,6 +310,25 @@ class RasterizeGraph(BatchFilter):
             and len(list(graph.edges)) == 0
         )
 
+        avg_object_radius = []
+        for node in graph.nodes:
+            if node.attrs.get('value') is not None and \
+               node.attrs['value'].get('radius') is not None:
+                avg_object_radius.append(node.attrs['value']['radius'])
+
+        if avg_object_radius:
+            avg_object_radius = np.mean(avg_object_radius)
+            logger.debug("avg radius %s (cnt %s)",
+                         avg_object_radius, graph.num_vertices())
+            avg_object_radius = 3*[avg_object_radius]
+            avg_object_radius = [
+                max(ar, v) for ar, v in zip(avg_object_radius, voxel_size[1:])]
+            logger.debug("avg radius %s", avg_object_radius)
+
+            assert settings.mode != "ball", \
+                ("variable radius and ball rasterization "
+                 "not implemented yet!")
+
         if use_fast_rasterization:
 
             dims = len(rasterized_graph.shape)
@@ -326,14 +345,7 @@ class RasterizeGraph(BatchFilter):
 
         # Rasterize volume either with single voxel or
         # with defined struct elememt
-        avg_radius = None
         for node in graph.nodes:
-
-            if node.attrs.get('value') is not None:
-                logger.debug("radius %s", node.attrs['value'])
-                if avg_radius is None:
-                    avg_radius = 0
-                avg_radius += node.attrs['value'][0]
             # get the voxel coordinate, 'Coordinate' ensures integer
             v = Coordinate(node.location/voxel_size)
 
@@ -412,19 +424,6 @@ class RasterizeGraph(BatchFilter):
                 line = draw.line_nd(u_coord, v_coord, endpoint=True)
                 rasterized_graph[line] = 1
 
-        if avg_radius is not None:
-            avg_radius /= graph.num_vertices()
-            logger.debug("avg radius %s (cnt %s)",
-                         avg_radius, graph.num_vertices())
-            avg_radius = 3*[avg_radius]
-            avg_radius = [max(ar, v)
-                          for ar, v in zip(avg_radius, voxel_size[1:])]
-            logger.debug("avg radius %s", avg_radius)
-
-            assert settings.mode != "ball", \
-                ("variable radius and ball rasterization "
-                 "not implemented yet!")
-
         # grow graph
         if not use_fast_rasterization:
 
@@ -439,10 +438,10 @@ class RasterizeGraph(BatchFilter):
 
             elif settings.mode == 'peak':
 
-                if avg_radius is not None:
+                if avg_object_radius:
                     # ~ radius to sigma
                     sigmas = [0.1] + [s/2/v for (s, v) in zip(
-                        avg_radius, voxel_size[1:])]
+                        avg_object_radius, voxel_size[1:])]
                 else:
                     sigmas = settings.radius/voxel_size
 

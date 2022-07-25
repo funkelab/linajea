@@ -208,8 +208,8 @@ class TorchTrainExt(Train):
         if not self.initialized:
             self.start()
 
-        inputs = self.__collect_provided_inputs(batch)
-        requested_outputs = self.__collect_requested_outputs(request)
+        inputs = self._collect_provided_inputs(batch)
+        requested_outputs = self._collect_requested_outputs(request)
 
         # keys are argument names of model forward pass
         device_inputs = {
@@ -234,7 +234,7 @@ class TorchTrainExt(Train):
         outputs.update(self.intermediate_layers)
 
         # Some inputs to the loss should come from the batch, not the model
-        provided_loss_inputs = self.__collect_provided_loss_inputs(batch)
+        provided_loss_inputs = self._collect_provided_loss_inputs(batch)
 
         device_loss_inputs = {
             k: torch.as_tensor(v, device=self.device)
@@ -391,3 +391,50 @@ class TorchTrainExt(Train):
             logger.debug("updating swa")
             self.swa_model.update_parameters(self.model)
             self.swa_scheduler.step()
+
+    def _collect_requested_outputs(self, request):
+
+        array_outputs = {}
+
+        for output_name, array_key in self.outputs.items():
+            if array_key in request:
+                array_outputs[array_key] = output_name
+
+        return array_outputs
+
+    def _collect_provided_inputs(self, batch):
+
+        return self._collect_provided_arrays(
+            {k: v for k, v in self.inputs.items() if k not in self.loss_inputs}, batch
+        )
+
+    def _collect_provided_loss_inputs(self, batch):
+
+        return self._collect_provided_arrays(
+            self.loss_inputs, batch, expect_missing_arrays=True
+        )
+
+    def _collect_provided_arrays(self, reference, batch, expect_missing_arrays=False):
+
+        arrays = {}
+
+        for array_name, array_key in reference.items():
+            if isinstance(array_key, ArrayKey):
+                msg = f"batch does not contain {array_key}, array {array_name} will not be set"
+                if array_key in batch.arrays:
+                    arrays[array_name] = batch.arrays[array_key].data
+                elif not expect_missing_arrays:
+                    logger.warn(msg)
+                else:
+                    logger.debug(msg)
+            elif isinstance(array_key, np.ndarray):
+                arrays[array_name] = array_key
+            elif isinstance(array_key, str):
+                arrays[array_name] = getattr(batch, array_key)
+            else:
+                raise Exception(
+                    "Unknown network array key {}, can't be given to "
+                    "network".format(array_key)
+                )
+
+        return arrays
