@@ -30,6 +30,9 @@ class GeneralConfig:
         experimental, not used everywhere yet
     tag: str, optional
         Tag for experiment, can be used for debugging purposes
+    singularity_image: str, optional
+        Which singularity image to use to run code, optional, not required
+        if a conda/virtual environment is used.
     """
     # set via post_init hook
     setup_dir = attr.ib(type=str, default=None)
@@ -38,7 +41,4 @@ class GeneralConfig:
     logging = attr.ib(type=int)
     seed = attr.ib(type=int)
     tag = attr.ib(type=str, default=None)
-
-    def __attrs_post_init__(self):
-        if self.setup_dir is not None:
-            self.setup = os.path.basename(self.setup_dir)
+    singularity_image = attr.ib(type=str, default=None)

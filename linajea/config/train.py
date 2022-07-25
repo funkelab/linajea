@@ -10,15 +10,6 @@ from .job import JobConfig
 from .utils import ensure_cls
 
 
-def use_radius_converter():
-    def converter(val):
-        if isinstance(val, bool):
-            return {'0': val}
-        else:
-            return val
-    return converter
-
-
 @attr.s(kw_only=True)
 class _TrainConfig:
     """Defines base class for general training parameters
@@ -123,5 +114,4 @@ class TrainTrackingConfig(_TrainConfig):
     augment = attr.ib(converter=ensure_cls(AugmentTrackingConfig))
     movement_vectors_loss_transition_factor = attr.ib(type=float, default=0.01)
     movement_vectors_loss_transition_offset = attr.ib(type=int, default=20000)
-    use_radius = attr.ib(type=Dict[int, int], default=None,
-                         converter=use_radius_converter())
+    use_radius = attr.ib(type=Dict[int, int], default=None)

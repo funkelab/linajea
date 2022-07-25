@@ -55,7 +55,7 @@ class SolveParametersConfig:
     weight_node_score = attr.ib(type=float)
     selection_constant = attr.ib(type=float)
     weight_division = attr.ib(type=float, default=0.0)
-    division_constant = attr.ib(type=float, default=0.0)
+    division_constant = attr.ib(type=float, default=1.0)
     weight_child = attr.ib(type=float, default=0.0)
     weight_continuation = attr.ib(type=float, default=0.0)
     weight_edge_score = attr.ib(type=float)
@@ -338,7 +338,8 @@ class SolveConfig:
                 "weight_continuation": 0,
                 "weight_edge_score":  0,
                 "block_size": [-1, -1, -1, -1],
-                "context": [-1, -1, -1, -1]
+                "context": [-1, -1, -1, -1],
+                "tag": "greedy",
             }
             self.parameters = [SolveParametersConfig(**config_vals)]
         # block size and context must be the same for all parameters!
