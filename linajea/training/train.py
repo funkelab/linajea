@@ -142,7 +142,10 @@ def train(config):
     # load data source and
     # choose augmentations depending on config
     augment = config.train.augment
-    use_fast_points_transform = augment.elastic.use_fast_points_transform
+    use_fast_points_transform = (
+        augment.elastic.use_fast_points_transform
+        if augment.elastic is not None else None)
+
     train_pipeline = (
         tuple(train_sources) +
         gp.RandomProvider() +
@@ -229,7 +232,7 @@ def train(config):
             movement_vectors,
             cell_mask,
             array_spec=gp.ArraySpec(voxel_size=voxel_size),
-            radius=config.train.object_radius,
+            object_radius=config.train.object_radius,
             move_radius=config.train.move_radius,
             dense=not config.general.sparse)
          if not config.model.train_only_cell_indicator else NoOp()) +
@@ -274,7 +277,7 @@ def train(config):
                 movement_vectors,
                 cell_mask,
                 array_spec=gp.ArraySpec(voxel_size=voxel_size),
-                radius=config.train.object_radius,
+                object_radius=config.train.object_radius,
                 move_radius=config.train.move_radius,
                 dense=not config.general.sparse)
              if not config.model.train_only_cell_indicator else NoOp()) +
@@ -560,9 +563,21 @@ def get_sources(config, raw, tracks, center_tracks, data_sources,
 
         # if division nodes should be sampled more often
         if config.train.augment.divisions != 0.0:
+            file_sourceD = gp.ZarrSource(
+                filename_data,
+                datasets=datasets,
+                array_specs=array_specs)
+
+            file_sourceD = file_sourceD + \
+                gp.Crop(raw, limit_to_roi)
+            file_sourceD = normalize(file_sourceD, config, raw, data_config)
+
+            file_sourceD = file_sourceD + \
+                gp.Pad(raw, None)
+
             div_source = (
                 merge_sources(
-                    file_source,
+                    file_sourceD,
                     tracks,
                     center_tracks,
                     filename_divisions,

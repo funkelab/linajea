@@ -62,7 +62,7 @@ class UnetModelWrapper(torch.nn.Module):
 
         if config.model.unet_style == "split" and \
            not self.config.model.train_only_cell_indicator:
-            self.unet_par_vec = UNet(
+            self.unet_mov_vec = UNet(
                 in_channels=1,
                 num_fmaps=num_fmaps[1],
                 fmap_inc_factor=config.model.fmap_inc_factors,
@@ -151,10 +151,7 @@ class UnetModelWrapper(torch.nn.Module):
         return input_shape, output_shape_1, output_shape_2
 
     def forward(self, raw):
-        if self.config.model.latent_temp_conv:
-            raw = torch.reshape(raw, [raw.size()[0], 1] + list(raw.size())[1:])
-        else:
-            raw = torch.reshape(raw, [1, 1] + list(raw.size()))
+        raw = torch.reshape(raw, [1, 1] + list(raw.size()))
         model_out = self.unet_cell_ind(raw)
         if self.config.model.unet_style != "multihead" or \
            self.config.model.train_only_cell_indicator:
@@ -170,9 +167,9 @@ class UnetModelWrapper(torch.nn.Module):
                                              [3] + output_shape_1)
         elif (self.config.model.unet_style == "split" and
               not self.config.model.train_only_cell_indicator):
-            model_par_vec = self.unet_par_vec(raw)
+            model_mov_vec = self.unet_mov_vec(raw)
             movement_vectors_batched = self.movement_vectors_batched(
-                model_par_vec)
+                model_mov_vec)
             movement_vectors = torch.reshape(movement_vectors_batched,
                                              [3] + output_shape_1)
         else:  # self.config.model.unet_style == "multihead"
@@ -208,10 +205,7 @@ class UnetModelWrapper(torch.nn.Module):
             cell_indicator_cropped = crop(cell_indicator, output_shape_2)
             maxima = torch.eq(maxima, cell_indicator_cropped)
 
-        if self.config.model.latent_temp_conv:
-            raw_cropped = crop(raw[raw.size()[0]//2], output_shape_2)
-        else:
-            raw_cropped = crop(raw, output_shape_2)
+        raw_cropped = crop(raw, output_shape_2)
         raw_cropped = torch.reshape(raw_cropped, output_shape_2)
         # print(torch.min(raw), torch.max(raw))
         # print(torch.min(raw_cropped), torch.max(raw_cropped))
