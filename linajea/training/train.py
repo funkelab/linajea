@@ -53,7 +53,7 @@ def train(config):
         train and data configuration, optionally augment
     """
     # Get the latest checkpoint
-    checkpoint_basename = os.path.join(config.general.setup_dir, 'train_net')
+    checkpoint_basename = 'train_net'
     _, trained_until = get_latest_checkpoint(checkpoint_basename)
     # training already done?
     if trained_until >= config.train.max_iterations:
@@ -390,7 +390,7 @@ def train(config):
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": opt.state_dict(),
             },
-            os.path.join(config.general.setup_dir, "train_net_checkpoint_0"))
+            "train_net_checkpoint_0")
 
     # create loss object
     loss = torch_loss.LossWrapper(config, current_step=trained_until)
@@ -407,7 +407,7 @@ def train(config):
             outputs=outputs,
             loss_inputs=loss_inputs,
             gradients=gradients,
-            log_dir=os.path.join(config.general.setup_dir, "train"),
+            log_dir="train",
             val_log_step=config.train.val_log_step,
             use_auto_mixed_precision=config.train.use_auto_mixed_precision,
             use_swa=config.train.use_swa,
@@ -419,8 +419,7 @@ def train(config):
 
         # visualize
         gp.Snapshot(snapshot_datasets,
-                    output_dir=os.path.join(config.general.setup_dir,
-                                            'snapshots'),
+                    output_dir='snapshots',
                     output_filename='snapshot_{iteration}.hdf',
                     additional_request=snapshot_request,
                     every=config.train.snapshot_stride,

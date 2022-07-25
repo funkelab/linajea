@@ -29,8 +29,6 @@ def predict_blockwise(linajea_config):
     linajea_config: TrackingConfig
         Configuration object
     """
-    setup_dir = linajea_config.general.setup_dir
-
     data = linajea_config.inference_data.data_source
     assert data.db_name is not None, "db_name must be set"
     assert data.voxel_size is not None, "voxel_size must be set"
@@ -48,7 +46,7 @@ def predict_blockwise(linajea_config):
                       shape=data.datafile.file_roi.shape))
 
     # get context and total input and output ROI
-    with open(os.path.join(setup_dir, 'test_net_config.json'), 'r') as f:
+    with open('test_net_config.json', 'r') as f:
         net_config = json.load(f)
     net_input_size = net_config['input_shape']
     net_output_size = net_config['output_shape_2']
@@ -66,15 +64,15 @@ def predict_blockwise(linajea_config):
     block_write_roi = daisy.Roi((0, 0, 0, 0), net_output_size)
     block_read_roi = block_write_roi.grow(context, context)
 
-    output_zarr = construct_zarr_filename(
+    output_path = construct_zarr_filename(
         linajea_config,
         data.datafile.filename,
         linajea_config.inference_data.checkpoint)
 
     if linajea_config.predict.write_db_from_zarr:
-        assert os.path.exists(output_zarr), \
+        assert os.path.exists(output_path), \
             "{} does not exist, cannot write to db from it!".format(
-                output_zarr)
+                output_path)
         input_roi = output_roi
         block_read_roi = block_write_roi
 
@@ -83,7 +81,6 @@ def predict_blockwise(linajea_config):
         movement_vectors_ds = 'volumes/movement_vectors'
         cell_indicator_ds = 'volumes/cell_indicator'
         maxima_ds = 'volumes/maxima'
-        output_path = os.path.join(setup_dir, output_zarr)
         logger.info("Preparing zarr at %s" % output_path)
         file_roi = daisy.Roi(offset=data.datafile.file_roi.offset,
                              shape=data.datafile.file_roi.shape)

@@ -6,7 +6,7 @@ import os
 def construct_zarr_filename(config, sample, checkpoint):
     return os.path.join(
         config.predict.output_zarr_dir,
-        config.general.setup,
+        os.path.basename(config.general.setup_dir),
         os.path.basename(sample) +
         'predictions' + (config.general.tag if config.general.tag is not None
                          else "") +

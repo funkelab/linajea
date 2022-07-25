@@ -128,8 +128,7 @@ class UnetModelWrapper(torch.nn.Module):
             'input_shape': input_shape_predict,
             'output_shape_2': output_shape_predict
         }
-        with open(os.path.join(self.config.general.setup_dir,
-                               'test_net_config.json'), 'w') as f:
+        with open('test_net_config.json', 'w') as f:
             json.dump(net_config, f)
 
         input_shape = self.config.model.train_input_shape
@@ -147,8 +146,7 @@ class UnetModelWrapper(torch.nn.Module):
             'output_shape_1': output_shape_1,
             'output_shape_2': output_shape_2
         }
-        with open(os.path.join(self.config.general.setup_dir,
-                               'train_net_config.json'), 'w') as f:
+        with open('train_net_config.json', 'w') as f:
             json.dump(net_config, f)
         return input_shape, output_shape_1, output_shape_2
 

@@ -130,9 +130,8 @@ def predict(config):
         gp.Pad(raw, size=None) +
         gp.torch.Predict(
             model=model,
-            checkpoint=os.path.join(config.general.setup_dir,
-                                    'train_net_checkpoint_{}'.format(
-                                        config.inference_data.checkpoint)),
+            checkpoint='train_net_checkpoint_{}'.format(
+                config.inference_data.checkpoint),
             inputs=inputs,
             outputs=outputs,
             use_swa=config.predict.use_swa
