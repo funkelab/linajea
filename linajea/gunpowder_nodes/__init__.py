@@ -12,6 +12,7 @@ from .set_flag import SetFlag
 from .shift_augment import ShiftAugment
 from .shuffle_channels import ShuffleChannels
 from .torch_train import TorchTrainExt
+from .torch_predict import TorchPredictExt
 from .tracks_source import TracksSource
 from .train_val_provider import TrainValProvider
 from .write_cells import WriteCells

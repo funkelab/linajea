@@ -15,7 +15,9 @@ import gunpowder as gp
 
 from linajea.config import (load_config,
                             TrackingConfig)
-from linajea.gunpowder_nodes import WriteCells
+from linajea.gunpowder_nodes import (
+    TorchPredictExt,
+    WriteCells)
 from linajea.process_blockwise import write_done
 import linajea.training.torch_model
 from linajea.utils import construct_zarr_filename
@@ -101,7 +103,6 @@ def predict(config):
         datasets={
             raw: config.inference_data.data_source.datafile.group
         },
-        nested="nested" in config.inference_data.data_source.datafile.group,
         array_specs={
             raw: gp.ArraySpec(
                 interpolatable=True,
@@ -128,7 +129,7 @@ def predict(config):
     pipeline = (
         source +
         gp.Pad(raw, size=None) +
-        gp.torch.Predict(
+        TorchPredictExt(
             model=model,
             checkpoint='train_net_checkpoint_{}'.format(
                 config.inference_data.checkpoint),
