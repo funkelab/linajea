@@ -3,7 +3,7 @@ logging = 20
 db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin?replicaSet=rsLinajea"
 seed = 42
 sparse = true
-setup_dir = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/experiments/mouse_test_1"
+setup_dir = "droso_test_1"
 
 [model]
 train_input_shape = [ 7, 60, 148, 148,]
@@ -23,8 +23,7 @@ kernel_size_up = [[ [3, 3, 3], [3, 3, 3],],
                   [ [3, 3, 3], [3, 3, 3],],]
 upsampling = "trilinear"
 average_vectors = false
-nms_window_shape = [ 5, 21, 21,]
-latent_temp_conv = false
+nms_window_shape = [ 3, 15, 15,]
 train_only_cell_indicator = false
 
 
@@ -36,13 +35,13 @@ object_radius = [ 0.1, 10.0, 10.0, 10.0,]
 rasterize_radius = [ 0.1, 5.0, 5.0, 5.0,]
 # upper bound for dist cell moved between two frames (needed for context)
 move_radius = 10
-cache_size = 40
+cache_size = 1
 use_radius = false
 movement_vectors_loss_transition_offset = 20000
 movement_vectors_loss_transition_factor = 0.01
-max_iterations = 400001
-checkpoint_stride = 25000
-snapshot_stride = 1000
+max_iterations = 11
+checkpoint_stride = 10
+snapshot_stride = 5
 profiling_stride = 10
 use_auto_mixed_precision = false
 use_swa = false
@@ -51,14 +50,21 @@ swa_start_it = 49999
 swa_freq_it = 1000
 use_grad_norm = false
 [train.job]
-num_workers = 10
+num_workers = 1
 queue = "gpu_tesla"
+
 
 [train.augment]
 divisions = false
 reject_empty_prob = 1.0
-normalization = "default"
 point_balance_radius = 1
+
+[train.normalization]
+type = "minmax"
+perc_min = "perc0_01"
+perc_max = "perc99_99"
+norm_bounds = [ 2000, 7500,]
+
 
 [train.augment.elastic]
 control_point_spacing = [ 5, 10, 10,]
@@ -91,40 +97,38 @@ output_zarr_dir = "/nrs/funke/hirschp/linajea_experiments"
 write_to_zarr = false
 write_to_db = true
 write_db_from_zarr = false
-processes_per_worker = 10
+processes_per_worker = 1
 use_swa = false
 [predict.job]
-num_workers = 4
+num_workers = 1
 queue = "gpu_tesla"
 
 [extract]
-block_size = [ 5, 500, 500, 500,]
+block_size = [ 7, 500, 500, 500,]
 # edge_move_threshold = 40
 use_mv_distance = true
 [extract.edge_move_threshold]
--1 = 40
+-1 = 25
 
 
 [extract.job]
-num_workers = 32
+num_workers = 1
 queue = "local"
 
 [solve]
 from_scratch = true
-non_minimal = false
 greedy = false
 write_struct_svm = false
 check_node_close_to_roi = false
-add_node_density_constraints = false
 [solve.job]
-num_workers = 4
+num_workers = 1
 queue = "local"
 [[solve.parameters]]
-weight_node_score =   -0.01      
-selection_constant =  -0.3 
-track_cost =          0.6
+weight_node_score =   -0.1      
+selection_constant =  -0.425 
+track_cost =          1.35
 division_constant =   1
-weight_edge_score =   0.02
+weight_edge_score =   0.0425
 # weight_division =     
 # weight_child =          
 # weight_continuation = 
@@ -149,14 +153,14 @@ context = [2, 100, 100, 100]
 # context = [[2, 100, 100, 100]]
 # num_configs = 25
 [solve.parameters_search_grid]
-weight_node_score =   [0.0, -0.01, -0.02, -0.03]
-selection_constant =  [-0.2, -0.25, -0.3, -0.35]
-track_cost =          [0.55, 0.575, 0.6, 0.625]
+weight_node_score =   [-0.1, -0.05, -0.0, 0.05]
+selection_constant =  [-0.35, -0.375, -0.4, -0.425]
+track_cost =          [1.35, 1.375, 1.4, 1.425]
 # weight_division =     []
 division_constant =   [1.0]
 # weight_child =        []
 # weight_continuation = []
-weight_edge_score =   [0.0, 0.01, 0.02, 0.03]
+weight_edge_score =   [0.035, 0.0375, 0.04, 0.0425]
 
 # cell_cycle_key = []
 block_size = [[5, 500, 500, 500]]
@@ -166,12 +170,11 @@ num_configs = 25
 [evaluate]
 from_scratch = false
 [evaluate.parameters]
-matching_threshold = 20
-window_size = 50
+matching_threshold = 15
+window_size = 200
 validation_score = false
 ignore_one_off_div_errors = false
 fn_div_count_unconnected_parent = true
-sparse = true
 filter_polar_bodies = false
 # [evaluate.parameters.roi]
 # offset = [ 0, 0, 0, 0,]
@@ -184,42 +187,46 @@ queue = "local"
 [train_data]
 voxel_size = [ 1, 5, 1, 1,]
 [[train_data.data_sources]]
-gt_db_name = "linajea_140521_gt"
-exclude_times = [[50, 100],
-                 [225, 275]]
+gt_db_name = "linajea_120828_gt_side_1"
+exclude_times = [[200, 250]]
+tracksfile = "/groups/funke/home/hirschp/linajea_experiments/data/120828/tracks/tracks_side_1_div_state.txt"
+divisionsfile = "/groups/funke/home/hirschp/linajea_experiments/data/120828/tracks/tracks_side_1_div_state.txt"
+daughtersfile = "/groups/funke/home/hirschp/linajea_experiments/data/120828/tracks/daughter_cells_side_1.txt"
 [train_data.data_sources.datafile]
-filename = "/nrs/funke/malinmayorc/140521/140521.n5"
+filename = "/nrs/funke/malinmayorc/120828/120828.n5"
 group = "raw"
 [train_data.roi]
 offset = [ 0, 0, 0, 0,]
-shape = [ 532, 4940, 2048, 2169,]
+shape = [ 450, 625, 603, 1272,]
 
 [validate_data]
 checkpoints = [ 400000,]
 cell_score_threshold = 0.4
 voxel_size = [ 1, 5, 1, 1,]
 [[validate_data.data_sources]]
-gt_db_name = "linajea_140521_gt_middle"
-db_name = "linajea_140521_setup11_simple_late_middle_400000_te"
-tracksfile = "/groups/funke/home/hirschp/linajea_experiments/data/140521/tracks/extended_tracks_div_state.txt"
+gt_db_name = "linajea_120828_gt_side_1"
+db_name = "linajea_120828_setup211_simple_vald_side_1_400000_te"
+tracksfile = "/groups/funke/home/hirschp/linajea_experiments/data/120828/tracks/tracks_side_1_div_state.txt"
+divisionsfile = "/groups/funke/home/hirschp/linajea_experiments/data/120828/tracks/tracks_side_1_div_state.txt"
+daughtersfile = "/groups/funke/home/hirschp/linajea_experiments/data/120828/tracks/daughter_cells_side_1.txt"
 [validate_data.data_sources.datafile]
-filename = "/nrs/funke/malinmayorc/140521/140521.n5"
+filename = "/nrs/funke/malinmayorc/120828/120828.n5"
 group = "raw"
 [validate_data.roi]
-offset = [ 225, 0, 0, 0,]
-shape = [ 50, 4940, 2048, 2169,]
+offset = [ 200, 0, 0, 0,]
+shape = [ 50, 625, 603, 1272,]
 
 [test_data]
-checkpoint = 400000
+checkpoint = 10
 cell_score_threshold = 0.4
 voxel_size = [ 1, 5, 1, 1,]
 [[test_data.data_sources]]
-gt_db_name = "linajea_140521_gt_early"
-db_name = "linajea_140521_setup11_simple_late_early_400000_te"
-tracksfile = "/groups/funke/home/hirschp/linajea_experiments/data/140521/tracks/extended_tracks_div_state.txt"
+gt_db_name = "linajea_120828_gt_side_2"
+db_name = "linajea_120828_setup211_simple_eval_side_2_400000_te"
+tracksfile = "/groups/funke/home/hirschp/linajea_experiments/data/120828/tracks/tracks_side_2_div_state.txt"
 [test_data.data_sources.datafile]
-filename = "/nrs/funke/malinmayorc/140521/140521.n5"
+filename = "/nrs/funke/malinmayorc/120828/120828.n5"
 group = "raw"
 [test_data.roi]
 offset = [ 50, 0, 0, 0,]
-shape = [ 50, 4940, 2048, 2169,]
+shape = [ 5, 625, 603, 1272,]

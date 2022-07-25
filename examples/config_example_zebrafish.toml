@@ -1,0 +1,204 @@
+[general]
+logging = 20
+db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin?replicaSet=rsLinajea"
+seed = 42
+sparse = true
+setup_dir = "zebra_test_1"
+
+[model]
+train_input_shape = [ 7, 124, 124, 124,]
+predict_input_shape = [ 7, 156, 156, 156,]
+unet_style = "split"
+num_fmaps = [12, 12]
+fmap_inc_factors = 3
+downsample_factors = [[ 2, 2, 2,],
+                      [ 2, 2, 2,],
+                      [ 2, 2, 2,],]
+kernel_size_down = [[ [3, 3, 3, 3], [3, 3, 3, 3],],
+                    [ [3, 3, 3, 3], [3, 3, 3],],
+                    [ [3, 3, 3], [3, 3, 3],],
+                    [ [3, 3, 3], [3, 3, 3],],]
+kernel_size_up = [[ [3, 3, 3], [3, 3, 3],],
+                  [ [3, 3, 3], [3, 3, 3],],
+                  [ [3, 3, 3], [3, 3, 3],],]
+upsampling = "trilinear"
+average_vectors = false
+nms_window_shape = [ 7, 7, 7,]
+train_only_cell_indicator = false
+
+
+[train]
+# radius for binary map -> *2 (in world units)
+# in which to draw movement vectors (not used if use_radius)
+object_radius = [ 0.1, 8.0, 8.0, 8.0,]
+# sigma for Gauss -> ~*4 (5 in z -> in 3 slices) (not used if use_radius)
+rasterize_radius = [ 0.1, 5.0, 5.0, 5.0,]
+# upper bound for dist cell moved between two frames (needed for context)
+move_radius = 10
+cache_size = 40
+use_radius = false
+movement_vectors_loss_transition_offset = 20000
+movement_vectors_loss_transition_factor = 0.01
+max_iterations = 400001
+checkpoint_stride = 25000
+snapshot_stride = 1000
+profiling_stride = 10
+use_auto_mixed_precision = false
+use_swa = false
+swa_every_it = false
+swa_start_it = 49999
+swa_freq_it = 1000
+use_grad_norm = false
+[train.job]
+num_workers = 10
+queue = "gpu_tesla"
+
+[train.augment]
+divisions = false
+reject_empty_prob = 1.0
+normalization = "default"
+point_balance_radius = 1
+
+[train.augment.elastic]
+control_point_spacing = [ 5, 5, 5,]
+jitter_sigma = [ 1, 1, 1,]
+rotation_min = 0
+rotation_max = 90
+rotation_3d = false
+subsample = 8
+use_fast_points_transform = false
+
+[train.augment.intensity]
+scale = [ 0.9, 1.1,]
+shift = [ -0.001, 0.001,]
+
+[train.augment.simple]
+mirror = [ 1, 2, 3,]
+transpose = [ 1, 2, 3,]
+
+
+[optimizerTorch]
+optimizer = "Adam"
+[optimizerTorch.kwargs]
+lr = 5e-4
+betas = [0.95, 0.999]
+eps = 1e-8
+
+
+[predict]
+output_zarr_dir = "/nrs/funke/hirschp/linajea_experiments"
+write_to_zarr = false
+write_to_db = true
+write_db_from_zarr = false
+processes_per_worker = 10
+use_swa = false
+[predict.job]
+num_workers = 4
+queue = "gpu_tesla"
+
+[extract]
+block_size = [ 7, 501, 501, 501,]
+# edge_move_threshold = 40
+use_mv_distance = true
+[extract.edge_move_threshold]
+-1 = 30
+
+
+[extract.job]
+num_workers = 32
+queue = "local"
+
+[solve]
+from_scratch = true
+non_minimal = false
+greedy = false
+write_struct_svm = false
+check_node_close_to_roi = false
+add_node_density_constraints = false
+[solve.job]
+num_workers = 4
+queue = "local"
+[[solve.parameters]]
+weight_node_score =   -0.01      
+selection_constant =  -0.3 
+track_cost =          0.6
+division_constant =   1
+weight_edge_score =   0.02
+
+block_size = [5, 501, 501, 501]
+context = [2, 99, 99, 99]
+
+[solve.parameters_search_grid]
+
+weight_node_score = [-0.02, -0.03, -0.04, -0.05]
+selection_constant = [-0.7, -0.8, -0.9, -1.0]
+track_cost = [1.5, 1.6, 1.7, 1.8]
+division_constant =   [1.0]
+weight_edge_score = [0.04, 0.05, 0.06, 0.07]
+
+block_size = [[5, 501, 501, 501]]
+context = [[2, 99, 99, 99]]
+num_configs = 25
+
+[evaluate]
+from_scratch = false
+[evaluate.parameters]
+matching_threshold = 15
+window_size = 200
+validation_score = false
+ignore_one_off_div_errors = false
+fn_div_count_unconnected_parent = true
+sparse = true
+filter_polar_bodies = false
+[evaluate.job]
+num_workers = 1
+queue = "local"
+
+[train_data]
+voxel_size = [ 1, 3, 3, 3,]
+[[train_data.data_sources]]
+gt_db_name = "linajea_160328_gt_side_1"
+exclude_times = [[150, 200]]
+tracksfile = "/groups/funke/home/hirschp/linajea_experiments/data/160328/tracks/tracks_side_1_div_state.txt"
+divisionsfile = "/groups/funke/home/hirschp/linajea_experiments/data/160328/tracks/tracks_side_1_div_state.txt"
+daughtersfile = "/groups/funke/home/hirschp/linajea_experiments/data/160328/tracks/daughter_cells_side_1.txt"
+[train_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/160328/160328.n5"
+group = "raw"
+[train_data.roi]
+offset = [ 0, 0, 0, 0,]
+shape = [ 365, 2028, 2028, 2049,]
+
+[validate_data]
+checkpoints = [ 400000,]
+cell_score_threshold = 0.4
+voxel_size = [ 1, 3, 3, 3,]
+[[validate_data.data_sources]]
+gt_db_name = "linajea_160328_gt_side_1"
+db_name = "linajea_160328_setup11_simple_side_1_400000_te"
+tracksfile = "/groups/funke/home/hirschp/linajea_experiments/data/160328/tracks/tracks_side_1_div_state.txt"
+divisionsfile = "/groups/funke/home/hirschp/linajea_experiments/data/160328/tracks/tracks_side_1_div_state.txt"
+daughtersfile = "/groups/funke/home/hirschp/linajea_experiments/data/160328/tracks/daughter_cells_side_1.txt"
+[validate_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/160328/160328.n5"
+group = "raw"
+[validate_data.roi]
+offset = [ 150, 0, 0, 0,]
+shape = [ 50, 2028, 2028, 2049,]
+
+[test_data]
+checkpoint = 400000
+cell_score_threshold = 0.4
+voxel_size = [ 1, 3, 3, 3,]
+[[test_data.data_sources]]
+gt_db_name = "linajea_160328_gt_side_2"
+db_name = "linajea_160328_setup11_simple_side_2_400000_te"
+tracksfile = "/groups/funke/home/hirschp/linajea_experiments/data/160328/tracks/tracks_side_2_div_state.txt"
+divisionsfile = "/groups/funke/home/hirschp/linajea_experiments/data/160328/tracks/tracks_side_2_div_state.txt"
+daughtersfile = "/groups/funke/home/hirschp/linajea_experiments/data/160328/tracks/daughter_cells_side_2.txt"
+[test_data.data_sources.datafile]
+filename = "/nrs/funke/malinmayorc/160328/160328.n5"
+group = "raw"
+[test_data.roi]
+offset = [ 0, 0, 0, 0,]
+shape = [ 365, 2028, 2028, 2049,]

@@ -2,7 +2,7 @@
 logging = 20
 db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin?replicaSet=rsLinajea"
 seed = 42
-setup_dir = "/groups/funke/home/hirschp/linajea_experiments/unet_setups/celegans_setups/experiments/mskc_test_1"
+setup_dir = "mskc_test_1"
 sparse = false
 
 [model]
@@ -88,6 +88,7 @@ from_scratch = true
 greedy = false
 # write_struct_svm = "ssvm_ckpt_200000"
 check_node_close_to_roi = false
+solver_type = "basic"
 # random_search = false
 
 
@@ -163,7 +164,7 @@ group = "volumes/raw_nested"
 # group = "volumes/raw_nested"
 
 [test_data]
-checkpoint = 10
+checkpoint = 11
 cell_score_threshold = 0.2
 voxel_size = [ 1, 5, 1, 1,]
 [[test_data.data_sources]]
@@ -174,7 +175,7 @@ filename = "/nrs/funke/hirschp/mskcc_emb3"
 group = "volumes/raw_nested"
 
 [validate_data]
-checkpoints = [ 10,]
+checkpoints = [ 11,]
 cell_score_threshold = 0.2
 voxel_size = [ 1, 5, 1, 1,]
 [[validate_data.data_sources]]
