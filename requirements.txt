@@ -6,7 +6,7 @@ scipy
 pandas
 torch
 tensorflow==1.15
-zarr
+zarr>=2.10.2
 sklearn
 -e git+https://github.com/funkelab/funlib.math#egg=funlib.math
 -e git+https://github.com/funkelab/funlib.run#egg=funlib.run
