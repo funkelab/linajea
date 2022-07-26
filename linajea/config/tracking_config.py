@@ -61,7 +61,7 @@ class TrackingConfig:
     general = attr.ib(converter=ensure_cls(GeneralConfig))
     model = attr.ib(converter=ensure_cls(UnetConfig), default=None)
     optimizerTorch = attr.ib(converter=ensure_cls(OptimizerTorchConfig),
-                             default=None)
+                             default=attr.Factory(OptimizerTorchConfig))
     train = attr.ib(converter=ensure_cls(TrainTrackingConfig), default=None)
     train_data = attr.ib(converter=ensure_cls(TrainDataTrackingConfig),
                          default=None)
@@ -72,9 +72,10 @@ class TrackingConfig:
     inference_data = attr.ib(converter=ensure_cls(InferenceDataTrackingConfig),
                              default=None)
     predict = attr.ib(converter=ensure_cls(PredictTrackingConfig),
-                      default=None)
+                      default=attr.Factory(PredictTrackingConfig))
     extract = attr.ib(converter=ensure_cls(ExtractConfig), default=None)
-    solve = attr.ib(converter=ensure_cls(SolveConfig), default=None)
+    solve = attr.ib(converter=ensure_cls(SolveConfig),
+                    default=attr.Factory(SolveConfig))
     evaluate = attr.ib(converter=ensure_cls(EvaluateTrackingConfig),
                        default=None)
 

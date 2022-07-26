@@ -54,7 +54,7 @@ def dump_config(config):
     """
     if not isinstance(config, dict):
         config = attr.asdict(config)
-    path = os.path.join(config["general"]["setup_dir"],
+    path = os.path.join(os.path.abspath(os.getcwd()),
                         "tmp_configs",
                         "config_{}.toml".format(
                             time.time()))

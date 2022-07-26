@@ -48,8 +48,8 @@ class ExtractConfig:
     """
     edge_move_threshold = attr.ib(type=Dict[int, int],
                                   converter=_edge_move_converter())
-    block_size = attr.ib(type=List[int])
+    block_size = attr.ib(type=List[int], default=[5, 512, 512, 512])
     job = attr.ib(converter=ensure_cls(JobConfig),
                   default=attr.Factory(JobConfig))
-    context = attr.ib(type=List[int], default=None)
+    context = attr.ib(type=List[int], default=[2, 100, 100, 100])
     use_mv_distance = attr.ib(type=bool, default=False)

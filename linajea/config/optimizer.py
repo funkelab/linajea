@@ -62,7 +62,8 @@ class OptimizerTorchConfig:
         model.parameters(), **config.optimizerTorch.get_kwargs())
     """
     optimizer = attr.ib(type=str, default="Adam")
-    kwargs = attr.ib(converter=ensure_cls(OptimizerTorchKwargsConfig))
+    kwargs = attr.ib(converter=ensure_cls(OptimizerTorchKwargsConfig),
+                     default=attr.Factory(OptimizerTorchKwargsConfig))
 
     def get_kwargs(self):
         """Get dict of keyword parameters"""

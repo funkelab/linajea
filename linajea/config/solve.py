@@ -293,11 +293,6 @@ class SolveConfig:
                                   "cell_state"])))
 
     def __attrs_post_init__(self):
-        assert self.parameters is not None or \
-            self.parameters_search_grid is not None or \
-            self.parameters_search_random is not None, \
-            "provide either solve parameters or grid/random search values " \
-            "for solve parameters!"
 
         if self.grid_search or self.random_search:
             assert self.grid_search != self.random_search, \
@@ -339,16 +334,19 @@ class SolveConfig:
                 "weight_edge_score":  0,
                 "block_size": [-1, -1, -1, -1],
                 "context": [-1, -1, -1, -1],
+                "max_cell_move": -1,
                 "tag": "greedy",
             }
             self.parameters = [SolveParametersConfig(**config_vals)]
-        # block size and context must be the same for all parameters!
-        block_size = self.parameters[0].block_size
-        context = self.parameters[0].context
-        for i in range(len(self.parameters)):
-            assert block_size == self.parameters[i].block_size, \
-                "%s not equal to %s" %\
-                (block_size, self.parameters[i].block_size)
-            assert context == self.parameters[i].context, \
-                "%s not equal to %s" %\
-                (context, self.parameters[i].context)
+
+        if self.parameters is not None:
+            # block size and context must be the same for all parameters!
+            block_size = self.parameters[0].block_size
+            context = self.parameters[0].context
+            for i in range(len(self.parameters)):
+                assert block_size == self.parameters[i].block_size, \
+                    "%s not equal to %s" %\
+                    (block_size, self.parameters[i].block_size)
+                assert context == self.parameters[i].context, \
+                    "%s not equal to %s" %\
+                    (context, self.parameters[i].context)

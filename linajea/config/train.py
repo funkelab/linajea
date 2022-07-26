@@ -42,26 +42,24 @@ class _TrainConfig:
         Start computing SWA after this step, network should be converged
     swa_freq_it: int
         Compute SWA every n-th step, after swa_start_it
-    use_grad_norm: bool
-        Use gradient clipping based on the gradient norm
     val_log_step: int
         Interleave a validation step every n-th training step,
         has to be supported by the training script
     normalization: NormalizeConfig
         Parameters defining which data normalization type to use
     """
-    job = attr.ib(converter=ensure_cls(JobConfig))
-    cache_size = attr.ib(type=int)
+    job = attr.ib(converter=ensure_cls(JobConfig),
+                  default=attr.Factory(JobConfig))
+    cache_size = attr.ib(type=int, default=8)
     max_iterations = attr.ib(type=int)
     checkpoint_stride = attr.ib(type=int)
-    snapshot_stride = attr.ib(type=int)
-    profiling_stride = attr.ib(type=int)
+    snapshot_stride = attr.ib(type=int, default=1000)
+    profiling_stride = attr.ib(type=int, default=500)
     use_auto_mixed_precision = attr.ib(type=bool, default=False)
     use_swa = attr.ib(type=bool, default=False)
     swa_every_it = attr.ib(type=bool, default=False)
     swa_start_it = attr.ib(type=int, default=None)
     swa_freq_it = attr.ib(type=int, default=None)
-    use_grad_norm = attr.ib(type=bool, default=False)
     val_log_step = attr.ib(type=int, default=None)
     normalization = attr.ib(converter=ensure_cls(NormalizeConfig),
                             default=None)
@@ -111,7 +109,8 @@ class TrainTrackingConfig(_TrainConfig):
     object_radius = attr.ib(type=List[float])
     move_radius = attr.ib(type=float)
     rasterize_radius = attr.ib(type=List[float])
-    augment = attr.ib(converter=ensure_cls(AugmentTrackingConfig))
+    augment = attr.ib(converter=ensure_cls(AugmentTrackingConfig),
+                      default=attr.Factory(AugmentTrackingConfig))
     movement_vectors_loss_transition_factor = attr.ib(type=float, default=0.01)
     movement_vectors_loss_transition_offset = attr.ib(type=int, default=20000)
     use_radius = attr.ib(type=Dict[int, int], default=None)
