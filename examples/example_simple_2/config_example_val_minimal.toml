@@ -1,0 +1,33 @@
+model = "config_example_model_minimal.toml"
+
+[general]
+logging = 20
+db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin?replicaSet=rsLinajea"
+seed = 42
+setup_dir = "example_simple_2"
+sparse = false
+
+[extract]
+edge_move_threshold = 25
+
+[solve]
+parameters = "config_parameters.toml"
+solver_type = "basic"
+
+[inference_data]
+checkpoint = 11
+cell_score_threshold = 0.2
+[inference_data.data_source]
+gt_db_name = "linajea_120828_gt_side_1"
+db_name = "linajea_120828_vald_side_1_11"
+tracksfile = "/groups/funke/home/hirschp/linajea_experiments/data/120828/tracks/tracks_side_1_div_state.txt"
+voxel_size = [ 1, 5, 1, 1,]
+[inference_data.data_source.datafile]
+filename = "/nrs/funke/malinmayorc/120828/120828.n5"
+group = "raw"
+[inference_data.data_source.roi]
+offset = [ 50, 0, 0, 0,]
+shape = [ 5, 625, 603, 1272,]
+
+[evaluate.parameters]
+matching_threshold = 15

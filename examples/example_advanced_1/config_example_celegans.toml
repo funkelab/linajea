@@ -2,45 +2,30 @@
 logging = 20
 db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin?replicaSet=rsLinajea"
 seed = 42
-setup_dir = "mskc_test_1"
+setup_dir = "example_advanced_1"
 sparse = false
 
 [model]
 train_input_shape = [ 7, 40, 148, 148,]
-# train_input_shape = [ 7, 40, 260, 260,]
 predict_input_shape = [ 7, 80, 260, 260,]
 unet_style = "split"
 num_fmaps = [12, 12]
-# fmap_inc_factors = [4, 4, 8]
 fmap_inc_factors = 4
 downsample_factors = [[ 1, 2, 2,],
                       [ 1, 2, 2,],
                       [ 2, 2, 2,],]
-# kernel_size_down = [[ [3, 3, 3], [3, 3, 3],],
-#                     [ [3, 3, 3], [3, 3, 3],],
-#                     [ [3, 3, 3], [3, 3, 3],],
-#                     [ [3, 3, 3], [3, 3, 3],],]
 kernel_size_down = [[ [3, 3, 3, 3], [3, 3, 3, 3],],
                     [ [3, 3, 3, 3], [3, 3, 3],],
                     [ [3, 3, 3], [3, 3, 3],],
                     [ [3, 3, 3], [3, 3, 3],],]
-# kernel_size_down = [[ [3, 3, 3], [3, 3, 3],],
-#                     [ [3, 3, 3], [3, 3, 3],],
-#                     [ [3, 3, 3], [3, 3, 3, 3],],
-#                     [ [3, 3, 3, 3], [3, 3, 3, 3],],]
 kernel_size_up = [[ [3, 3, 3], [3, 3, 3],],
                   [ [3, 3, 3], [3, 3, 3],],
                   [ [3, 3, 3], [3, 3, 3],],]
-# constant_upsample = true
-# upsampling = "pixel_shuffle"
-# upsampling = "trilinear"
 upsampling = "sep_transposed_conv"
 average_vectors = false
-# nms_window_shape = [ 3, 11, 11,]
 nms_window_shape = [ 3, 9, 9,]
 cell_indicator_weighted = 0.01
 cell_indicator_cutoff = 0.01
-# cell_indicator_weighted = true
 train_only_cell_indicator = false
 
 [train]
@@ -55,7 +40,7 @@ rasterize_radius = [ 0.1, 5.0, 3.0, 3.0,]
 cache_size = 1
 movement_vectors_loss_transition_offset = 20000
 movement_vectors_loss_transition_factor = 0.001
-#use_radius = true
+use_radius = true
 max_iterations = 11
 checkpoint_stride = 10
 snapshot_stride = 5
@@ -65,20 +50,18 @@ use_swa = true
 swa_every_it = false
 swa_start_it = 49999
 swa_freq_it = 1000
-use_grad_norm = true
 
-[train.use_radius]
-30 = 20
-70 = 15
-100 = 13
-130 = 11
-180 = 10
-270 = 8
-9999 = 7
+# [train.use_radius]
+# 30 = 20
+# 70 = 15
+# 100 = 13
+# 130 = 11
+# 180 = 10
+# 270 = 8
+# 9999 = 7
 
 [optimizerTorch]
 optimizer = "Adam"
-# optimizer = "SGD"
 
 [extract]
 block_size = [ 5, 512, 512, 512,]
@@ -92,21 +75,20 @@ solver_type = "basic"
 # random_search = false
 
 
-[[solve.parameters]]
-# # # ssvm 240k w class id 507 (wo class )
-weight_node_score =   -16.786125363574673        
-selection_constant =  8.893522542354866  
-track_cost =          20.675083335777686 
-# disappear cost      -0.0               
-weight_division =     -8.260920358667896 
-division_constant =   5.9535746121046165 
-weight_child =        1.003401421433546  
-weight_continuation = -1.0264581546174496
-weight_edge_score =   0.4254227576366175   
+# [[solve.parameters]]
+# weight_node_score =   -16.786125363574673        
+# selection_constant =  8.893522542354866  
+# track_cost =          20.675083335777686 
+# # disappear cost      -0.0               
+# weight_division =     -8.260920358667896 
+# division_constant =   5.9535746121046165 
+# weight_child =        1.003401421433546  
+# weight_continuation = -1.0264581546174496
+# weight_edge_score =   0.4254227576366175   
 
-# cell_cycle_key = '201112_063001/test/10000_'
-block_size = [15, 512, 512, 712]
-context = [2, 100, 100, 100]
+# # cell_cycle_key = '201112_063001/test/10000_'
+# block_size = [15, 512, 512, 712]
+# context = [2, 100, 100, 100]
 
 
 
@@ -114,24 +96,14 @@ context = [2, 100, 100, 100]
 
 weight_node_score =   [-13, -17, -21]
 selection_constant =  [6, 9, 12]
-# track_cost =          [7, 11, 15]
 track_cost =          [7,]
-# disappear cost      -0.0               
-# weight_division =     [-8, -11, 0]
-# division_constant =   [6.0, 2.5, 1]
-# weight_child =        [0.0, 1.0, 2.0]
-# weight_continuation = [0.0, -1.0]
-# weight_edge_score =   [0.1, 0.35]
 weight_division =     [-8, -11]
-# division_constant =   [6.0, 2.5, 1.0]
 division_constant =   [6.0, 2.5]
 weight_child =        [1.0, 2.0]
 weight_continuation = [-1.0]
-# weight_edge_score =   [0.1, 0.35]
 weight_edge_score =   [0.35]
 
-# cell_cycle_key = ['201112_063001/test/10000_', '']
-# cell_cycle_key = ['201112_063001/test/10000_'] #
+# cell_cycle_key = ['201112_063001/test/10000_']
 val = [true]
 block_size = [[15, 512, 512, 712]]
 context = [[2, 100, 100, 100]]
@@ -205,9 +177,6 @@ lr = 5e-5
 betas = [0.95, 0.999]
 eps = 1e-8
 amsgrad = false
-# weight_decay = 1e-4
-# momentum = 0.9
-# nesterov = true
 
 [extract.edge_move_threshold]
 50 = 45
@@ -246,7 +215,6 @@ shape = [ 10, 205, 512, 512,]
 
 [train.augment.elastic]
 control_point_spacing = [ 5, 25, 25,]
-# control_point_spacing = [ 3, 15, 15,]
 jitter_sigma = [ 1, 1, 1,]
 rotation_min = -45
 rotation_max = 45

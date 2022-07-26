@@ -1,0 +1,10 @@
+# should be as big as your GPU memory permits
+train_input_shape = [ 7, 40, 148, 148,]
+predict_input_shape = [ 7, 80, 260, 260,]
+upsampling = "sep_transposed_conv"
+# should be a bit smaller than the minimal distance between two cells centers
+nms_window_shape = [ 3, 9, 9,]
+# should only be enabled for dense GT and disabled for sparse GT, puts a loss
+# on the background
+cell_indicator_weighted = 0.01
+cell_indicator_cutoff = 0.01

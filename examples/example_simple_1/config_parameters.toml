@@ -1,0 +1,70 @@
+[[parameters]]
+weight_node_score = -17
+selection_constant = 12
+track_cost = 7
+weight_division = -11
+division_constant = 2.5
+weight_child = 2.0
+weight_continuation = -1.0
+weight_edge_score = 0.35
+max_cell_move = 45
+val = true
+block_size = [ 15, 512, 512, 712,]
+context = [ 2, 100, 100, 100,]
+
+[[parameters]]
+weight_node_score = -17
+selection_constant = 9
+track_cost = 7
+weight_division = -11
+division_constant = 2.5
+weight_child = 1.0
+weight_continuation = -1.0
+weight_edge_score = 0.35
+max_cell_move = 45
+val = true
+block_size = [ 15, 512, 512, 712,]
+context = [ 2, 100, 100, 100,]
+
+[[parameters]]
+weight_node_score = -21
+selection_constant = 9
+track_cost = 7
+weight_division = -11
+division_constant = 2.5
+weight_child = 2.0
+weight_continuation = -1.0
+weight_edge_score = 0.35
+max_cell_move = 45
+val = true
+block_size = [ 15, 512, 512, 712,]
+context = [ 2, 100, 100, 100,]
+
+[[parameters]]
+weight_node_score = -13
+selection_constant = 12
+track_cost = 7
+weight_division = -8
+division_constant = 6.0
+weight_child = 1.0
+weight_continuation = -1.0
+weight_edge_score = 0.35
+max_cell_move = 45
+val = true
+block_size = [ 15, 512, 512, 712,]
+context = [ 2, 100, 100, 100,]
+
+[[parameters]]
+weight_node_score = -17
+selection_constant = 9
+track_cost = 7
+weight_division = -11
+division_constant = 6.0
+weight_child = 1.0
+weight_continuation = -1.0
+weight_edge_score = 0.35
+max_cell_move = 45
+val = true
+block_size = [ 15, 512, 512, 712,]
+context = [ 2, 100, 100, 100,]
+

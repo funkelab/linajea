@@ -1,0 +1,41 @@
+model = "config_example_model_minimal.toml"
+
+[general]
+logging = 20
+db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin?replicaSet=rsLinajea"
+seed = 42
+setup_dir = "example_simple_1"
+sparse = false
+
+[extract]
+edge_move_threshold = 45
+
+[solve]
+parameters = "config_parameters.toml"
+solver_type = "basic"
+
+[inference_data]
+checkpoint = 11
+cell_score_threshold = 0.2
+[inference_data.data_source]
+gt_db_name = "linajea_celegans_emb_fixed"
+voxel_size = [ 1, 5, 1, 1,]
+db_name = "linajea_celegans_20220725_134111b"
+[inference_data.data_source.datafile]
+filename = "/nrs/funke/hirschp/mskcc_emb"
+group = "volumes/raw_nested"
+[inference_data.data_source.roi]
+offset = [ 50, 0, 0, 0,]
+shape = [ 10, 205, 512, 512,]
+
+[evaluate.parameters]
+matching_threshold = 15
+
+
+[predict]
+use_swa = true
+[predict.normalization]
+type = "minmax"
+perc_min = "perc0_01"
+perc_max = "perc99_99"
+norm_bounds = [ 2000, 7500,]

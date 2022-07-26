@@ -1,0 +1,32 @@
+model = "config_example_model_minimal.toml"
+
+[general]
+logging = 20
+db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin?replicaSet=rsLinajea"
+setup_dir = "example_simple_1"
+sparse = false
+
+[train_data]
+[[train_data.data_sources]]
+[train_data.data_sources.datafile]
+filename = "/nrs/funke/hirschp/mskcc_emb3"
+group = "volumes/raw_nested"
+[train_data.data_sources.roi]
+offset = [ 50, 0, 0, 0,]
+shape = [ 10, 205, 512, 512,]
+[train_data.roi]
+offset = [ 50, 0, 0, 0,]
+shape = [ 10, 205, 512, 512,]
+
+[train]
+# radius for binary map -> *2 (in world units)
+# in which to draw movement vectors (not used if use_radius)
+object_radius = [ 0.1, 8.0, 8.0, 8.0,]
+# upper bound for dist cell moved between two frames (needed for context)
+move_radius = 25
+# size of cell indicator blobs
+# sigma for Gauss -> ~*4 (5 in z -> in 3 slices) (not used if use_radius)
+rasterize_radius = [ 0.1, 5.0, 3.0, 3.0,]
+max_iterations = 11
+checkpoint_stride = 10
+use_auto_mixed_precision = true
