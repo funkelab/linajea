@@ -66,7 +66,7 @@ class HistogramAugment(BatchFilter):
 
         raw = batch.arrays[self.array]
 
-        assert not self.z_section_wise or raw.spec.roi.dims() == 3, \
+        assert not self.z_section_wise or raw.spec.roi.dims == 3, \
             "If you specify 'z_section_wise', I expect 3D data."
         assert raw.data.dtype == np.float32 or raw.data.dtype == np.float64, \
             ("Intensity augmentation requires float types for the raw array "

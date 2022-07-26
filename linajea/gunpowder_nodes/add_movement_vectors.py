@@ -69,7 +69,7 @@ class AddMovementVectors(BatchFilter):
         points_roi = self.spec[self.points].roi
 
         if self.array_spec.voxel_size is None:
-            self.array_spec.voxel_size = Coordinate((1,)*points_roi.dims())
+            self.array_spec.voxel_size = Coordinate((1,)*points_roi.dims)
 
         if self.array_spec.dtype is None:
             self.array_spec.dtype = np.float32
@@ -87,7 +87,7 @@ class AddMovementVectors(BatchFilter):
     def prepare(self, request):
         context = np.ceil(self.object_radius).astype(int)
 
-        dims = self.array_spec.roi.dims()
+        dims = self.array_spec.roi.dims
         if len(context) == 1:
             context = context.repeat(dims)
 

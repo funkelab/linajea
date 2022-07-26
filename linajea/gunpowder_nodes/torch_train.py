@@ -111,7 +111,6 @@ class TorchTrainExt(Train):
         swa_every_it: bool = False,
         swa_start_it: int = None,
         swa_freq_it: int = None,
-        use_grad_norm: bool = False,
     ):
 
         super(TorchTrainExt, self).__init__(
@@ -128,7 +127,6 @@ class TorchTrainExt(Train):
         self.swa_every_it = swa_every_it
         self.swa_start_it = swa_start_it
         self.swa_freq_it = swa_freq_it
-        self.use_grad_norm = use_grad_norm
 
         self.current_step = 0
 

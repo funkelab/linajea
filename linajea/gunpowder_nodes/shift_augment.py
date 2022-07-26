@@ -64,7 +64,7 @@ class ShiftAugment(BatchFilter):
     def prepare(self, request):
         random.seed(request.random_seed)
 
-        self.ndim = request.get_total_roi().dims()
+        self.ndim = request.get_total_roi().dims
         assert self.shift_axis in range(self.ndim)
 
         try:
@@ -135,7 +135,7 @@ class ShiftAugment(BatchFilter):
                     self.lcm_voxel_size)
 
             input_data = array.data
-            ndims = array.spec.roi.dims()
+            ndims = array.spec.roi.dims
             logger.debug("Data has shape: %s" % str(input_data.shape))
             if input_data.ndim > ndims:
                 logger.debug("Multichannel data (%d channels)"

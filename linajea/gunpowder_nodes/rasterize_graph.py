@@ -148,7 +148,7 @@ class RasterizeGraph(BatchFilter):
         graph_roi = self.spec[self.graph].roi
 
         if self.array_spec.voxel_size is None:
-            self.array_spec.voxel_size = Coordinate((1,)*graph_roi.dims())
+            self.array_spec.voxel_size = Coordinate((1,)*graph_roi.dims)
 
         if self.array_spec.dtype is None:
             if self.settings.mode == 'ball' or self.settings.mode == "point":
@@ -172,7 +172,7 @@ class RasterizeGraph(BatchFilter):
         else:
             raise RuntimeError('unknown raster mode %s', self.settings.mode)
 
-        dims = self.array_spec.roi.dims()
+        dims = self.array_spec.roi.dims
         if len(context) == 1:
             context = context.repeat(dims)
 
