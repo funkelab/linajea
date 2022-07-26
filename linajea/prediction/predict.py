@@ -108,7 +108,7 @@ def predict(config):
                 interpolatable=True,
                 voxel_size=voxel_size)})
 
-    source = normalize(source, config, raw, data_config)
+    source = normalize(source, config.predict.normalization, raw, data_config)
 
     inputs = {
         'raw': raw

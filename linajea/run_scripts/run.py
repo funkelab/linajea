@@ -10,10 +10,11 @@ import time
 import attr
 import toml
 
-# import daisy
 from funlib.run import run
-from linajea.config import (TrackingConfig,
-                            maybe_fix_config_paths_to_machine_and_load)
+from linajea.config import (
+    TrackingConfig,
+    maybe_fix_config_paths_to_machine_and_load
+)
 
 logger = logging.getLogger(__name__)
 

@@ -47,6 +47,7 @@ if __name__ == "__main__":
 
     start_time = time.time()
     for inf_config in getNextInferenceData(args, is_evaluate=True):
-        linajea.evaluation.evaluate_setup(inf_config)
+        scores = linajea.evaluation.evaluate_setup(inf_config)
+        logger.info("scores: %s", scores.get_short_report())
     end_time = time.time()
     print_time(end_time - start_time)

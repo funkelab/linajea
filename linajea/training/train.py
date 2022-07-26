@@ -57,6 +57,8 @@ def train(config):
     _, trained_until = get_latest_checkpoint(checkpoint_basename)
     # training already done?
     if trained_until >= config.train.max_iterations:
+        logger.info(
+            "Model has already been trained for %s iterations", trained_until)
         return
 
     raw = gp.ArrayKey('RAW')
@@ -417,7 +419,6 @@ def train(config):
             swa_every_it=config.train.swa_every_it,
             swa_start_it=config.train.swa_start_it,
             swa_freq_it=config.train.swa_freq_it,
-            use_grad_norm=config.train.use_grad_norm,
             save_every=config.train.checkpoint_stride) +
 
         # visualize
@@ -531,7 +532,8 @@ def get_sources(config, raw, tracks, center_tracks, data_sources,
 
         file_source = file_source + \
             gp.Crop(raw, limit_to_roi)
-        file_source = normalize(file_source, config, raw, data_config)
+        file_source = normalize(
+            file_source, config.train.normalization, raw, data_config)
 
         file_source = file_source + \
             gp.Pad(raw, None)
@@ -570,7 +572,8 @@ def get_sources(config, raw, tracks, center_tracks, data_sources,
 
             file_sourceD = file_sourceD + \
                 gp.Crop(raw, limit_to_roi)
-            file_sourceD = normalize(file_sourceD, config, raw, data_config)
+            file_sourceD = normalize(
+                file_sourceD, config.train.normalization, raw, data_config)
 
             file_sourceD = file_sourceD + \
                 gp.Pad(raw, None)

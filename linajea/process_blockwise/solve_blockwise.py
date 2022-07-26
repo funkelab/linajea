@@ -1,6 +1,7 @@
 """Provides function to solve an ILP with a predefined set of constraints
 and a set of object and edge candidates.
 """
+from copy import deepcopy
 import logging
 import os
 import time
@@ -38,7 +39,8 @@ def solve_blockwise(linajea_config):
     linajea_config: TrackingConfig
         Configuration object
     """
-    parameters = linajea_config.solve.parameters
+    parameters = deepcopy(linajea_config.solve.parameters)
+    _verify_parameters(parameters)
     # block_size/context are identical for all parameters
     block_size = daisy.Coordinate(parameters[0].block_size)
     context = daisy.Coordinate(parameters[0].context)
@@ -127,18 +129,20 @@ def solve_blockwise(linajea_config):
         fit='overhang')
 
     success = daisy.run_blockwise([task])
-    if success:
-        # write all done to individual parameters and set
-        if len(param_names) > 1:
-            write_done_all_blocks(
-                step_name,
-                db_name,
-                db_host)
-        for name in param_names:
-            write_done_all_blocks(
-                name,
-                db_name,
-                db_host)
+    # TODO: Temporarily disabled due to bug in daisy, server returns True
+    # even if some blocks failed, as long as they have been processed.
+    # if success:
+    #     # write all done to individual parameters and set
+    #     if len(param_names) > 1:
+    #         write_done_all_blocks(
+    #             step_name,
+    #             db_name,
+    #             db_host)
+    #     for name in param_names:
+    #         write_done_all_blocks(
+    #             name,
+    #             db_name,
+    #             db_host)
     logger.info("Finished solving")
     return parameters_id if success else success
 
@@ -311,3 +315,16 @@ def write_struct_svm(solver, block_id, output_dir):
                 [f"{v}*{idx}"
                  for idx, v in constraint.get_coefficients().items()])
             f.write(f"{coeffs} {rel} {val}\n")
+
+def _verify_parameters(parameters):
+    block_size = parameters[0].block_size
+    context = parameters[0].context
+    for i in range(len(parameters)):
+        assert block_size == parameters[i].block_size, \
+            "%s not equal to %s" %\
+            (block_size, parameters[i].block_size)
+        assert context == parameters[i].context, \
+            "%s not equal to %s" %\
+            (context, parameters[i].context)
+        assert parameters[i].max_cell_move is not None, \
+            f"max_cell_move has to be set for parameter set {parameters[i]}"

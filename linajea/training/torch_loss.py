@@ -233,8 +233,6 @@ class LossWrapper(torch.nn.Module):
 
         # non-cropped
         if self.config.model.cell_indicator_weighted:
-            if isinstance(self.config.model.cell_indicator_weighted, bool):
-                self.config.model.cell_indicator_weighted = 0.00001
             cond = gt_cell_indicator < self.config.model.cell_indicator_cutoff
             weight = torch.where(cond,
                                  self.config.model.cell_indicator_weighted,

@@ -139,6 +139,10 @@ def track(graph, config, selected_key, frame_key='t',
             _edge_indicator_costs = get_default_edge_indicator_costs(
                 config, parameters)
         else:
+            assert (node_indicator_costs and
+                    edge_indicator_costs), (
+                        "Either set solve.solver_type or "
+                        "explicitly provide cost functions")
             _node_indicator_costs = node_indicator_costs(parameters,
                                                          track_graph)
             _edge_indicator_costs = edge_indicator_costs(parameters,

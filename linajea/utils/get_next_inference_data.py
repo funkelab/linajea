@@ -65,7 +65,7 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
     """
     config = maybe_fix_config_paths_to_machine_and_load(args.config)
     config = TrackingConfig(**config)
-    # print(config)
+
 
     if hasattr(args, "validation") and args.validation:
         inference_data = deepcopy(config.validate_data)
@@ -80,15 +80,16 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
     if hasattr(args, "checkpoint") and args.checkpoint > 0:
         checkpoints = [args.checkpoint]
 
-    max_cell_move = max(config.extract.edge_move_threshold.values())
-    for pid in range(len(config.solve.parameters)):
-        if config.solve.parameters[pid].max_cell_move is None:
-            assert max_cell_move is not None, (
-                "Please provide a max_cell_move value, either as "
-                "extract.edge_move_threshold or directly in the parameter "
-                "sets in solve.parameters! (What is the maximum distance that "
-                "a cell can move between two adjacent frames?)")
-            config.solve.parameters[pid].max_cell_move = max_cell_move
+    if config.solve.parameters is not None:
+        max_cell_move = max(config.extract.edge_move_threshold.values())
+        for pid in range(len(config.solve.parameters)):
+            if config.solve.parameters[pid].max_cell_move is None:
+                assert max_cell_move is not None, (
+                    "Please provide a max_cell_move value, either as "
+                    "extract.edge_move_threshold or directly in the parameter "
+                    "sets in solve.parameters! (What is the maximum distance  "
+                    "that a cell can move between two adjacent frames?)")
+                config.solve.parameters[pid].max_cell_move = max_cell_move
 
     os.makedirs("tmp_configs", exist_ok=True)
     if hasattr(args, "param_list_idx") and \
@@ -101,14 +102,14 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
         solve_parameters = deepcopy(config.solve.parameters[param_list_idx-1])
         config.solve.parameters = [solve_parameters]
     solve_parameters_sets = deepcopy(config.solve.parameters)
+
     for checkpoint in checkpoints:
         if hasattr(args, "val_param_id") and (is_solve or is_evaluate) and \
            args.val_param_id is not None:
             config = _fix_val_param_pid(args, config, checkpoint)
             solve_parameters_sets = deepcopy(config.solve.parameters)
-        if (hasattr(args, "param_id") and
-            (is_solve or is_evaluate) and
-            (args.param_id is not None or
+        if ((is_solve or is_evaluate) and
+            ((hasattr(args, "param_id") and (args.param_id is not None)) or
              (hasattr(args, "param_ids") and args.param_ids is not None))):
             config = _fix_param_pid(args, config, checkpoint, inference_data)
             solve_parameters_sets = deepcopy(config.solve.parameters)
@@ -134,7 +135,6 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
                 config = _fix_solve_roi(config)
 
             if is_evaluate:
-                print(solve_parameters_sets, len(solve_parameters_sets))
                 for solve_parameters in solve_parameters_sets:
                     solve_parameters = deepcopy(solve_parameters)
                     config.solve.parameters = [solve_parameters]

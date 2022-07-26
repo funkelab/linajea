@@ -26,6 +26,7 @@ logging.basicConfig(
         format='%(asctime)s %(name)s %(levelname)-8s %(message)s')
 logger = logging.getLogger(__name__)
 
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()

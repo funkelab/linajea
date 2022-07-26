@@ -130,7 +130,7 @@ def crop_to_factor(x, factor, kernel_sizes):
     return x
 
 
-def normalize(pipeline, config, raw, data_config=None):
+def normalize(pipeline, normalization, raw, data_config=None):
     """Add data normalization node to pipeline
 
     Args
@@ -138,8 +138,8 @@ def normalize(pipeline, config, raw, data_config=None):
     pipeline: gp.BatchFilter
         Gunpowder node/pipeline, typically a source node containing data
         that should be normalized
-    config: TrackingConfig
-        Configuration object used to determine which type of
+    normalization: NormalizeConfig
+        Normalization configuration object used to determine which type of
         normalization should be performed
     raw: gp.ArrayKey
         Key identifying which array to normalize
@@ -168,42 +168,42 @@ def normalize(pipeline, config, raw, data_config=None):
         normalize such that mean/median is at 0 and 1 std/mad is at -+1
         set perc_min/max tags for clipping beforehand
     """
-    if config.train.normalization is None or \
-       config.train.normalization.type == 'default':
+    if normalization is None or \
+       normalization.type == 'default':
         logger.info("default normalization")
         pipeline = pipeline + \
             gp.Normalize(raw,
                          factor=1.0/np.iinfo(data_config['stats']['dtype']).max
                          if data_config is not None else None)
-    elif config.train.normalization.type == 'minmax':
-        mn = config.train.normalization.norm_bounds[0]
-        mx = config.train.normalization.norm_bounds[1]
+    elif normalization.type == 'minmax':
+        mn = normalization.norm_bounds[0]
+        mx = normalization.norm_bounds[1]
         logger.info("minmax normalization %s %s", mn, mx)
         pipeline = pipeline + \
             Clip(raw, mn=mn/2, mx=mx*2) + \
             NormalizeLowerUpper(raw, lower=mn, upper=mx, interpolatable=False)
-    elif config.train.normalization.type == 'percminmax':
-        mn = data_config['stats'][config.train.normalization.perc_min]
-        mx = data_config['stats'][config.train.normalization.perc_max]
+    elif normalization.type == 'percminmax':
+        mn = data_config['stats'][normalization.perc_min]
+        mx = data_config['stats'][normalization.perc_max]
         logger.info("perc minmax normalization %s %s", mn, mx)
         pipeline = pipeline + \
             Clip(raw, mn=mn/2, mx=mx*2) + \
             NormalizeLowerUpper(raw, lower=mn, upper=mx)
-    elif config.train.normalization.type == 'mean':
+    elif normalization.type == 'mean':
         mean = data_config['stats']['mean']
         std = data_config['stats']['std']
-        mn = data_config['stats'][config.train.normalization.perc_min]
-        mx = data_config['stats'][config.train.normalization.perc_max]
+        mn = data_config['stats'][normalization.perc_min]
+        mx = data_config['stats'][normalization.perc_max]
         logger.info("mean normalization %s %s %s %s", mean, std, mn, mx)
         pipeline = pipeline + \
             Clip(raw, mn=mn, mx=mx) + \
             NormalizeAroundZero(raw, mapped_to_zero=mean,
                                 diff_mapped_to_one=std)
-    elif config.train.normalization.type == 'median':
+    elif normalization.type == 'median':
         median = data_config['stats']['median']
         mad = data_config['stats']['mad']
-        mn = data_config['stats'][config.train.normalization.perc_min]
-        mx = data_config['stats'][config.train.normalization.perc_max]
+        mn = data_config['stats'][normalization.perc_min]
+        mx = data_config['stats'][normalization.perc_max]
         logger.info("median normalization %s %s %s %s", median, mad, mn, mx)
         pipeline = pipeline + \
             Clip(raw, mn=mn, mx=mx) + \
@@ -211,5 +211,5 @@ def normalize(pipeline, config, raw, data_config=None):
                                 diff_mapped_to_one=mad)
     else:
         raise RuntimeError("invalid normalization method %s",
-                           config.train.normalization.type)
+                           normalization.type)
     return pipeline

@@ -11,7 +11,10 @@ import daisy
 from funlib.run import run
 
 from .daisy_check_functions import check_function
-from linajea.utils import construct_zarr_filename
+from linajea.utils import (
+    CandidateDatabase,
+    construct_zarr_filename
+)
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +153,13 @@ def predict_blockwise(linajea_config):
         fit='valid')
 
     daisy.run_blockwise([task])
+
+    cand_db = CandidateDatabase(
+        data.db_name,
+        linajea_config.general.db_host,
+        mode='r')
+    number_of_nodes = cand_db.database['nodes'].count_documents({})
+    logger.info("Extracted %s nodes", number_of_nodes)
 
 
 def predict_worker(linajea_config):
