@@ -52,4 +52,4 @@ class ExtractConfig:
     job = attr.ib(converter=ensure_cls(JobConfig),
                   default=attr.Factory(JobConfig))
     context = attr.ib(type=List[int], default=[2, 100, 100, 100])
-    use_mv_distance = attr.ib(type=bool, default=False)
+    use_mv_distance = attr.ib(type=bool, default=True)
