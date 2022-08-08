@@ -5,12 +5,10 @@ toml
 scipy
 pandas
 torch
-tensorflow==1.15
 zarr>=2.10.2
 sklearn
 -e git+https://github.com/funkelab/funlib.math#egg=funlib.math
 -e git+https://github.com/funkelab/funlib.run#egg=funlib.run
 -e git+https://github.com/funkelab/funlib.learn.torch#egg=funlib.learn.torch
--e git+https://github.com/funkelab/funlib.learn.tensorflow#egg=funlib.learn.tensorflow
--e git+https://github.com/funkey/gunpowder@6ffafcfdd3f7c7cdb61eedcb325814804dff4b2d#egg=gunpowder
+-e git+https://github.com/funkey/gunpowder@e6c914f764521cb6af93b86b984fb34776a80f30#egg=gunpowder
 -e git+https://github.com/funkelab/daisy@3d7826e7e4ab5844d55debac9bbb00b4e43a998b#egg=daisy
