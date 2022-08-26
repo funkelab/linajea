@@ -183,7 +183,7 @@ def predict_worker(linajea_config):
         linajea_config.path)
 
     if job.run_on == "local":
-        cmd = [command]
+        cmd = command.split()
     elif job.run_on == "lsf":
         cmd = run(
             command=command.split(" "),
@@ -206,5 +206,5 @@ def predict_worker(linajea_config):
     logger.info("Starting predict worker...")
     logger.info("Command: %s" % str(cmd))
 
-    subprocess.run(cmd, shell=True)
+    subprocess.run(cmd)
     logger.info("Predict worker finished")
