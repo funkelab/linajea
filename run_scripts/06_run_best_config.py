@@ -13,8 +13,7 @@ import attr
 import pandas as pd
 import toml
 
-from linajea.config import (maybe_fix_config_paths_to_machine_and_load,
-                            SolveParametersConfig,
+from linajea.config import (SolveParametersConfig,
                             TrackingConfig)
 from linajea.utils import (print_time,
                            getNextInferenceData)
@@ -41,8 +40,7 @@ if __name__ == "__main__":
                               'parameters/weights'))
     args = parser.parse_args()
 
-    config = maybe_fix_config_paths_to_machine_and_load(args.config)
-    config = TrackingConfig(**config)
+    config = TrackingConfig.from_file(args.config)
 
     results = {}
     args.validation = not args.swap_val_test

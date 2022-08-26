@@ -11,10 +11,7 @@ import attr
 import toml
 
 from funlib.run import run
-from linajea.config import (
-    TrackingConfig,
-    maybe_fix_config_paths_to_machine_and_load
-)
+from linajea.config import TrackingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -267,8 +264,7 @@ if __name__ == "__main__":
                         help='block after starting eval jobs?')
 
     args = parser.parse_args()
-    config = maybe_fix_config_paths_to_machine_and_load(args.config)
-    config = TrackingConfig(**config)
+    config = TrackingConfig.from_file(args.config)
     setup_dir = config.general.setup_dir
     script_dir = os.path.dirname(os.path.abspath(__file__))
     is_new_run = not os.path.exists(setup_dir)

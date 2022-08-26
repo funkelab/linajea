@@ -9,8 +9,7 @@ import logging
 import sys
 import time
 
-from linajea.config import (TrackingConfig,
-                            maybe_fix_config_paths_to_machine_and_load)
+from linajea.config import TrackingConfig
 from linajea.utils import print_time
 from linajea.training import train
 
@@ -24,8 +23,7 @@ if __name__ == "__main__":
                         help='path to config file')
     args = parser.parse_args()
 
-    config = maybe_fix_config_paths_to_machine_and_load(args.config)
-    config = TrackingConfig(**config)
+    config = TrackingConfig.from_file(args.config)
     logging.basicConfig(
         level=config.general.logging,
         handlers=[
