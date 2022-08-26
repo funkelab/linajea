@@ -120,9 +120,9 @@ class TrackingConfig:
                     sample.roi = DataROIConfig(**query_result["roi"])
                 except Exception as e:
                     raise RuntimeError(
-                        "please specify roi for data! not set and unable to "
-                        "determine it automatically based on given db "
-                        "(db_name) (%s)" % e)
+                        f"Please specify roi for data source {sample.datafile}"
+                        "! Not set and unable to determine it automatically "
+                        f"based on given db {sample.db_name} (Error: {e})")
 
         if self.predict is not None:
             if self.predict.normalization is None and \

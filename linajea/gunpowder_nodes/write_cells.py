@@ -199,7 +199,7 @@ class WriteCells(gp.BatchFilter):
                                min(index[3] + radius + 1, mv_max_x)):
                     c = gp.Coordinate((z, y, x))
                     c_with_time = gp.Coordinate((index[0], z, y, x))
-                    relative_pos = c - index[1:]
+                    relative_pos = c - gp.Coordinate(index[1:])
                     offset_relative_to_c = movement_vectors[
                             (Ellipsis,) + c_with_time]
                     offsets.append(offset_relative_to_c + relative_pos)

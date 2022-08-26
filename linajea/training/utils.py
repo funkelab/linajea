@@ -130,7 +130,7 @@ def crop_to_factor(x, factor, kernel_sizes):
     return x
 
 
-def normalize(pipeline, normalization, raw, data_config=None):
+def normalize(pipeline, normalization, raw, file_attrs=None):
     """Add data normalization node to pipeline
 
     Args
@@ -143,7 +143,7 @@ def normalize(pipeline, normalization, raw, data_config=None):
         normalization should be performed
     raw: gp.ArrayKey
         Key identifying which array to normalize
-    data_config: dict of str: int, optional
+    file_attrs: dict of str: int, optional
         Object containing statistics about data set that can be used
         to normalize data
 
@@ -155,26 +155,26 @@ def normalize(pipeline, normalization, raw, data_config=None):
     Notes
     -----
     Which normalization method should be used?
+    (Precomputed values could, e.g., be stored in data file attributes)
     None/default:
         [0,1] based on data type
     minmax:
-        normalize such that lower bound is at 0 and upper bound at 1
+        Normalize such that lower bound is at 0 and upper bound at 1
         clipping is less strict, some data might be outside of range
     percminmax:
-        use precomputed percentile values for minmax normalization;
-        precomputed values are stored in data_config file that has to
-        be supplied; set perc_min/max to tag to be used
+        Use (precomputed) percentile values for minmax normalization.
+        Set perc_min/max to tag to be used
     mean/median
-        normalize such that mean/median is at 0 and 1 std/mad is at -+1
-        set perc_min/max tags for clipping beforehand
+        Normalize such that (precomputed) mean/median is at 0 and 1 std/mad is
+        at -+1. Set perc_min/max tags for clipping beforehand.
     """
     if normalization is None or \
        normalization.type == 'default':
         logger.info("default normalization")
         pipeline = pipeline + \
             gp.Normalize(raw,
-                         factor=1.0/np.iinfo(data_config['stats']['dtype']).max
-                         if data_config is not None else None)
+                         factor=1.0/np.iinfo(file_attrs['stats']['dtype']).max
+                         if file_attrs is not None else None)
     elif normalization.type == 'minmax':
         mn = normalization.norm_bounds[0]
         mx = normalization.norm_bounds[1]
@@ -183,27 +183,27 @@ def normalize(pipeline, normalization, raw, data_config=None):
             Clip(raw, mn=mn/2, mx=mx*2) + \
             NormalizeLowerUpper(raw, lower=mn, upper=mx, interpolatable=False)
     elif normalization.type == 'percminmax':
-        mn = data_config['stats'][normalization.perc_min]
-        mx = data_config['stats'][normalization.perc_max]
+        mn = file_attrs['stats'][normalization.perc_min]
+        mx = file_attrs['stats'][normalization.perc_max]
         logger.info("perc minmax normalization %s %s", mn, mx)
         pipeline = pipeline + \
             Clip(raw, mn=mn/2, mx=mx*2) + \
             NormalizeLowerUpper(raw, lower=mn, upper=mx)
     elif normalization.type == 'mean':
-        mean = data_config['stats']['mean']
-        std = data_config['stats']['std']
-        mn = data_config['stats'][normalization.perc_min]
-        mx = data_config['stats'][normalization.perc_max]
+        mean = file_attrs['stats']['mean']
+        std = file_attrs['stats']['std']
+        mn = file_attrs['stats'][normalization.perc_min]
+        mx = file_attrs['stats'][normalization.perc_max]
         logger.info("mean normalization %s %s %s %s", mean, std, mn, mx)
         pipeline = pipeline + \
             Clip(raw, mn=mn, mx=mx) + \
             NormalizeAroundZero(raw, mapped_to_zero=mean,
                                 diff_mapped_to_one=std)
     elif normalization.type == 'median':
-        median = data_config['stats']['median']
-        mad = data_config['stats']['mad']
-        mn = data_config['stats'][normalization.perc_min]
-        mx = data_config['stats'][normalization.perc_max]
+        median = file_attrs['stats']['median']
+        mad = file_attrs['stats']['mad']
+        mn = file_attrs['stats'][normalization.perc_min]
+        mx = file_attrs['stats'][normalization.perc_max]
         logger.info("median normalization %s %s %s %s", median, mad, mn, mx)
         pipeline = pipeline + \
             Clip(raw, mn=mn, mx=mx) + \

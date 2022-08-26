@@ -8,7 +8,7 @@ from gunpowder import (Node, Coordinate, Batch, BatchProvider,
                        Roi, GraphSpec, Graph)
 from gunpowder.profiling import Timing
 
-from linajea.utils import parse_tracks_file
+from linajea.utils import parse_tracks_file_for_tracks_source
 
 logger = logging.getLogger(__name__)
 
@@ -40,26 +40,10 @@ class TrackNode(Node):
 class TracksSource(BatchProvider):
     '''Gunpowder source node: read tracks of points from a csv file.
 
-    If possible, this node uses the header of the file to determine values.
-    If present, a header must have the following required fields:
-        t
-        z
-        y
-        x
-        cell_id
-        parent_id
-        track_id
-    And these optional fields:
-        radius
-        name
-        div_state
+    Notes:
 
-    If there is no header, it is assumed that the points are represented
-    with values in the following order:
-
-        t, z, y, x, point_id, parent_id, track_id, <radius>, <other values>
-
-    where ``parent_id`` can be -1 to indicate no parent.
+        Check `utils/handle_tracks_file.py:_load_csv_to_dict` for more
+        information on the required format of the file.
 
     Args:
 
@@ -82,10 +66,27 @@ class TracksSource(BatchProvider):
             An optional scaling to apply to the coordinates of the points read
             from the CSV file. This is useful if the points refer to voxel
             positions to convert them to world units.
+
+        use_radius (Boolean or dict int: int)
+
+            If True, use the radii information contained in the CSV file.
+            If a dict, the keys refer to (sparse) frame indices and the values
+            to radii; assign to each cell the radius associated with the next
+            larger frame index, e.g. `{30: 15, 50: 7}`, all cells before frame
+            30 get radius 15 and all cells after 30 but before 50 get radius 7.
+
+        attr_filter (dict)
+            Only consider cells for the `center_tracks` Graph that have
+            attr=value set for each element in attr_filter.
     '''
 
-    def __init__(self, filename, points, points_spec=None, scale=1.0,
-                 use_radius=False):
+    def __init__(self,
+                 filename,
+                 points,
+                 points_spec=None,
+                 scale=1.0,
+                 use_radius=False,
+                 attr_filter={}):
 
         self.filename = filename
         self.points = points
@@ -95,6 +96,7 @@ class TracksSource(BatchProvider):
             self.use_radius = {int(k): v for k, v in use_radius.items()}
         else:
             self.use_radius = use_radius
+        self.attr_filter = attr_filter
         self.locations = None
         self.track_info = None
 
@@ -170,10 +172,11 @@ class TracksSource(BatchProvider):
 
     def _read_points(self):
         roi = self.points_spec.roi if self.points_spec is not None else None
-        self.locations, self.track_info = parse_tracks_file(
+        self.locations, self.track_info = parse_tracks_file_for_tracks_source(
             self.filename,
             scale=self.scale,
-            limit_to_roi=roi)
+            limit_to_roi=roi,
+            attr_filter=self.attr_filter)
         for location, track_info in zip(self.locations,
                                         self.track_info):
             track_info["attrs"]["radius"] = self._set_point_radius(location,

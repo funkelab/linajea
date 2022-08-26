@@ -27,15 +27,15 @@ class _DataConfig():
         List of data sources, can also only have a single element
     voxel_size: list of int, optional
     roi: DataROIConfig, optional
-    group: str, optional
-        voxel_size, roi and group can be set on the data source level
+    array: str, optional
+        voxel_size, roi and array can be set on the data source level
         and on the data set level. If set on the data set level, they
         the same values are used for all data sources
     """
     data_sources = attr.ib(converter=ensure_cls_list(DataSourceConfig))
     voxel_size = attr.ib(type=List[int], default=None)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
-    group = attr.ib(type=str, default=None)
+    array = attr.ib(type=str, default=None)
 
     def __attrs_post_init__(self):
         """Validate the supplied parameters and try to fix missing ones
@@ -48,7 +48,7 @@ class _DataConfig():
         The ROI cannot be larger than the ROI of the data file
         The voxel size has to be set.
         If it is not set, do the same as for the ROI
-        The group/array to be used has to be set.
+        The array to be used has to be set.
         If it is not set, do the same as for the ROI
 
         The voxel size has to be identical for all data sources
@@ -75,10 +75,10 @@ class _DataConfig():
                     self.voxel_size = d.voxel_size
                 else:
                     d.voxel_size = self.voxel_size
-            if d.datafile.group is None:
-                if self.group is None:
-                    raise ValueError("no {group} supplied for data source")
-                d.datafile.group = self.group
+            if d.datafile.array is None:
+                if self.array is None:
+                    raise ValueError("no {array} supplied for data source")
+                d.datafile.array = self.array
 
         assert all(ds.voxel_size == self.data_sources[0].voxel_size
                    for ds in self.data_sources), \
@@ -112,6 +112,17 @@ class TestDataTrackingConfig(_DataConfig):
     """
     checkpoint = attr.ib(type=int, default=None)
     cell_score_threshold = attr.ib(type=float, default=None)
+
+    def __attrs_post_init__(self):
+        """Post-Init verification
+
+        Exclude-times only supported for training
+        """
+        super().__attrs_post_init__()
+
+        for ds in self.data_sources:
+            assert not ds.exclude_times, (
+                "exclude_times only supported for training")
 
 
 @attr.s(kw_only=True)
@@ -148,6 +159,9 @@ class InferenceDataTrackingConfig():
         will be thrown later in the pipeline.
         """
         d = self.data_source
+        assert not d.exclude_times, (
+            "exclude_times only supported for training")
+
         if d.datafile is not None:
             if d.voxel_size is None:
                 d.voxel_size = d.datafile.file_voxel_size
@@ -172,3 +186,14 @@ class ValidateDataTrackingConfig(_DataConfig):
     """
     checkpoints = attr.ib(type=List[int], default=[None])
     cell_score_threshold = attr.ib(type=float, default=None)
+
+    def __attrs_post_init__(self):
+        """Post-Init verification
+
+        Exclude-times only supported for training
+        """
+        super().__attrs_post_init__()
+
+        for ds in self.data_sources:
+            assert not ds.exclude_times, (
+                "exclude_times only supported for training")

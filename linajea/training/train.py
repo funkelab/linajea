@@ -472,53 +472,21 @@ def get_sources(config, raw, tracks, center_tracks, data_sources,
     """
     sources = []
     for ds in data_sources:
-        d = ds.datafile.filename
+        filename_data = ds.datafile.filename
+        filename_tracks = ds.tracksfile
+        file_attrs = daisy.open_ds(
+            filename_data, ds.datafile.array, 'r').data.attrs
         voxel_size = gp.Coordinate(ds.voxel_size)
-        if not os.path.isdir(d):
-            logger.info("trimming path %s", d)
-            d = os.path.dirname(d)
-        logger.info("loading data %s (val: %s)", d, val)
-        # set files to use, use data_config.toml if it exists
-        # otherwise check for information in config object
-        if os.path.isfile(os.path.join(d, "data_config.toml")):
-            data_config = load_config(os.path.join(d, "data_config.toml"))
-            try:
-                filename_data = os.path.join(
-                    d, data_config['general']['data_file'])
-            except KeyError:
-                filename_data = os.path.join(
-                    d, data_config['general']['zarr_file'])
-            filename_tracks = os.path.join(
-                d, data_config['general']['tracks_file'])
-            if config.train.augment.divisions != 0.0:
-                try:
-                    filename_divisions = os.path.join(
-                        d, data_config['general']['divisions_file'])
-                except KeyError:
-                    logger.warning("Cannot find divisions_file in data_config,"
-                                   "falling back to using tracks_file"
-                                   "(usually ok unless they are not included "
-                                   "and there is a separate file containing "
-                                   "the divisions)")
-                    filename_divisions = os.path.join(
-                        d, data_config['general']['tracks_file'])
-            filename_daughters = os.path.join(
-                d, data_config['general']['daughter_cells_file'])
-        else:
-            data_config = None
-            filename_data = d
-            filename_tracks = ds.tracksfile
-            filename_divisions = ds.divisionsfile
-            filename_daughters = ds.daughtersfile
-        logger.info("creating source: %s (%s, %s, %s), divisions?: %s",
-                    filename_data, ds.datafile.group,
-                    filename_tracks, filename_daughters,
+        logger.info("loading data %s (val: %s)", filename_data, val)
+        logger.info("creating source: %s (%s, %s), divisions?: %s",
+                    filename_data, ds.datafile.array,
+                    filename_tracks,
                     config.train.augment.divisions)
         limit_to_roi = gp.Roi(offset=ds.roi.offset, shape=ds.roi.shape)
         logger.info("limiting to roi: %s", limit_to_roi)
 
         datasets = {
-            raw: ds.datafile.group
+            raw: ds.datafile.array
         }
         array_specs = {
             raw: gp.ArraySpec(
@@ -533,7 +501,7 @@ def get_sources(config, raw, tracks, center_tracks, data_sources,
         file_source = file_source + \
             gp.Crop(raw, limit_to_roi)
         file_source = normalize(
-            file_source, config.train.normalization, raw, data_config)
+            file_source, config.train.normalization, raw, file_attrs)
 
         file_source = file_source + \
             gp.Pad(raw, None)
@@ -552,7 +520,6 @@ def get_sources(config, raw, tracks, center_tracks, data_sources,
                 file_source,
                 tracks,
                 center_tracks,
-                filename_tracks,
                 filename_tracks,
                 limit_to_roi,
                 use_radius=config.train.use_radius) +
@@ -573,7 +540,7 @@ def get_sources(config, raw, tracks, center_tracks, data_sources,
             file_sourceD = file_sourceD + \
                 gp.Crop(raw, limit_to_roi)
             file_sourceD = normalize(
-                file_sourceD, config.train.normalization, raw, data_config)
+                file_sourceD, config.train.normalization, raw, file_attrs)
 
             file_sourceD = file_sourceD + \
                 gp.Pad(raw, None)
@@ -583,10 +550,10 @@ def get_sources(config, raw, tracks, center_tracks, data_sources,
                     file_sourceD,
                     tracks,
                     center_tracks,
-                    filename_divisions,
-                    filename_daughters,
+                    filename_tracks,
                     limit_to_roi,
-                    use_radius=config.train.use_radius) +
+                    use_radius=config.train.use_radius,
+                    attr_filter={"div_state": 2}) +
                 random_location(
                     *args,
                     ensure_nonempty=center_tracks,
@@ -608,33 +575,66 @@ def merge_sources(
         raw,
         tracks,
         center_tracks,
-        track_file,
-        center_cell_file,
+        csv_tracks_file,
         roi,
         scale=1.0,
-        use_radius=False
+        use_radius=False,
+        attr_filter={}
         ):
     """Create two Track/Point sources, one with a smaller Roi.
     Goal: During sampling a random location will be selected such that
     at least one point is within the smaller Roi, but all points within
     the larger Roi will be included.
+
+    Args:
+    -----
+    raw: gp.ArrayKey
+        Represents a gp.Array that will contain the raw image data
+    tracks: gp.GraphKey
+        Represents a gp.Graph that will contain the points of all cells in
+        the input ROI
+    center_tracks: gp.GraphKey
+        Represents a gp.Graph with a slightly smaller ROI than `tracks`.
+        In each iteration select a random location such that at least one
+        cell lies in this ROI (to avoid having only a single cell right on
+        the border of the larger ROI that might get cropped in later stages)
+    csv_tracks_file: Path
+        Load the tracks from this file. Check
+        `utils/handle_tracks_file.py:_load_csv_to_dict` for more information
+        on the required format of the file.
+    roi: ROI
+        Restrict data to this ROI
+    scale: scalar or array-like
+        An optional scaling to apply to the coordinates of the points read
+        from the CSV file. This is useful if the points refer to voxel
+        positions to convert them to world units.
+    use_radius: Boolean or dict int: int
+        If True, use the radii information contained in the CSV file.
+        If a dict, the keys refer to (sparse) frame indices and the values to
+        radii; assign to each cell the radius associated with the next larger
+        frame index, e.g. `{30: 15, 50: 7}`, all cells before frame 30 get
+        radius 15 and all cells after 30 but before 50 get radius 7.
+    attr_filter: dict
+        Only consider cells for the `center_tracks` Graph that have
+        attr=value set for each element in attr_filter.
     """
     return (
         (raw,
          # tracks
          TracksSource(
-             track_file,
+             csv_tracks_file,
              tracks,
              points_spec=gp.GraphSpec(roi=roi),
              scale=scale,
              use_radius=use_radius),
          # center tracks
          TracksSource(
-             center_cell_file,
+             csv_tracks_file,
              center_tracks,
              points_spec=gp.GraphSpec(roi=roi),
              scale=scale,
-             use_radius=use_radius),
+             use_radius=use_radius,
+             attr_filter=attr_filter),
          ) +
         gp.MergeProvider() +
         # not None padding works in combination with ensure_nonempty in

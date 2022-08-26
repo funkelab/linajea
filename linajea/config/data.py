@@ -41,70 +41,27 @@ class DataFileConfig:
     ----------
     filename: str
         Path to data file/directory
-    group: str
-        Which array/group in file to use (for n5/zarr/hdf)
+    array: str
+        Which array in file to use (for n5/zarr/hdf)
     file_roi: DataROIConfig
         Size of data/ROI contained in file, determined automatically
     file_voxel_size: list of int
         Voxel size of data in file, determined automatically
     """
     filename = attr.ib(type=str)
-    group = attr.ib(type=str, default=None)
+    array = attr.ib(type=str, default=None)
     file_roi = attr.ib(default=None)
     file_voxel_size = attr.ib(default=None)
 
     def __attrs_post_init__(self):
-        """Read voxel size and ROI from file
-
-        If n5/zarr, info should be contained in meta data.
-        Otherwise location should contain a data_config.toml file with
-        the respective information.
-
-        Notes
-        -----
-        Example for data_config.toml file:
-        [general]
-        zarr_file = "emb.zarr"
-        mask_file = "emb_mask.hdf"
-        shape = [425, 41, 512, 512]
-        resolution = [1, 5, 1, 1]
-        offset = [0, 0, 0, 0]
-        tracks_file = "mskcc_emb_tracks.txt"
-        daughter_cells_file = "mskcc_emb_tracks_daughters.txt"
-
-        [stats]
-        dtype = "uint16"
-        min = 1874
-        max = 655535
+        """Read voxel size, ROI and attributes from file
         """
-        if os.path.splitext(self.filename)[1] in (".n5", ".zarr"):
-            dataset = daisy.open_ds(self.filename, self.group)
+        dataset = daisy.open_ds(self.filename, self.array)
 
-            self.file_voxel_size = dataset.voxel_size
-            self.file_roi = DataROIConfig(
-                offset=dataset.roi.get_offset(),
-                shape=dataset.roi.get_shape())  # type: ignore
-        else:
-            filename = self.filename
-            is_polar = "polar" in filename
-            if is_polar:
-                filename = filename.replace("_polar", "")
-            if os.path.isdir(filename):
-                data_config = load_config(os.path.join(filename,
-                                                       "data_config.toml"))
-            else:
-                data_config = load_config(
-                    os.path.join(os.path.dirname(filename),
-                                 "data_config.toml"))
-            self.file_voxel_size = data_config['general']['resolution']
-            self.file_roi = DataROIConfig(
-                offset=data_config['general']['offset'],
-                shape=[s*v for s, v in zip(
-                    data_config['general']['shape'],
-                    self.file_voxel_size)])  # type: ignore
-            if self.group is None:
-                self.group = data_config['general']['group']
-
+        self.file_voxel_size = dataset.voxel_size
+        self.file_roi = DataROIConfig(
+            offset=dataset.roi.get_offset(),
+            shape=dataset.roi.get_shape())  # type: ignore
 
 @attr.s(kw_only=True)
 class DataSourceConfig:
@@ -123,12 +80,6 @@ class DataSourceConfig:
         Describes file data source
     tracksfile: str
         File containing the object tracks used during training
-    divisionsfile, daughtersfile: str, optional
-        During training, divisions can optionally be sampled more often.
-        If enabled in training configuration, tracks in `daughtersfile`
-        are sampled for this purpose. If `divisionsfile` is set, it should
-        contain the cells in the temporal context around each entry in
-        `daughtersfile`, otherwise `tracksfile` is used.
     db_name: str
         Database to be used as a data source for tracking or as a
         destination for prediction. If not set during prediction, name
@@ -150,8 +101,6 @@ class DataSourceConfig:
     """
     datafile = attr.ib(converter=ensure_cls(DataFileConfig), default=None)
     tracksfile = attr.ib(type=str, default=None)
-    divisionsfile = attr.ib(type=str, default=None)
-    daughtersfile = attr.ib(type=str, default=None)
     db_name = attr.ib(type=str, default=None)
     gt_db_name = attr.ib(type=str, default=None)
     gt_db_name_polar = attr.ib(type=str, default=None)

@@ -66,49 +66,38 @@ def predict(config):
         chunk_request.add(movement_vectors, output_size)
 
     sample = config.inference_data.data_source.datafile.filename
-    if os.path.isfile(os.path.join(sample, "data_config.toml")):
-        data_config = load_config(
-            os.path.join(sample, "data_config.toml"))
-        try:
-            filename_data = os.path.join(
-                sample, data_config['general']['data_file'])
-        except KeyError:
-            filename_data = os.path.join(
-                sample, data_config['general']['zarr_file'])
-        filename_mask = os.path.join(
-            sample,
-            data_config['general'].get('mask_file', os.path.splitext(
-                filename_data)[0] + "_mask.hdf"))
-        z_range = data_config['general']['z_range']
-        if z_range[1] < 0:
-            z_range[1] = data_config['general']['shape'][1] - z_range[1]
-        volume_shape = data_config['general']['shape']
-    else:
-        data_config = None
-        filename_data = sample
-        filename_mask = sample + "_mask.hdf"
-        z_range = None
-        volume_shape = daisy.open_ds(
-            filename_data,
-            config.inference_data.data_source.datafile.group).roi.get_shape()
+    sample_attrs = daisy.open_ds(
+        sample,
+        config.inference_data.data_source.datafile.array, 'r').data.attrs
+    sample_mask = os.path.splitext(sample)[0] + "_mask.hdf"
+    sample_shape = daisy.open_ds(
+        sample,
+        config.inference_data.data_source.datafile.array).roi.get_shape()
 
-    if os.path.isfile(filename_mask):
-        with h5py.File(filename_mask, 'r') as f:
+    if "z_range" in sample_attrs:
+        z_range = sample_attrs['z_range']
+        if z_range[1] < 0:
+            z_range[1] = sample_shape[1] - z_range[1]
+    else:
+        z_range = None
+
+    if os.path.isfile(sample_mask):
+        with h5py.File(sample_mask, 'r') as f:
             mask = np.array(f['volumes/mask'])
     else:
         mask = None
 
     source = gp.ZarrSource(
-        filename_data,
+        sample,
         datasets={
-            raw: config.inference_data.data_source.datafile.group
+            raw: config.inference_data.data_source.datafile.array
         },
         array_specs={
             raw: gp.ArraySpec(
                 interpolatable=True,
                 voxel_size=voxel_size)})
 
-    source = normalize(source, config.predict.normalization, raw, data_config)
+    source = normalize(source, config.predict.normalization, raw, sample_attrs)
 
     inputs = {
         'raw': raw
@@ -171,7 +160,7 @@ def predict(config):
                 db_name=config.inference_data.data_source.db_name,
                 mask=mask,
                 z_range=z_range,
-                volume_shape=volume_shape)
+                volume_shape=sample_shape)
             )
         cb.append(lambda b: write_done(
             b,
