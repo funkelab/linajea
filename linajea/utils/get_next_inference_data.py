@@ -80,7 +80,8 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
         checkpoints = [args.checkpoint]
 
     if config.solve.parameters is not None:
-        max_cell_move = max(config.extract.edge_move_threshold.values())
+        max_cell_move = (max(config.extract.edge_move_threshold.values())
+                         if config.extract is not None else None)
         for pid in range(len(config.solve.parameters)):
             if config.solve.parameters[pid].max_cell_move is None:
                 assert max_cell_move is not None, (
