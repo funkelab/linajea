@@ -514,6 +514,7 @@ def get_sources(config, raw, tracks, center_tracks, data_sources,
             args = [raw]
 
         point_balance_radius = config.train.augment.point_balance_radius
+        padding = [0] + [s//2 for s in config.model.train_input_shape[1:]]
         track_source = (
             merge_sources(
                 file_source,
@@ -521,7 +522,8 @@ def get_sources(config, raw, tracks, center_tracks, data_sources,
                 center_tracks,
                 filename_tracks,
                 limit_to_roi,
-                use_radius=config.train.use_radius) +
+                use_radius=config.train.use_radius,
+                padding=padding) +
             random_location(
                 *args,
                 ensure_nonempty=center_tracks,
@@ -552,6 +554,7 @@ def get_sources(config, raw, tracks, center_tracks, data_sources,
                     filename_tracks,
                     limit_to_roi,
                     use_radius=config.train.use_radius,
+                    padding=padding,
                     attr_filter={"div_state": 2}) +
                 random_location(
                     *args,
@@ -578,6 +581,7 @@ def merge_sources(
         roi,
         scale=1.0,
         use_radius=False,
+        padding=(0, 0, 0, 0),
         attr_filter={}
         ):
     """Create two Track/Point sources, one with a smaller Roi.
@@ -639,6 +643,6 @@ def merge_sources(
         # not None padding works in combination with ensure_nonempty in
         # random_location as always a random point is picked and the roi
         # shifted such that that point is inside
-        gp.Pad(tracks, gp.Coordinate((0, 500, 500, 500))) +
-        gp.Pad(center_tracks, gp.Coordinate((0, 500, 500, 500)))
+        gp.Pad(tracks, gp.Coordinate(padding)) +
+        gp.Pad(center_tracks, gp.Coordinate(padding))
     )
