@@ -10,9 +10,10 @@ import daisy
 import pylp
 
 from linajea.utils import CandidateDatabase
-from .daisy_check_functions import (
-        check_function, write_done,
-        check_function_all_blocks, write_done_all_blocks)
+from .daisy_check_functions import (  # noqa: F401
+    check_function, write_done,
+    check_function_all_blocks,
+    write_done_all_blocks)
 from linajea.tracking import track, greedy_track
 
 logger = logging.getLogger(__name__)

@@ -3,6 +3,8 @@
 import logging
 import os
 
+import numpy as np
+
 from gunpowder.array import ArrayKey, Array
 from gunpowder.array_spec import ArraySpec
 from gunpowder.ext import torch, NoSuchModule
@@ -403,7 +405,9 @@ class TorchTrainExt(Train):
     def _collect_provided_inputs(self, batch):
 
         return self._collect_provided_arrays(
-            {k: v for k, v in self.inputs.items() if k not in self.loss_inputs}, batch
+            {k: v for k, v in self.inputs.items()
+             if k not in self.loss_inputs},
+            batch
         )
 
     def _collect_provided_loss_inputs(self, batch):
@@ -412,13 +416,15 @@ class TorchTrainExt(Train):
             self.loss_inputs, batch, expect_missing_arrays=True
         )
 
-    def _collect_provided_arrays(self, reference, batch, expect_missing_arrays=False):
+    def _collect_provided_arrays(
+            self, reference, batch, expect_missing_arrays=False):
 
         arrays = {}
 
         for array_name, array_key in reference.items():
             if isinstance(array_key, ArrayKey):
-                msg = f"batch does not contain {array_key}, array {array_name} will not be set"
+                msg = (f"batch does not contain {array_key}, array "
+                       f"{array_name} will not be set")
                 if array_key in batch.arrays:
                     arrays[array_name] = batch.arrays[array_key].data
                 elif not expect_missing_arrays:

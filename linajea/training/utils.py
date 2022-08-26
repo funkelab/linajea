@@ -66,7 +66,6 @@ def crop(x, shape):
         slice(o, o + s)
         for o, s in zip(offset, x_target_size))
 
-    # print(x.size(), shape, slices)
     return x[slices]
 
 

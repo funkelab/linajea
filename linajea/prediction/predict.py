@@ -13,8 +13,7 @@ import torch
 import daisy
 import gunpowder as gp
 
-from linajea.config import (load_config,
-                            TrackingConfig)
+from linajea.config import TrackingConfig
 from linajea.gunpowder_nodes import (
     TorchPredictExt,
     WriteCells)

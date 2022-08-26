@@ -8,6 +8,7 @@ import random
 
 import numpy as np
 
+
 @attr.s(kw_only=True)
 class GeneralConfig:
     """Defines general configuration parameters

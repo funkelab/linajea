@@ -66,7 +66,6 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
     config = maybe_fix_config_paths_to_machine_and_load(args.config)
     config = TrackingConfig(**config)
 
-
     if hasattr(args, "validation") and args.validation:
         inference_data = deepcopy(config.validate_data)
         checkpoints = config.validate_data.checkpoints

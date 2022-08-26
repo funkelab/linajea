@@ -6,14 +6,12 @@ performed it can alternatively be defined by a database (db_name).
 Otherwise the database will be uniquely identified based on file and
 prediction parameters.
 """
-import os
 from typing import List
 
 import attr
 import daisy
 
 from .utils import (ensure_cls,
-                    load_config,
                     _check_nested_nd_shape,
                     _list_int_list_validator)
 
@@ -62,6 +60,7 @@ class DataFileConfig:
         self.file_roi = DataROIConfig(
             offset=dataset.roi.get_offset(),
             shape=dataset.roi.get_shape())  # type: ignore
+
 
 @attr.s(kw_only=True)
 class DataSourceConfig:

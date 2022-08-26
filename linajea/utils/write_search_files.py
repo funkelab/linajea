@@ -103,7 +103,6 @@ def write_search_configs(config, random_search, output_file, num_configs=None):
 
     search_configs = {"parameters": search_configs}
     with open(output_file, 'w') as f:
-        print(search_configs)
         toml.dump(search_configs, f)
 
 

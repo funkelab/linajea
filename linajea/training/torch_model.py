@@ -2,7 +2,6 @@
 """
 import json
 import logging
-import os
 
 import torch
 
@@ -89,17 +88,13 @@ class UnetModelWrapper(torch.nn.Module):
         # breaks training, cell_ind -> 0
         # activation func relu
         def init_weights(m):
-            # print("init", m)
             if isinstance(m, torch.nn.Conv3d):
-                # print("init")
-                # torch.nn.init.xavier_uniform(m.weight)
                 torch.nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
                 m.bias.data.fill_(0.0)
 
         # activation func sigmoid
         def init_weights_sig(m):
             if isinstance(m, torch.nn.Conv3d):
-                # torch.nn.init.xavier_uniform(m.weight)
                 torch.nn.init.xavier_uniform_(m.weight)
                 m.bias.data.fill_(0.0)
 
@@ -207,8 +202,6 @@ class UnetModelWrapper(torch.nn.Module):
 
         raw_cropped = crop(raw, output_shape_2)
         raw_cropped = torch.reshape(raw_cropped, output_shape_2)
-        # print(torch.min(raw), torch.max(raw))
-        # print(torch.min(raw_cropped), torch.max(raw_cropped))
 
         if self.config.model.train_only_cell_indicator:
             return cell_indicator, maxima, raw_cropped

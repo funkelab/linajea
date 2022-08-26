@@ -4,13 +4,13 @@ Create model and train
 """
 import logging
 import time
-import os
 
 import numpy as np
 import torch
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
+import daisy
 import gunpowder as gp
 
 from linajea.gunpowder_nodes import (
@@ -27,7 +27,6 @@ from linajea.gunpowder_nodes import (
     TorchTrainExt,
     TrainValProvider,
     ZoomAugment)
-from linajea.config import load_config
 
 from . import torch_model
 from . import torch_loss

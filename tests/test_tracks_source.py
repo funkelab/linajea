@@ -179,8 +179,7 @@ class TracksSourceTestCase(unittest.TestCase):
 
         expected_movement_vectors_x = np.zeros(shape=(1, 4, 4, 4))
         expected_movement_vectors_x[0, 1, 2, 3] = -3.0
-        # print("MASK")
-        # print(batch[mask].data)
+
         self.assertListEqual(expected_mask.tolist(), batch[mask].data.tolist())
 
         movement_vectors = batch[mv_array].data

@@ -6,7 +6,6 @@ Writes logging output to stdout and run.log file
 """
 import argparse
 import logging
-import os
 import sys
 import time
 
