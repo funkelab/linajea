@@ -4,7 +4,7 @@ Linajea
 Publications
 --------------
  - TODO link to nbt paper
- - TODO link to miccai paper
+ - [Arxiv/MICCAI2022](https://arxiv.org/abs/2208.11467)
 
 ![Linajea](./README.assets/pipeline.png "Linajea Pipeline")
 
@@ -17,10 +17,13 @@ Installation
 --------------
 ```
 conda create --name linajea
+conda activate linajea
+conda install python
 pip install numpy cython
 pip install -r requirements.txt
 conda install -c funkey pylp
 pip install -e .
+conda install ipykernel # for the example jupyter notebooks
 ```
 
 Versioning
