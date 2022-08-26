@@ -139,14 +139,14 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
                     solve_parameters = deepcopy(solve_parameters)
                     config.solve.parameters = [solve_parameters]
                     config = _fix_solve_roi(config)
-                    yield config
+                    yield deepcopy(config)
                 continue
 
             config.path = os.path.join("tmp_configs", "config_{}.toml".format(
                 time.time()))
             with open(config.path, 'w') as f:
                 toml.dump(attr.asdict(config), f)
-            yield config
+            yield deepcopy(config)
 
 
 def _fix_val_param_pid(args, config, checkpoint):
