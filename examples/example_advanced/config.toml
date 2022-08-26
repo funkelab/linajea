@@ -1,6 +1,6 @@
 [general]
 logging = 20
-db_host = "h09u05"
+db_host = "localhost"
 seed = 42
 setup_dir = "example_advanced"
 sparse = false
@@ -51,12 +51,90 @@ swa_every_it = false
 swa_start_it = 49999
 swa_freq_it = 1000
 
+[train.job]
+num_workers = 1
+
+[train.normalization]
+type = "minmax"
+perc_min = "perc0_01"
+perc_max = "perc99_99"
+norm_bounds = [ 2000, 7500,]
+
+[train.augment]
+divisions = true
+reject_empty_prob = 0.9
+point_balance_radius = 75
+
+# Augmentation
+# check snapshots per dataset for good values!
+[train.augment.elastic]
+control_point_spacing = [ 5, 25, 25,]
+jitter_sigma = [ 1, 1, 1,]
+rotation_min = -45
+rotation_max = 45
+rotation_3d = false
+subsample = 4
+use_fast_points_transform = true
+
+[train.augment.zoom]
+factor_min = 0.75
+factor_max = 1.5
+spatial_dims = 2
+
+[train.augment.shift]
+prob_slip = 0.2
+prob_shift = 0.2
+sigma = [ 0, 4, 4, 4,]
+
+[train.augment.intensity]
+scale = [ 0.9, 1.1,]
+shift = [ -0.001, 0.001,]
+
+[train.augment.simple]
+mirror = [ 2, 3,]
+transpose = [ 2, 3,]
+
+# [train.augment.noise_gaussian]
+# var = [ 0.001,]
+
+[train.augment.noise_saltpepper]
+amount = [ 0.0001,]
+
+[train.augment.noise_speckle]
+var = [ 0.05,]
+
+[train.augment.histogram]
+range_low = 0.1
+range_high = 1.0
+
+
 [optimizerTorch]
 optimizer = "Adam"
+[optimizerTorch.kwargs]
+lr = 5e-5
+betas = [0.95, 0.999]
+eps = 1e-8
+amsgrad = false
+
+
+[predict]
+output_zarr_dir = "."
+write_to_zarr = false
+write_to_db = true
+write_db_from_zarr = false
+processes_per_worker = 1
+[predict.job]
+num_workers = 4
 
 
 [extract]
 block_size = [ 5, 512, 512, 512,]
+[extract.edge_move_threshold]
+50 = 45
+1000 = 35
+[extract.job]
+num_workers = 1
+queue = "local"
 
 
 [solve]
@@ -67,7 +145,6 @@ solver_type = "basic"
 context = [2, 100, 100, 100]
 
 [solve.parameters_search_grid]
-
 weight_node_score =   [-13, -17, -21]
 selection_constant =  [6, 9, 12]
 track_cost =          [7,]
@@ -76,21 +153,23 @@ division_constant =   [6.0, 2.5]
 weight_child =        [1.0, 2.0]
 weight_continuation = [-1.0]
 weight_edge_score =   [0.35]
-
 val = [true]
 block_size = [[15, 512, 512, 712]]
 num_configs = 5
 
+[solve.job]
+num_workers = 1
+queue = "local"
+
 
 [evaluate]
 from_scratch = true
+[evaluate.parameters]
+matching_threshold = 15
+[evaluate.job]
+num_workers = 1
+queue = "local"
 
-[predict]
-output_zarr_dir = "."
-write_to_zarr = false
-write_to_db = true
-write_db_from_zarr = false
-processes_per_worker = 1
 
 
 [train_data]
@@ -154,92 +233,3 @@ array = "raw"
 [test_data.roi]
 offset = [ 50, 0, 0, 0,]
 shape = [ 15, 205, 512, 512,]
-
-
-[train.job]
-num_workers = 1
-queue = "gpu_tesla"
-
-[train.normalization]
-type = "minmax"
-perc_min = "perc0_01"
-perc_max = "perc99_99"
-norm_bounds = [ 2000, 7500,]
-
-[train.augment]
-divisions = true
-reject_empty_prob = 0.9
-point_balance_radius = 75
-
-[optimizerTorch.kwargs]
-lr = 5e-5
-betas = [0.95, 0.999]
-eps = 1e-8
-amsgrad = false
-
-[extract.edge_move_threshold]
-50 = 45
-1000 = 35
-
-[extract.job]
-num_workers = 1
-queue = "local"
-
-[solve.job]
-num_workers = 1
-queue = "local"
-
-[evaluate.parameters]
-matching_threshold = 15
-
-[evaluate.job]
-num_workers = 1
-queue = "local"
-
-[predict.job]
-num_workers = 4
-run_on = "lsf"
-queue = "gpu_tesla"
-
-
-# Augmentation
-# check snapshots per dataset for good values!
-[train.augment.elastic]
-control_point_spacing = [ 5, 25, 25,]
-jitter_sigma = [ 1, 1, 1,]
-rotation_min = -45
-rotation_max = 45
-rotation_3d = false
-subsample = 4
-use_fast_points_transform = true
-
-[train.augment.zoom]
-factor_min = 0.75
-factor_max = 1.5
-spatial_dims = 2
-
-[train.augment.shift]
-prob_slip = 0.2
-prob_shift = 0.2
-sigma = [ 0, 4, 4, 4,]
-
-[train.augment.intensity]
-scale = [ 0.9, 1.1,]
-shift = [ -0.001, 0.001,]
-
-[train.augment.simple]
-mirror = [ 2, 3,]
-transpose = [ 2, 3,]
-
-# [train.augment.noise_gaussian]
-# var = [ 0.001,]
-
-[train.augment.noise_saltpepper]
-amount = [ 0.0001,]
-
-[train.augment.noise_speckle]
-var = [ 0.05,]
-
-[train.augment.histogram]
-range_low = 0.1
-range_high = 1.0
