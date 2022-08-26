@@ -1,12 +1,18 @@
+attrs
 cython
+h5py
+numpy
 networkx
-pymongo
-toml
-scipy
 pandas
+pymongo
+scipy
+scikit-image
+scikit-learn
+toml
 torch
+tqdm
 zarr>=2.10.2
-sklearn
+-e git+https://github.com/funkelab/funlib.geometry#egg=funlib.geometry
 -e git+https://github.com/funkelab/funlib.math#egg=funlib.math
 -e git+https://github.com/funkelab/funlib.run#egg=funlib.run
 -e git+https://github.com/funkelab/funlib.learn.torch#egg=funlib.learn.torch
