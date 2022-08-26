@@ -10,12 +10,14 @@ setup(
         license='MIT',
         packages=[
             'linajea',
+            'linajea.config',
             'linajea.evaluation',
             'linajea.gunpowder_nodes',
             'linajea.prediction',
             'linajea.process_blockwise',
             'linajea.tracking',
             'linajea.training',
+            'linajea.utils',
         ],
         python_requires=">=3.8"
 )
