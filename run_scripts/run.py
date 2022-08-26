@@ -1,3 +1,11 @@
+"""Run script
+
+Can be used to run the steps of the pipeline by just providing a configuration
+file and calling it with the flags for the respective steps that should be run.
+
+For more information on the available flags and on how to call this script:
+python run.py --help
+"""
 import argparse
 import logging
 import os
@@ -11,7 +19,8 @@ import attr
 import toml
 
 from funlib.run import run
-from linajea.config import TrackingConfig
+from linajea.config import (load_config,
+                            TrackingConfig)
 
 logger = logging.getLogger(__name__)
 
@@ -214,81 +223,200 @@ def run_cmd(args, config, cmd, job_name,
         return jobid
 
 
-if __name__ == "__main__":
+def warn_if_not_abs_paths(config):
+    rel_paths = []
+    rel_path_keys = []
+    if not os.path.isabs(config["general"]["setup_dir"]):
+        rel_paths.append(config["general"]["setup_dir"])
+        rel_path_keys.append("config.general.setup_dir")
+    for ds in config["train_data"]["data_sources"]:
+        if ds.get("tracksfile") and not os.path.isabs(ds["tracksfile"]):
+            rel_paths.append(ds["tracksfile"])
+            rel_path_keys.append("config.train_data.data_sources.tracksfile")
+        if ds["datafile"]["filename"] is not None and \
+           not os.path.isabs(ds["datafile"]["filename"]):
+            rel_paths.append(ds["datafile"]["filename"])
+            rel_path_keys.append(
+                "config.train_data.data_sources.datafile.filename")
+    for ds in config["validate_data"]["data_sources"]:
+        if ds.get("tracksfile") is not None and not os.path.isabs(ds["tracksfile"]):
+            rel_paths.append(ds["tracksfile"])
+            rel_path_keys.append(
+                "config.validate_data.data_sources.tracksfile")
+        if ds["datafile"]["filename"] is not None and \
+           not os.path.isabs(ds["datafile"]["filename"]):
+            rel_paths.append(ds["datafile"]["filename"])
+            rel_path_keys.append(
+                "config.validate_data.data_sources.datafile.filename")
+    for ds in config["test_data"]["data_sources"]:
+        if ds.get("tracksfile") is not None and not os.path.isabs(ds["tracksfile"]):
+            rel_paths.append(ds["tracksfile"])
+            rel_path_keys.append("config.test_data.data_sources.tracksfile")
+        if ds["datafile"]["filename"] is not None and \
+           not os.path.isabs(ds["datafile"]["filename"]):
+            rel_paths.append(ds["datafile"]["filename"])
+            rel_path_keys.append(
+                "config.test_data.data_sources.datafile.filename")
+
+    if rel_paths:
+        logger.warning(
+            "If using run.py we recommend setting all paths in the config to"
+            f"their absolute pathnames, {rel_path_keys} is/are relative "
+            f"({rel_paths}). You may proceed, however there might be errors "
+            "if not called from the respective setup dir")
+        return False
+    return True
+
+
+def main():
     print(sys.argv)
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str,
-                        help='path to config file')
-    parser.add_argument('--checkpoint', type=int, default=-1,
-                        help='checkpoint to (post)process')
-    parser.add_argument('--train', action="store_true",
-                        dest='run_train', help='run train?')
-    parser.add_argument('--predict', action="store_true",
-                        dest='run_predict', help='run predict?')
-    parser.add_argument('--extract_edges', action="store_true",
-                        dest='run_extract_edges',
-                        help='run extract edges?')
-    parser.add_argument('--solve', action="store_true",
-                        dest='run_solve', help='run solve?')
-    parser.add_argument('--evaluate', action="store_true",
-                        dest='run_evaluate', help='run evaluate?')
-    parser.add_argument('--validation', action="store_true",
-                        help='use validation data?')
-    parser.add_argument('--validate_on_train', action="store_true",
-                        help='validate on train data?')
-    parser.add_argument('--param_id', type=int, default=None,
-                        help='eval parameters_id')
-    parser.add_argument('--val_param_id', type=int, default=None,
-                        help='use validation parameters_id')
-    parser.add_argument("--run_from_exp", action="store_true",
-                        help='run from setup or from experiment folder')
-    parser.add_argument("--local", action="store_true",
-                        help='run locally or on cluster?')
-    parser.add_argument("--slurm", action="store_true",
-                        help='run on slurm cluster?')
-    parser.add_argument("--gridengine", action="store_true",
-                        help='run on gridengine cluster?')
-    parser.add_argument("--interactive", action="store_true",
-                        help='run on interactive node on cluster?')
-    parser.add_argument('--array_job', action="store_true",
-                        help=('submit each parameter set for '
-                              'solving/eval as one job?'))
-    parser.add_argument('--eval_array_job', action="store_true",
-                        help='submit each parameter set for eval as one job?')
-    parser.add_argument('--param_ids', default=None, nargs=2,
-                        help='start/end range of eval parameters_ids')
-    parser.add_argument('--wait_job_id', type=str, default=None,
-                        help='wait for this job before starting')
-    parser.add_argument("--no_block_after_eval", dest="block_after_eval",
-                        action="store_false",
-                        help='block after starting eval jobs?')
+    parser.add_argument(
+        '--config',
+        type=str,
+        help='path to config file')
+    parser.add_argument(
+        '--checkpoint',
+        type=int,
+        default=-1,
+        help='index of model checkpoint that should be used for prediction')
+    parser.add_argument(
+        '--train',
+        action="store_true",
+        dest='run_train',
+        help='set if training step should be executed')
+    parser.add_argument(
+        '--predict',
+        action="store_true",
+        dest='run_predict',
+        help='set if prediction step should be executed')
+    parser.add_argument(
+        '--extract_edges',
+        action="store_true",
+        dest='run_extract_edges',
+        help='set if extract edges step should be executed')
+    parser.add_argument(
+        '--solve',
+        action="store_true",
+        dest='run_solve',
+        help='set if solving (tracking) step should be executed')
+    parser.add_argument(
+        '--evaluate',
+        action="store_true",
+        dest='run_evaluate',
+        help='set if evaluation step shuld be executed')
+    parser.add_argument(
+        '--validation',
+        action="store_true",
+        help=('set if validation data should be sued (instead of test data),'
+              'applies to postprocessing steps but not to training step'))
+    parser.add_argument(
+        '--validate_on_train',
+        action="store_true",
+        help=('can be used to perform validation on training data'
+              'mostly for debugging purposes'))
+    parser.add_argument(
+        '--param_id',
+        type=int,
+        default=None,
+        help=('set to the param_id value of a specific set of weights,'
+              'if only this set should be evaluated (has to exist in the '
+              'database)'))
+    parser.add_argument(
+        '--val_param_id',
+        type=int,
+        default=None,
+        help=('if you want to solve on the test data using a specific set of '
+              'weights that has been evaluated on the validation data, set '
+              'this to the respective param_id value of that set in the'
+              'validation database'))
+    parser.add_argument(
+        '--param_ids',
+        default=None,
+        nargs='+',
+        help=('defines a number of set of weights that should be processed. '
+              'if two values are supplied it is interpreted as a range and '
+              'and all sets of weights with a param_id value in that range '
+              'will be processed. otherwise it is interpreted as a list of '
+              'param_id values, and the respective sets of weights in the '
+              'database will be processed. irrespectively all values have '
+              'to exist in the database'))
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help=('set if steps should be run on the local machine and not on '
+              'separate jobs on a HPC cluster'))
+    parser.add_argument(
+        "--slurm",
+        action="store_true",
+        help=('set if steps should be run on a slurm-based cluster '
+              '(experimental)'))
+    parser.add_argument(
+        "--gridengine",
+        action="store_true",
+        help=('set if steps should be run on a slurm-based cluster '
+              '(experimental)'))
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help=('if running on an lsf cluster, set if it should be run on an '
+              'interactive node'))
+    parser.add_argument(
+        '--array_job',
+        action="store_true",
+        help=('if running on an lsf cluster, set if each set of weights for '
+              'the solving and evaluation steps should be run as an '
+              'independant job'))
+    parser.add_argument(
+        '--eval_array_job',
+        action="store_true",
+        help=('similar to array_job, only applies to evaluation step, whereas'
+              'array_job applies to both, solving and evaluation'))
+
+    parser.add_argument(
+        '--wait_job_id',
+        type=str,
+        default=None,
+        help=('if runnning on an lsf cluster, wait for the job with this id '
+              'before starting'))
+    parser.add_argument(
+        "--no_block_after_eval",
+        dest="block_after_eval",
+        action="store_false",
+        help=('if running on an lsf cluster, set this to immediatly return '
+              'to the shell instead of waiting (blocking) until an evaluation '
+              'job is finished, job will be executed in the background'))
 
     args = parser.parse_args()
-    config = TrackingConfig.from_file(args.config)
+    config = load_config(args.config)
+    config["path"] = args.config
+    is_abs = warn_if_not_abs_paths(config)
+    config = TrackingConfig(**config)
+
     setup_dir = config.general.setup_dir
     script_dir = os.path.dirname(os.path.abspath(__file__))
     is_new_run = not os.path.exists(setup_dir)
 
-    os.makedirs(setup_dir, exist_ok=True)
-    os.makedirs(os.path.join(setup_dir, "tmp_configs"), exist_ok=True)
+    if is_abs:
+        os.makedirs(setup_dir, exist_ok=True)
 
-    if not is_new_run:
-        config_dir = os.path.dirname(os.path.abspath(args.config))
-        if config_dir != os.path.abspath(setup_dir) and \
-           "tmp_configs" not in args.config:
-            raise RuntimeError(
-                "overwriting config with external config file (%s - %s)",
-                args.config, setup_dir)
-    config_file = os.path.basename(args.config)
-    if "tmp_configs" not in args.config:
-        backup_and_copy_file(os.path.dirname(args.config),
-                             setup_dir,
+        if not is_new_run:
+            config_dir = os.path.dirname(os.path.abspath(args.config))
+            if config_dir != os.path.abspath(setup_dir) and \
+               "tmp_configs" not in args.config:
+                raise RuntimeError(
+                    "overwriting config with external config file (%s - %s)",
+                    args.config, setup_dir)
+        if "tmp_configs" not in args.config:
+            backup_and_copy_file(os.path.dirname(args.config),
+                                 setup_dir,
                              os.path.basename(args.config))
-    if is_new_run:
-        config.path = os.path.join(setup_dir, os.path.basename(args.config))
+        if is_new_run:
+            config.path = os.path.join(setup_dir, os.path.basename(args.config))
 
-    os.chdir(setup_dir)
+        os.chdir(setup_dir)
     os.makedirs("logs", exist_ok=True)
+    os.makedirs("tmp_configs", exist_ok=True)
 
     logging.basicConfig(
         level=config.general.logging,
@@ -347,3 +475,7 @@ if __name__ == "__main__":
 
         else:
             raise RuntimeError("invalid processing step! %s", step)
+
+
+if __name__ == "__main__":
+    main()
