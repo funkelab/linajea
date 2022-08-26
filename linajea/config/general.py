@@ -3,10 +3,10 @@
 Parameters that are used in all steps, e.g., were is the experimental setup
 stored, which database host to use, which logging level should be used.
 """
-import os
-
 import attr
+import random
 
+import numpy as np
 
 @attr.s(kw_only=True)
 class GeneralConfig:
@@ -42,3 +42,7 @@ class GeneralConfig:
     seed = attr.ib(type=int, default=42)
     tag = attr.ib(type=str, default=None)
     singularity_image = attr.ib(type=str, default=None)
+
+    def __attrs_post_init__(self):
+        random.seed(self.seed)
+        np.random.seed(self.seed)
