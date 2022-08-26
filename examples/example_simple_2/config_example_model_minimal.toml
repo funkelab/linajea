@@ -1,4 +1,0 @@
-train_input_shape = [ 7, 60, 148, 148,]
-predict_input_shape = [ 7, 80, 260, 260,]
-nms_window_shape = [ 3, 15, 15,]
-upsampling = "sep_transposed_conv"

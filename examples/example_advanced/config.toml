@@ -1,8 +1,8 @@
 [general]
 logging = 20
-db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin?replicaSet=rsLinajea"
+db_host = "h09u05"
 seed = 42
-setup_dir = "example_advanced_1"
+setup_dir = "example_advanced"
 sparse = false
 
 [model]
@@ -41,7 +41,7 @@ cache_size = 1
 movement_vectors_loss_transition_offset = 20000
 movement_vectors_loss_transition_factor = 0.001
 use_radius = true
-max_iterations = 11
+max_iterations = 20
 checkpoint_stride = 10
 snapshot_stride = 5
 profiling_stride = 10
@@ -51,46 +51,20 @@ swa_every_it = false
 swa_start_it = 49999
 swa_freq_it = 1000
 
-# [train.use_radius]
-# 30 = 20
-# 70 = 15
-# 100 = 13
-# 130 = 11
-# 180 = 10
-# 270 = 8
-# 9999 = 7
-
 [optimizerTorch]
 optimizer = "Adam"
+
 
 [extract]
 block_size = [ 5, 512, 512, 512,]
 
+
 [solve]
 from_scratch = true
 greedy = false
-# write_struct_svm = "ssvm_ckpt_200000"
 check_node_close_to_roi = false
 solver_type = "basic"
-# random_search = false
-
-
-# [[solve.parameters]]
-# weight_node_score =   -16.786125363574673        
-# selection_constant =  8.893522542354866  
-# track_cost =          20.675083335777686 
-# # disappear cost      -0.0               
-# weight_division =     -8.260920358667896 
-# division_constant =   5.9535746121046165 
-# weight_child =        1.003401421433546  
-# weight_continuation = -1.0264581546174496
-# weight_edge_score =   0.4254227576366175   
-
-# # cell_cycle_key = '201112_063001/test/10000_'
-# block_size = [15, 512, 512, 712]
-# context = [2, 100, 100, 100]
-
-
+context = [2, 100, 100, 100]
 
 [solve.parameters_search_grid]
 
@@ -103,59 +77,84 @@ weight_child =        [1.0, 2.0]
 weight_continuation = [-1.0]
 weight_edge_score =   [0.35]
 
-# cell_cycle_key = ['201112_063001/test/10000_']
 val = [true]
 block_size = [[15, 512, 512, 712]]
-context = [[2, 100, 100, 100]]
 num_configs = 5
 
 
 [evaluate]
-from_scratch = false
+from_scratch = true
 
 [predict]
-output_zarr_dir = "/nrs/funke/hirschp/linajea_experiments"
+output_zarr_dir = "."
 write_to_zarr = false
 write_to_db = true
 write_db_from_zarr = false
 processes_per_worker = 1
 
+
 [train_data]
 voxel_size = [ 1, 5, 1, 1,]
+
 [[train_data.data_sources]]
-gt_db_name = "linajea_celegans_emb1_fixed"
-
+exclude_times = [[60, 65], [75, 80]]
+tracksfile = "mskcc_emb1_fr50-90_tracks.csv"
 [train_data.data_sources.datafile]
-filename = "/nrs/funke/hirschp/mskcc_emb1"
-group = "volumes/raw_nested"
-# [[train_data.data_sources]]
-# gt_db_name = "linajea_celegans_emb3_fixed"
+filename = "mskcc_emb1_fr50-60_fr65-75_fr80-90.zip"
+array = "raw"
+[train_data.data_sources.roi]
+offset = [ 50, 0, 0, 0,]
+shape = [ 40, 205, 512, 512,]
 
-# [train_data.data_sources.datafile]
-# filename = "/nrs/funke/hirschp/mskcc_emb3"
-# group = "volumes/raw_nested"
+[[train_data.data_sources]]
+tracksfile = "mskcc_emb1_fr20-40_tracks.csv"
+[train_data.data_sources.datafile]
+filename = "mskcc_emb1_fr20-40.zip"
+array = "raw"
+[train_data.data_sources.roi]
+offset = [ 20, 0, 0, 0,]
+shape = [ 20, 205, 512, 512,]
 
-[test_data]
-checkpoint = 11
-cell_score_threshold = 0.2
-voxel_size = [ 1, 5, 1, 1,]
-[[test_data.data_sources]]
-gt_db_name = "linajea_celegans_emb3_fixed"
-
-[test_data.data_sources.datafile]
-filename = "/nrs/funke/hirschp/mskcc_emb3"
-group = "volumes/raw_nested"
 
 [validate_data]
-checkpoints = [ 11,]
+checkpoints = [ 10, 20,]
 cell_score_threshold = 0.2
 voxel_size = [ 1, 5, 1, 1,]
-[[validate_data.data_sources]]
-gt_db_name = "linajea_celegans_emb_fixed"
 
+[[validate_data.data_sources]]
+gt_db_name = "linajea_mskcc_emb2_fr30-45_gt"
+tracksfile = "mskcc_emb2_fr30-45_tracks.csv"
 [validate_data.data_sources.datafile]
-filename = "/nrs/funke/hirschp/mskcc_emb"
-group = "volumes/raw_nested"
+filename = "mskcc_emb2_fr30-45.zip"
+array = "raw"
+[validate_data.data_sources.roi]
+offset = [ 30, 0, 0, 0,]
+shape = [ 15, 205, 512, 512,]
+
+[[validate_data.data_sources]]
+gt_db_name = "linajea_mskcc_emb2_fr50-65_gt"
+tracksfile = "mskcc_emb2_fr50-65_tracks.csv"
+[validate_data.data_sources.datafile]
+filename = "mskcc_emb2_fr50-65.zip"
+array = "raw"
+[validate_data.data_sources.roi]
+offset = [ 50, 0, 0, 0,]
+shape = [ 15, 205, 512, 512,]
+
+
+[test_data]
+cell_score_threshold = 0.2
+voxel_size = [ 1, 5, 1, 1,]
+
+[[test_data.data_sources]]
+gt_db_name = "linajea_mskcc_emb3_fr50-65_gt"
+[test_data.data_sources.datafile]
+filename = "mskcc_emb3_fr50-65.zip"
+array = "raw"
+[test_data.roi]
+offset = [ 50, 0, 0, 0,]
+shape = [ 15, 205, 512, 512,]
+
 
 [train.job]
 num_workers = 1
@@ -198,21 +197,13 @@ num_workers = 1
 queue = "local"
 
 [predict.job]
-num_workers = 1
+num_workers = 4
+run_on = "lsf"
 queue = "gpu_tesla"
 
-[train_data.roi]
-offset = [ 50, 0, 0, 0,]
-shape = [ 10, 205, 512, 512,]
 
-[test_data.roi]
-offset = [ 50, 0, 0, 0,]
-shape = [ 10, 205, 512, 512,]
-
-[validate_data.roi]
-offset = [ 50, 0, 0, 0,]
-shape = [ 10, 205, 512, 512,]
-
+# Augmentation
+# check snapshots per dataset for good values!
 [train.augment.elastic]
 control_point_spacing = [ 5, 25, 25,]
 jitter_sigma = [ 1, 1, 1,]
@@ -240,9 +231,6 @@ shift = [ -0.001, 0.001,]
 mirror = [ 2, 3,]
 transpose = [ 2, 3,]
 
-# # check snapshots per dataset for good value!
-# # maybe just use speckle (multiplicative gaussian noise)
-# # instead of this (additive gaussian noise)
 # [train.augment.noise_gaussian]
 # var = [ 0.001,]
 

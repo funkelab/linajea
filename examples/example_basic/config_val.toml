@@ -1,10 +1,11 @@
-model = "config_example_model_minimal.toml"
+model = "config_model.toml"
 
 [general]
 logging = 20
-db_host = "mongodb://linajeaAdmin:FeOOHnH2O@funke-mongodb4/admin?replicaSet=rsLinajea"
+# db_host = "localhost"
+db_host = "h09u15"
 seed = 42
-setup_dir = "example_simple_1"
+setup_dir = "example_basic"
 sparse = false
 
 [extract]
@@ -12,25 +13,25 @@ edge_move_threshold = 45
 
 [solve]
 parameters = "config_parameters.toml"
+context = [ 2, 100, 100, 100,]
 solver_type = "basic"
 
 [inference_data]
-checkpoint = 11
+checkpoint = 10
 cell_score_threshold = 0.2
 [inference_data.data_source]
-gt_db_name = "linajea_celegans_emb_fixed"
+gt_db_name = "linajea_mskcc_emb2_15fr_gt"
 voxel_size = [ 1, 5, 1, 1,]
-db_name = "linajea_celegans_20220725_134111b"
+db_name = "linajea_mskcc_emb2_15fr_19700101_010203"
 [inference_data.data_source.datafile]
-filename = "/nrs/funke/hirschp/mskcc_emb"
-group = "volumes/raw_nested"
+filename = "mskcc_emb2_15fr.zip"
+array = "raw"
 [inference_data.data_source.roi]
-offset = [ 50, 0, 0, 0,]
-shape = [ 10, 205, 512, 512,]
+offset = [ 0, 0, 0, 0,]
+shape = [ 15, 205, 512, 512,]
 
 [evaluate.parameters]
 matching_threshold = 15
-
 
 [predict]
 use_swa = true
@@ -39,3 +40,7 @@ type = "minmax"
 perc_min = "perc0_01"
 perc_max = "perc99_99"
 norm_bounds = [ 2000, 7500,]
+[predict.job]
+num_workers = 4
+run_on = "lsf"
+queue = "gpu_tesla"

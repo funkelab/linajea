@@ -10,7 +10,6 @@ weight_edge_score = 0.35
 max_cell_move = 45
 val = true
 block_size = [ 15, 512, 512, 712,]
-context = [ 2, 100, 100, 100,]
 
 [[parameters]]
 weight_node_score = -17
@@ -24,7 +23,6 @@ weight_edge_score = 0.35
 max_cell_move = 45
 val = true
 block_size = [ 15, 512, 512, 712,]
-context = [ 2, 100, 100, 100,]
 
 [[parameters]]
 weight_node_score = -21
@@ -38,7 +36,6 @@ weight_edge_score = 0.35
 max_cell_move = 45
 val = true
 block_size = [ 15, 512, 512, 712,]
-context = [ 2, 100, 100, 100,]
 
 [[parameters]]
 weight_node_score = -13
@@ -52,7 +49,6 @@ weight_edge_score = 0.35
 max_cell_move = 45
 val = true
 block_size = [ 15, 512, 512, 712,]
-context = [ 2, 100, 100, 100,]
 
 [[parameters]]
 weight_node_score = -17
@@ -66,5 +62,3 @@ weight_edge_score = 0.35
 max_cell_move = 45
 val = true
 block_size = [ 15, 512, 512, 712,]
-context = [ 2, 100, 100, 100,]
-
