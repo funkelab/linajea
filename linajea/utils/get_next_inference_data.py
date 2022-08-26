@@ -17,8 +17,7 @@ from linajea.utils import (CandidateDatabase,
                            checkOrCreateDB)
 from linajea.config import (InferenceDataTrackingConfig,
                             SolveParametersConfig,
-                            TrackingConfig,
-                            maybe_fix_config_paths_to_machine_and_load)
+                            TrackingConfig)
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +62,7 @@ def getNextInferenceData(args, is_solve=False, is_evaluate=False):
     is_evaluate: bool
         Compute evaluation step
     """
-    config = maybe_fix_config_paths_to_machine_and_load(args.config)
-    config = TrackingConfig(**config)
+    config = TrackingConfig.from_file(args.config)
 
     if hasattr(args, "validation") and args.validation:
         inference_data = deepcopy(config.validate_data)

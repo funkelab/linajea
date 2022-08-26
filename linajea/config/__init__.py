@@ -49,5 +49,4 @@ from .train import TrainTrackingConfig
 from .train_test_validate_data import InferenceDataTrackingConfig
 from .unet_config import UnetConfig
 from .utils import (dump_config,
-                    load_config,
-                    maybe_fix_config_paths_to_machine_and_load)
+                    load_config)
