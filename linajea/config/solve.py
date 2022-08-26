@@ -30,9 +30,6 @@ class SolveParametersConfig:
         key defining which cell state classifier to use
     block_size: list of int
         ILP is solved in blocks, defines size of each block
-    context: list of int
-        Size of context by which block is grown, to ensure consistent
-        solution along borders
     max_cell_move: int
         How far a cell can move in one frame, cells closer than this
         value to the border do not have to pay certain costs
@@ -61,7 +58,6 @@ class SolveParametersConfig:
     weight_edge_score = attr.ib(type=float)
     cell_state_key = attr.ib(type=str, default=None)
     block_size = attr.ib(type=Tuple[int, int, int, int])
-    context = attr.ib(type=Tuple[int, int, int, int])
     max_cell_move = attr.ib(type=int, default=None)
     roi = attr.ib(converter=ensure_cls(DataROIConfig), default=None)
     feature_func = attr.ib(type=str, default="noop")
@@ -125,7 +121,6 @@ class SolveParametersSearchConfig:
     weight_edge_score = attr.ib(type=List[float])
     cell_state_key = attr.ib(type=str, default=None)
     block_size = attr.ib(type=List[List[int]])
-    context = attr.ib(type=List[List[int]])
     max_cell_move = attr.ib(type=List[int], default=None)
     feature_func = attr.ib(type=List[str], default=["noop"])
     val = attr.ib(type=List[bool], default=[True])
@@ -256,6 +251,9 @@ class SolveConfig:
     clip_low_score: float
         Discard nodes with score lower than this value;
         Only useful if lower than threshold used during prediction
+    context: list of int
+        Size of context by which block is grown, to ensure consistent
+        solution along borders
     grid_search, random_search: bool
         If grid and/or random search over ILP parameters should be
         performed
@@ -284,6 +282,7 @@ class SolveConfig:
     check_node_close_to_roi = attr.ib(type=bool, default=True)
     timeout = attr.ib(type=int, default=0)
     clip_low_score = attr.ib(type=float, default=None)
+    context = attr.ib(type=Tuple[int, int, int, int])
     grid_search = attr.ib(type=bool, default=False)
     random_search = attr.ib(type=bool, default=False)
     solver_type = attr.ib(type=str, default=None,
@@ -333,20 +332,15 @@ class SolveConfig:
                 "weight_continuation": 0,
                 "weight_edge_score":  0,
                 "block_size": [-1, -1, -1, -1],
-                "context": [-1, -1, -1, -1],
                 "max_cell_move": -1,
                 "tag": "greedy",
             }
             self.parameters = [SolveParametersConfig(**config_vals)]
 
         if self.parameters is not None:
-            # block size and context must be the same for all parameters!
+            # block size must be the same for all parameters!
             block_size = self.parameters[0].block_size
-            context = self.parameters[0].context
             for i in range(len(self.parameters)):
                 assert block_size == self.parameters[i].block_size, \
                     "%s not equal to %s" %\
                     (block_size, self.parameters[i].block_size)
-                assert context == self.parameters[i].context, \
-                    "%s not equal to %s" %\
-                    (context, self.parameters[i].context)

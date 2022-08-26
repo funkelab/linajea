@@ -39,9 +39,13 @@ def predict_blockwise(linajea_config):
     predict_roi = daisy.Roi(offset=data.roi.offset,
                             shape=data.roi.shape)
     # allow for solve context
+    assert linajea_config.solve.context, (
+        "config.solve.context is not set, cannot determine how much spatial"
+        " context is necessary for tracking (cells moving in and out of a"
+        " block at the boundary). Please set it!")
     predict_roi = predict_roi.grow(
-            daisy.Coordinate(linajea_config.solve.parameters[0].context),
-            daisy.Coordinate(linajea_config.solve.parameters[0].context))
+            daisy.Coordinate(linajea_config.solve.context),
+            daisy.Coordinate(linajea_config.solve.context))
     # but limit to actual file roi
     if data.datafile is not None:
         predict_roi = predict_roi.intersect(

@@ -149,7 +149,6 @@ class DatabaseTestCase(TestCase):
                 "selection_constant": 0.0,
                 "max_cell_move": 1.0,
                 "block_size": [5, 100, 100, 100],
-                "context": [2, 100, 100, 100],
             }
         parameters = linajea.config.SolveParametersConfig(**ps)
 
@@ -186,7 +185,6 @@ class TestParameterIds(TestCase):
                 "selection_constant": 0.0,
                 "max_cell_move": 1.0,
                 "block_size": [5, 100, 100, 100],
-                "context": [2, 100, 100, 100],
             }
 
     def test_unique_id_one_worker(self):

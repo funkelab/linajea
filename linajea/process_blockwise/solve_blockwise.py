@@ -41,9 +41,9 @@ def solve_blockwise(linajea_config):
     """
     parameters = deepcopy(linajea_config.solve.parameters)
     _verify_parameters(parameters)
-    # block_size/context are identical for all parameters
+    # block_size is identical for all parameters
     block_size = daisy.Coordinate(parameters[0].block_size)
-    context = daisy.Coordinate(parameters[0].context)
+    context = daisy.Coordinate(linajea_config.solve.context)
 
     data = linajea_config.inference_data.data_source
     db_name = data.db_name
@@ -316,15 +316,12 @@ def write_struct_svm(solver, block_id, output_dir):
                  for idx, v in constraint.get_coefficients().items()])
             f.write(f"{coeffs} {rel} {val}\n")
 
+
 def _verify_parameters(parameters):
     block_size = parameters[0].block_size
-    context = parameters[0].context
     for i in range(len(parameters)):
         assert block_size == parameters[i].block_size, \
             "%s not equal to %s" %\
             (block_size, parameters[i].block_size)
-        assert context == parameters[i].context, \
-            "%s not equal to %s" %\
-            (context, parameters[i].context)
         assert parameters[i].max_cell_move is not None, \
             f"max_cell_move has to be set for parameter set {parameters[i]}"

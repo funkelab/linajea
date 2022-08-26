@@ -62,10 +62,10 @@ class TestSolver(unittest.TestCase):
                 "selection_constant": -1.0,
                 "max_cell_move": 0.0,
                 "block_size": [5, 100, 100, 100],
-                "context": [2, 100, 100, 100],
             }
         job = {"num_workers": 5, "queue": "normal"}
-        solve_config = linajea.config.SolveConfig(parameters=ps, job=job)
+        solve_config = linajea.config.SolveConfig(
+            parameters=ps, job=job, context=[2, 100, 100, 100])
         solve_config.solver_type = "basic"
         config = TrackingConfig(solve_config)
 
@@ -128,7 +128,6 @@ class TestSolver(unittest.TestCase):
                 "selection_constant": -1.0,
                 "max_cell_move": 1.0,
                 "block_size": [5, 100, 100, 100],
-                "context": [2, 100, 100, 100],
             }
         parameters = linajea.config.SolveParametersConfig(**ps)
 
@@ -184,7 +183,6 @@ class TestSolver(unittest.TestCase):
                 "selection_constant": -1.0,
                 "max_cell_move": 0.0,
                 "block_size": [5, 100, 100, 100],
-                "context": [2, 100, 100, 100],
             }
         ps2 = {
                 # Making all the values smaller increases the
@@ -195,13 +193,12 @@ class TestSolver(unittest.TestCase):
                 "selection_constant": -0.1,
                 "max_cell_move": 0.0,
                 "block_size": [5, 100, 100, 100],
-                "context": [2, 100, 100, 100],
             }
         parameters = [ps1, ps2]
         keys = ['selected_1', 'selected_2']
         job = {"num_workers": 5, "queue": "normal"}
-        solve_config = linajea.config.SolveConfig(parameters=parameters,
-                                                  job=job)
+        solve_config = linajea.config.SolveConfig(
+            parameters=parameters, job=job, context=[2, 100, 100, 100])
         solve_config.solver_type = "basic"
         config = TrackingConfig(solve_config)
 
@@ -300,11 +297,11 @@ class TestSolver(unittest.TestCase):
                 "division_constant": 1,
                 "max_cell_move": 0.0,
                 "block_size": [5, 100, 100, 100],
-                "context": [2, 100, 100, 100],
                 "cell_state_key": "vgg_score",
             }
         job = {"num_workers": 5, "queue": "normal"}
-        solve_config = linajea.config.SolveConfig(parameters=ps, job=job)
+        solve_config = linajea.config.SolveConfig(
+            parameters=ps, job=job, context=[2, 100, 100, 100])
         solve_config.solver_type = "cell_state"
         config = TrackingConfig(solve_config)
 
@@ -394,11 +391,11 @@ class TestSolver(unittest.TestCase):
                 "division_constant": 1,
                 "max_cell_move": 0.0,
                 "block_size": [5, 100, 100, 100],
-                "context": [2, 100, 100, 100],
                 "cell_state_key": "score"
             }
         job = {"num_workers": 5, "queue": "normal"}
-        solve_config = linajea.config.SolveConfig(parameters=ps, job=job)
+        solve_config = linajea.config.SolveConfig(
+            parameters=ps, job=job, context=[2, 100, 100, 100])
         solve_config.solver_type = "cell_state"
         config = TrackingConfig(solve_config)
 
