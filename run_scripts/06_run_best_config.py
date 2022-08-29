@@ -47,19 +47,34 @@ if __name__ == "__main__":
         ],
         format='%(asctime)s %(name)s %(levelname)-8s %(message)s')
 
+    score_columns = ['fn_edges', 'identity_switches',
+                     'fp_divisions', 'fn_divisions']
+    if not config.general.sparse:
+        score_columns = ['fp_edges'] + score_columns
+
     results = {}
+    samples = set()
     args.validation = not args.swap_val_test
     for sample_idx, inf_config in enumerate(getNextInferenceData(
             args, is_evaluate=True)):
         sample = inf_config.inference_data.data_source.datafile.filename
-        logger.debug("getting results for:", sample)
-
+        checkpoint = inf_config.inference_data.checkpoint
+        cell_score_threshold = inf_config.inference_data.cell_score_threshold
+        samples.add(sample)
+        logger.debug(
+            "getting results for:", sample, checkpoint, cell_score_threshold)
         res = linajea.evaluation.get_results_sorted(
             inf_config,
             filter_params={"val": True},
+            score_columns=score_columns,
             sort_by=args.sort_by)
 
-        results[os.path.basename(sample)] = res.reset_index()
+        res = res.assign(
+            checkpoint=checkpoint).assign(
+            cell_score_threshold=cell_score_threshold)
+        results[(
+            os.path.basename(sample), checkpoint, cell_score_threshold)] = \
+                res.reset_index()
     args.validation = not args.validation
 
     results = pd.concat(list(results.values())).reset_index()
@@ -67,11 +82,25 @@ if __name__ == "__main__":
     del results['param_id']
 
     solve_params = attr.fields_dict(SolveParametersConfig)
-    results = results.groupby(lambda x: str(x), dropna=False,
-                              as_index=False).agg(
-        lambda x:
-        -1
-        if len(x) != sample_idx+1
+    by = [
+        "matching_threshold",
+        "weight_node_score",
+        "selection_constant",
+        "track_cost",
+        "weight_division",
+        "division_constant",
+        "weight_child",
+        "weight_continuation",
+        "weight_edge_score",
+        "checkpoint",
+        "cell_score_threshold"
+    ]
+    if "cell_state_key" in results:
+        by.append("cell_state_key")
+
+    results = results.groupby(by, dropna=False, as_index=False).agg(
+        lambda x: -1
+        if len(x) != len(samples)
         else sum(x)
         if (not isinstance(x.iloc[0], list) and
             not isinstance(x.iloc[0], dict) and
@@ -84,6 +113,9 @@ if __name__ == "__main__":
 
     for k in solve_params.keys():
         if k == "tag" and k not in results.iloc[0]:
+            solve_params[k] = None
+            continue
+        if k == "cell_state_key" and k not in results.iloc[0]:
             solve_params[k] = None
             continue
         solve_params[k] = results.iloc[0][k]
@@ -100,13 +132,13 @@ if __name__ == "__main__":
     args.config = config.path
 
     start_time = time.time()
-    for inf_config in getNextInferenceData(args, is_evaluate=True):
+    for inf_config in getNextInferenceData(args, is_solve=True):
         solve_blockwise(inf_config)
     end_time = time.time()
     print_time(end_time - start_time)
 
     start_time = time.time()
-    for inf_config in getNextInferenceData(args, is_solve=True):
+    for inf_config in getNextInferenceData(args, is_evaluate=True):
         linajea.evaluation.evaluate_setup(inf_config)
     end_time = time.time()
     print_time(end_time - start_time)

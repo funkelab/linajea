@@ -155,6 +155,17 @@ def do_evaluate(args, config, cmd, jobid=None, wait=True):
             flags=flags, wait=wait)
 
 
+def do_best_config(args, config, cmd):
+    queue = 'interactive' if args.interactive else config.solve.job.queue
+    num_gpus = 0
+    num_cpus = config.extract.job.num_workers
+    flags = (['-P', config.solve.job.lab]
+             if config.solve.job.lab is not None else [])
+    run_cmd(args, config, cmd, "run_best",
+            queue, num_gpus, num_cpus,
+            flags=flags)
+
+
 def run_cmd(args, config, cmd, job_name,
             queue, num_gpus, num_cpus,
             array_limit=0, array_size=0,
@@ -304,7 +315,15 @@ def main():
         '--evaluate',
         action="store_true",
         dest='run_evaluate',
-        help='set if evaluation step shuld be executed')
+        help='set if evaluation step should be executed')
+    parser.add_argument(
+        '--best',
+        action="store_true",
+        dest='run_best',
+        help=('set if solve and evaluation steps should be executed for the '
+              'test data (prediction and extract edges must already have been '
+              'executed before); looks for the best validation results and '
+              'applies the same parameters/weights to the test data'))
     parser.add_argument(
         '--validation',
         action="store_true",
@@ -437,6 +456,8 @@ def main():
         run_steps.append("04_solve.py")
     if args.run_evaluate:
         run_steps.append("05_evaluate.py")
+    if args.run_best:
+        run_steps.append("06_run_best_config.py")
 
     config.path = os.path.join("tmp_configs", "config_{}.toml".format(
         time.time()))
@@ -471,6 +492,8 @@ def main():
         elif step == "05_evaluate.py":
             do_evaluate(args, config, cmd, jobid=jobid,
                         wait=args.block_after_eval)
+        elif step == "06_run_best_config.py":
+            do_best_config(args, config, cmd)
 
         else:
             raise RuntimeError("invalid processing step! %s", step)
