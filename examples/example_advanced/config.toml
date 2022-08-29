@@ -124,7 +124,9 @@ write_to_db = true
 write_db_from_zarr = false
 processes_per_worker = 1
 [predict.job]
-num_workers = 4
+num_workers = 1
+run_on = "lsf"
+queue = "gpu_tesla"
 
 
 [extract]
