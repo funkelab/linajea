@@ -449,7 +449,7 @@ def main():
     if args.run_train:
         run_steps.append("01_train.py")
     if args.run_predict:
-        run_steps.append("02_predict_blockwise.py")
+        run_steps.append("02_predict.py")
     if args.run_extract_edges:
         run_steps.append("03_extract_edges.py")
     if args.run_solve:
