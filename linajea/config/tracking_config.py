@@ -75,7 +75,7 @@ class TrackingConfig:
                       default=attr.Factory(PredictTrackingConfig))
     extract = attr.ib(converter=ensure_cls(ExtractConfig), default=None)
     solve = attr.ib(converter=ensure_cls(SolveConfig),
-                    default=attr.Factory(SolveConfig))
+                    default=None)
     evaluate = attr.ib(converter=ensure_cls(EvaluateTrackingConfig),
                        default=None)
 
