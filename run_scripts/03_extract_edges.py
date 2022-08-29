@@ -7,17 +7,16 @@ based on data
 """
 import argparse
 import logging
+import sys
 import time
 
+from linajea.config import load_config
+from linajea.process_blockwise import extract_edges_blockwise
 from linajea.utils import (print_time,
                            getNextInferenceData)
-from linajea.process_blockwise import extract_edges_blockwise
 
-
-logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s %(name)s %(levelname)-8s %(message)s')
 logger = logging.getLogger(__name__)
+
 
 if __name__ == "__main__":
 
@@ -31,6 +30,14 @@ if __name__ == "__main__":
     parser.add_argument('--validate_on_train', action="store_true",
                         help='validate on train data?')
     args = parser.parse_args()
+    config = load_config(args.config)
+    logging.basicConfig(
+        level=config['general']['logging'],
+        handlers=[
+            logging.FileHandler('run.log', mode='a'),
+            logging.StreamHandler(sys.stdout),
+        ],
+        format='%(asctime)s %(name)s %(levelname)-8s %(message)s')
 
     start_time = time.time()
     for inf_config in getNextInferenceData(args):

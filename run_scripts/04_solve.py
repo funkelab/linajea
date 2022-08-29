@@ -10,17 +10,16 @@ parameter sets.
 from __future__ import absolute_import
 import argparse
 import logging
+import sys
 import time
 
+from linajea.config import load_config
+from linajea.process_blockwise import solve_blockwise
 from linajea.utils import (print_time,
                            getNextInferenceData)
-from linajea.process_blockwise import solve_blockwise
 
-
-logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s %(name)s %(levelname)-8s %(message)s')
 logger = logging.getLogger(__name__)
+
 
 if __name__ == "__main__":
 
@@ -44,6 +43,14 @@ if __name__ == "__main__":
     parser.add_argument('--param_list_idx', type=str, default=None,
                         help='only solve idx parameter set in config')
     args = parser.parse_args()
+    config = load_config(args.config)
+    logging.basicConfig(
+        level=config['general']['logging'],
+        handlers=[
+            logging.FileHandler('run.log', mode='a'),
+            logging.StreamHandler(sys.stdout),
+        ],
+        format='%(asctime)s %(name)s %(levelname)-8s %(message)s')
 
     start_time = time.time()
     for inf_config in getNextInferenceData(args, is_solve=True):

@@ -7,6 +7,7 @@ from __future__ import absolute_import
 import argparse
 import logging
 import os
+import sys
 import time
 
 import attr
@@ -15,14 +16,11 @@ import toml
 
 from linajea.config import (SolveParametersConfig,
                             TrackingConfig)
+import linajea.evaluation
+from linajea.process_blockwise import solve_blockwise
 from linajea.utils import (print_time,
                            getNextInferenceData)
-from linajea.process_blockwise import solve_blockwise
-import linajea.evaluation
 
-logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s %(name)s %(levelname)-8s %(message)s')
 logger = logging.getLogger(__name__)
 
 
@@ -41,6 +39,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = TrackingConfig.from_file(args.config)
+    logging.basicConfig(
+        level=config.general.logging,
+        handlers=[
+            logging.FileHandler('run.log', mode='a'),
+            logging.StreamHandler(sys.stdout),
+        ],
+        format='%(asctime)s %(name)s %(levelname)-8s %(message)s')
 
     results = {}
     args.validation = not args.swap_val_test

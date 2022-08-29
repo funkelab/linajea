@@ -392,6 +392,13 @@ def main():
     config["path"] = args.config
     is_abs = warn_if_not_abs_paths(config)
     config = TrackingConfig(**config)
+    logging.basicConfig(
+        level=config.general.logging,
+        handlers=[
+            logging.FileHandler("run.log", mode='a'),
+            logging.StreamHandler(sys.stdout)
+        ],
+        format='%(asctime)s %(name)s %(levelname)-8s %(message)s')
 
     setup_dir = config.general.setup_dir
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -417,14 +424,6 @@ def main():
         os.chdir(setup_dir)
     os.makedirs("logs", exist_ok=True)
     os.makedirs("tmp_configs", exist_ok=True)
-
-    logging.basicConfig(
-        level=config.general.logging,
-        handlers=[
-            logging.FileHandler("run.log", mode='a'),
-            logging.StreamHandler(sys.stdout)
-        ],
-        format='%(asctime)s %(name)s %(levelname)-8s %(message)s')
 
     os.environ["GRB_LICENSE_FILE"] = "/misc/local/gurobi-9.1.2/gurobi.lic"
     run_steps = []
