@@ -271,7 +271,7 @@ def warn_if_not_abs_paths(config):
 
     if rel_paths:
         logger.warning(
-            "If using run.py we recommend setting all paths in the config to"
+            "If using run.py we recommend setting all paths in the config to "
             f"their absolute pathnames, {rel_path_keys} is/are relative "
             f"({rel_paths}). You may proceed, however there might be errors "
             "if not called from the respective setup dir")
