@@ -1,5 +1,11 @@
 README: Linajea
 
+NOTE:
+We are in the process of refactoring the code and adding more examples. 
+You can find the current (experimental) state here: 
+[https://github.com/Kainmueller-Lab/linajea/tree/1.5-dev](https://github.com/Kainmueller-Lab/linajea/tree/1.5-dev)
+We will merge it in the next few days.
+
 This is the main software repository for the linajea cell tracking project.
 Includes tools and infrastructure for running a pipeline that starts from light
 sheet data and ends in extracted cell lineage tracks.  The linajea_experiments
