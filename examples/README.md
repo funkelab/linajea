@@ -51,6 +51,88 @@ Two things to note:
 For detailed information on the composition of the content of the configuration files checkout the different examples and see the [documentation/docstrings](../linajea/config).
 
 
+Data
+-----
+
+### Image Data
+
+The image data has to be in the [zarr](https://zarr.readthedocs.io/en/stable/) format.
+It supports N-dimensional arrays and concurrent read and write access.
+Multiple arrays can be stored in a single container.
+
+It is already installed as part of the `linajea` dependencies, but if you want to use it separately:
+```
+pip install zarr
+pip install numcodecs
+```
+
+You can use both the default storage format and the zip storage format.
+`zarr` supports storing additional attributes as key-value pairs per array (internally stored as JSON).
+
+Each array in a container has a name.
+For use in `linajea` when defining a data source in the configuration file you have to supply both, the file and the name of the array:
+```
+filename = "sample.zarr"
+array = "raw"
+```
+
+Through the use of the `voxel_size` parameter both isotropic and anisotropic data is supported.
+```
+voxel_size = [1, 5, 1, 1]
+```
+
+
+To create a container you can either use the `zarr` package directly:
+```
+root = zarr.open('data/group.zarr', mode='w')
+raw = root.zeros(raw', shape=(10000, 10000), chunks=(1000, 1000), dtype='i4')
+raw[:] = arr
+raw.attrs['foo'] = 'bar'
+```
+or (compatible with hdf/`h5py`):
+```
+root.create_dataset('raw, data=arr, shape=(10000, 10000), chunks=(1000, 1000), dtype='i4')
+```
+Please refer to their [documentation](https://zarr.readthedocs.io/en/stable/) for more information.
+
+Alternatively you can use [daisy](https://github.com/funkelab/daisy) functionality.
+To access an existing file:
+```
+raw = daisy.open_ds('data/group.zarr', 'raw', 'r')
+attrs = raw.data.attrs
+```
+
+or to create a new (empty) one:
+```
+raw = daisy.prepare_ds(
+  'data/group.zarr, 'raw', roi, voxel_size, dtype)
+```
+
+### Tracks Data
+
+The tracks data is stored in text/csv files, e.g.:
+```
+t       z       y       x       cell_id parent_id  track_id  radius  name
+0       95.0    215.0   255.0   0       -1         0         13.5    AB
+0       95.0    306.0   365.0   1       -1         1         16.5    P1
+1       105.0   228.0   225.0   2       0          0         14.5    ABa
+1       110.0   211.0   272.0   3       0          0         15.5    ABp
+1       90.0    300.0   369.0   5       1          1         13.5    P2
+1       95.0    304.0   345.0   4       1          1         13.5    EMS
+2       105.0   226.0   220.0   6       2          0         15.5    ABa
+2       100.0   212.0   274.0   7       3          0         15.5    ABp
+2       100.0   309.0   329.0   8       4          1         13.5    EMS
+2       95.0    313.0   377.0   9       5          1         13.5    P2
+```
+
+`t` (time point, frame) starts at `0`.\
+`z`, `y` and `x` are in world units (important for anisotropic data, dividing the coordinate given in the tracks file by the voxel size gives you the array index; all of this is handled automatically, if `voxel_size` is set correctly).\
+`cell_id` is an ID identifying each cell snapshot (cell per frame).\
+`parent_id` points to the `cell_id` of the same cell in the previous frame (or its mother cell after a division).\
+`track_id` identifies each track, each cell originating from the same cell has the same `track_id`, even after divisions (if you are tracking a developing embryo, starting at a single cell, all cells have the same `track_id`).\
+Other columns are optional. If you know the (approximate) radius for each cell, this information can be used during training to fit the size of the cell mask used for the cell indicator map and the movement vectors better.
+
+
 Example 1: Basic
 ------------------
 
