@@ -1,7 +1,14 @@
-import scipy.spatial
-from .match import match
-import numpy as np
+"""Provides a function to evaluate the recreated divisions
+
+Can match divisions not only in the same frame as the gt divisions
+but also in adjacent frames (by setting frame_buffer)
+"""
 import logging
+
+import numpy as np
+import scipy.spatial
+
+from .match import match
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +119,7 @@ def evaluate_divisions(
                 matches = []
             else:
                 matches, soln_cost = match(costs,
-                        matching_threshold + 1)
+                                           matching_threshold + 1)
             logger.info("found %d matches in target frame" % len(matches))
             report = calculate_report(gt_node_ids, rec_node_ids, matches)
             reports.append(report)

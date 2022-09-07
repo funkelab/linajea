@@ -1,14 +1,16 @@
 import unittest
 import random
+
 import networkx as nx
-from linajea.evaluation.validation_metric import split_into_tracks
+
+from linajea.evaluation.validation_metric import _split_into_tracks
 
 
 class TestSplitIntoTracks(unittest.TestCase):
 
     def test_remove_unconnected_node(self):
         graph = self.create_division()
-        conn_components = split_into_tracks(graph)
+        conn_components = _split_into_tracks(graph)
         self.assertEqual(len(conn_components), 2)
 
     def create_division(self):

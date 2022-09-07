@@ -1,5 +1,5 @@
 import unittest
-from linajea.evaluation import evaluate_divisions
+from linajea.evaluation.division_evaluation import evaluate_divisions
 
 
 class TestDivisionEval(unittest.TestCase):

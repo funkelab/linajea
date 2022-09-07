@@ -1,17 +1,20 @@
+attrs
 cython
+h5py
+numpy
 networkx
-pymongo
-pylp
-toml
-scipy
 pandas
+pymongo
+scipy
+scikit-image
+scikit-learn
+toml
 torch
-tensorflow==1.15
-zarr
-sklearn
+tqdm
+zarr>=2.10.2
+-e git+https://github.com/funkelab/funlib.geometry#egg=funlib.geometry
 -e git+https://github.com/funkelab/funlib.math#egg=funlib.math
 -e git+https://github.com/funkelab/funlib.run#egg=funlib.run
--e git+https://github.com/funkelab/funlib.learn.torch#egg=funlib.learn.torch
--e git+https://github.com/funkelab/funlib.learn.tensorflow#egg=funlib.learn.tensorflow
--e git+https://github.com/funkey/gunpowder@b7bd287e82553fa6d1d667a474e3e5457577060e#egg=gunpowder
--e git+https://github.com/funkelab/daisy@3d7826e7e4ab5844d55debac9bbb00b4e43a998b#egg=daisy
+-e git+https://github.com/Kainmueller-Lab/funlib.learn.torch@36ef666d16bddda0bf3146d4c0efbe9b95c8463d#egg=funlib.learn.torch
+-e git+https://github.com/funkey/gunpowder@e6c914f764521cb6af93b86b984fb34776a80f30#egg=gunpowder
+-e git+https://github.com/abred/daisy@ab7b82054126a50ab4ad5dcf2ef885b02d33aab8#egg=daisy

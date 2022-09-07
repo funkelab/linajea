@@ -1,9 +1,10 @@
-from __future__ import absolute_import
-import pylp
+"""Provides function to match nodes in two graphs to each other
+"""
 import logging
 import time
 
 import numpy as np
+import pylp
 import scipy.sparse
 import scipy.spatial
 
@@ -11,8 +12,18 @@ logger = logging.getLogger(__name__)
 
 
 def match_nodes(track_graph_x, track_graph_y, matching_threshold):
-    '''
-    Arguments:
+    '''Perform matching of two graphs based on nodes
+
+    Notes
+    -----
+    Matches frame-wise the nodes in two graphs to each other.
+    Can be used to, e.g., compute the node recall of a tracking graph,
+    for a specific tracking solution but also for a candidate prediction
+    network on its own, independently of a specific tracking solution by
+    loading all predicted nodes and no edges.
+
+    Args
+    ----
 
         track_graph_x, track_graph_y (``linajea.TrackGraph``):
             Track graphs with the ground truth (x) and predicted (y)
@@ -21,9 +32,12 @@ def match_nodes(track_graph_x, track_graph_y, matching_threshold):
             If the nodes are within matching_threshold
             real world units, then they are allowed to be matched
 
-    Returns a list of nodes in x, a list of nodes in y, a list of node
-    matches [(id_x, id_y), ...] referring to indexes in the returned lists,
-    and the number of node false positives
+    Returns
+    -------
+    list
+        A list of nodes in x, a list of nodes in y, a list of node
+        matches [(id_x, id_y), ...] referring to indexes in the returned
+        lists, and the number of node false positives
     '''
     begin = min(track_graph_x.get_frames()[0], track_graph_x.get_frames()[0])
     end = max(track_graph_x.get_frames()[1], track_graph_x.get_frames()[1]) + 1
@@ -77,7 +91,7 @@ def match_nodes(track_graph_x, track_graph_y, matching_threshold):
                     np.array(positions_x[i]) -
                     np.array(positions_y[j]))
                 node_costs[(node_x, node_y)] = distance
-        node_matches_in_frame, cost = match(node_costs, no_match_cost)
+        node_matches_in_frame, cost = _match(node_costs, no_match_cost)
         logger.info(
                 "Done matching frame %d, found %d matches",
                 t, len(node_matches_in_frame))
@@ -87,7 +101,7 @@ def match_nodes(track_graph_x, track_graph_y, matching_threshold):
     return node_matches
 
 
-def match(costs, no_match_cost):
+def _match(costs, no_match_cost):
     ''' Arguments:
 
         costs (``dict`` from ``tuple`` of ids to ``float``):

@@ -1,5 +1,5 @@
 Bootstrap: localimage
-From: /nrs/funke/singularity/linajea/pylp_base:v1.3.img
+From: /nrs/funke/singularity/linajea/pylp_base:v1.5.img
 
 %help
 This container contains linajea lineage tracking software.
@@ -21,16 +21,16 @@ mkdir -p ${SINGULARITY_ROOTFS}/src/linajea
 maintainer funkej@janelia.hhmi.org
 
 %post
-
 PATH="/miniconda/bin:$PATH"
 
 pip install zarr
+pip install imagecodecs
 
 # install gunpowder
 
 GUNPOWDER_ROOT=/src/gunpowder
 GUNPOWDER_REPOSITORY=https://github.com/funkey/gunpowder.git
-GUNPOWDER_REVISION=b7bd287e82553fa6d1d667a474e3e5457577060e
+GUNPOWDER_REVISION=2ce2fdbee5c0bb5d2e12471e079a252f7fae54ea
 
 mkdir -p ${GUNPOWDER_ROOT}
 cd ${GUNPOWDER_ROOT}
@@ -97,6 +97,10 @@ git checkout ${FUNLIB_RUN_REVISION}
 pip install -r requirements.txt
 PYTHONPATH=${FUNLIB_RUN_ROOT}:$PYTHONPATH
 
+# install CTC dependencies
+pip install raster_geometry
+pip install mahotas
+pip install tifffile
 
 %environment
 export DAISY_ROOT=/src/daisy

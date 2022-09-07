@@ -1,9 +1,10 @@
-from __future__ import absolute_import
-import pylp
+"""Provides function to match edges in two graphs to each other
+"""
 import logging
 import time
 
 import numpy as np
+import pylp
 import scipy.sparse
 import scipy.spatial
 
@@ -11,8 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 def match_edges(track_graph_x, track_graph_y, matching_threshold):
-    '''
-    Arguments:
+    '''Perform matching of two graphs based on edges
+
+    Args
+    ----
 
         track_graph_x, track_graph_y (``linajea.TrackGraph``):
             Track graphs with the ground truth (x) and predicted (y)
@@ -21,9 +24,12 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
             If the nodes on both ends of an edge are within matching_threshold
             real world units, then they are allowed to be matched
 
-    Returns a list of edges in x, a list of edges in y, a list of edge
-    matches [(id_x, id_y), ...] referring to indexes in the returned lists,
-    and the number of edge false positives
+    Returns
+    -------
+    list
+        A list of edges in x, a list of edges in y, a list of edge
+        matches [(id_x, id_y), ...] referring to indexes in the returned
+        lists, and the number of edge false positives
     '''
     begin = min(track_graph_x.get_frames()[0], track_graph_x.get_frames()[0])
     end = max(track_graph_x.get_frames()[1], track_graph_x.get_frames()[1]) + 1
@@ -41,14 +47,21 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
     #           list of (neighboring node in y, distance)
     node_pairs_xy_by_frame = {}
     edge_matches = []
-    edge_fps = 0
+    edge_fps = []
 
+    avg_dist = []
+    avg_dist_target = []
+    avg_dist_source = []
     for t in range(begin, end):
         node_pairs_xy = {}
         frame_nodes_x = []
         frame_nodes_y = []
         positions_x = []
         positions_y = []
+
+        avg_dist_frame = []
+        avg_dist_target_frame = []
+        avg_dist_source_frame = []
 
         # get all nodes and their positions in x and y of the current frame
 
@@ -105,14 +118,97 @@ def match_edges(track_graph_x, track_graph_y, matching_threshold):
             edge_matches_in_frame, _ = match(edge_costs,
                                              2*matching_threshold + 1)
             edge_matches.extend(edge_matches_in_frame)
-            edge_fps_in_frame = len(y_edges_in_range) -\
-                len(edge_matches_in_frame)
-            edge_fps += edge_fps_in_frame
+            y_edge_matches_in_frame = [edge[1]
+                                       for edge in edge_matches_in_frame]
+            edge_fps_in_frame = set(y_edges_in_range) -\
+                set(y_edge_matches_in_frame)
+            edge_fps += list(edge_fps_in_frame)
             logger.debug(
                     "Done matching frame %d, found %d matches and %d edge fps",
-                    t, len(edge_matches_in_frame), edge_fps_in_frame)
+                    t, len(edge_matches_in_frame), len(edge_fps_in_frame))
+
+            for exid, eyid in edge_matches_in_frame:
+                node_xid_source = edges_x[exid][0]
+                node_xid_target = edges_x[exid][1]
+                node_yid_source = edges_y[eyid][0]
+                node_yid_target = edges_y[eyid][1]
+
+                pos_x_target = np.array(
+                    [track_graph_x.nodes[node_xid_target]['z'],
+                     track_graph_x.nodes[node_xid_target]['y'],
+                     track_graph_x.nodes[node_xid_target]['x']])
+                pos_y_target = np.array(
+                    [track_graph_y.nodes[node_yid_target]['z'],
+                     track_graph_y.nodes[node_yid_target]['y'],
+                     track_graph_y.nodes[node_yid_target]['x']])
+                distance_target = np.linalg.norm(pos_x_target - pos_y_target)
+                pos_x_source = np.array(
+                    [track_graph_x.nodes[node_xid_source]['z'],
+                     track_graph_x.nodes[node_xid_source]['y'],
+                     track_graph_x.nodes[node_xid_source]['x']])
+                pos_y_source = np.array(
+                    [track_graph_y.nodes[node_yid_source]['z'],
+                     track_graph_y.nodes[node_yid_source]['y'],
+                     track_graph_y.nodes[node_yid_source]['x']])
+                distance_source = np.linalg.norm(pos_x_source - pos_y_source)
+
+                avg_dist_source_frame.append(distance_source)
+                avg_dist_source.append(distance_source)
+                avg_dist_target_frame.append(distance_target)
+                avg_dist_target.append(distance_target)
+                avg_dist_frame.append(distance_target)
+                avg_dist_frame.append(distance_source)
+                avg_dist.append(distance_target)
+                avg_dist.append(distance_source)
+                if distance_target >= 7.0:
+                    logger.debug("target %d %d %.3f %s %s", node_xid_target,
+                                 node_yid_target, distance_target,
+                                 pos_x_target, pos_y_target)
+                if distance_source >= 7.0:
+                    logger.debug("source %d %d %.3f %s %s", node_xid_source,
+                                 node_yid_source, distance_source,
+                                 pos_x_source, pos_y_source)
+                # logger.info("%.3f %.3f", distance_target, distance_source)
+
+        logger.debug("frame %d, count matches %d",
+                     t, len(avg_dist_source_frame))
+        if len(avg_dist_source_frame) == 0:
+            continue
+        logger.debug("dist source: avg %.3f, med %.3f, min %.3f, max %.3f",
+                     np.mean(avg_dist_source_frame),
+                     np.median(avg_dist_source_frame),
+                     np.min(avg_dist_source_frame),
+                     np.max(avg_dist_source_frame))
+        logger.debug("dist target: avg %.3f, med %.3f, min %.3f, max %.3f",
+                     np.mean(avg_dist_target_frame),
+                     np.median(avg_dist_target_frame),
+                     np.min(avg_dist_target_frame),
+                     np.max(avg_dist_target_frame))
+        logger.debug("dist : avg %.3f, med %.3f, min %.3f, max %.3f",
+                     np.mean(avg_dist_frame),
+                     np.median(avg_dist_frame),
+                     np.min(avg_dist_frame),
+                     np.max(avg_dist_frame))
+
+    if len(avg_dist_source) > 0:
+        logger.debug("total count matches %d", len(avg_dist_source))
+        logger.debug("dist source: avg %.3f, med %.3f, min %.3f, max %.3f",
+                     np.mean(avg_dist_source),
+                     np.median(avg_dist_source),
+                     np.min(avg_dist_source),
+                     np.max(avg_dist_source))
+        logger.debug("dist target: avg %.3f, med %.3f, min %.3f, max %.3f",
+                     np.mean(avg_dist_target),
+                     np.median(avg_dist_target),
+                     np.min(avg_dist_target),
+                     np.max(avg_dist_target))
+        logger.debug("dist : avg %.3f, med %.3f, min %.3f, max %.3f",
+                     np.mean(avg_dist),
+                     np.median(avg_dist),
+                     np.min(avg_dist),
+                     np.max(avg_dist))
     logger.info("Done matching, found %d matches and %d edge fps"
-                % (len(edge_matches), edge_fps))
+                % (len(edge_matches), len(edge_fps)))
     return edges_x, edges_y, edge_matches, edge_fps
 
 
@@ -232,7 +328,7 @@ def match(costs, no_match_cost):
     solver.set_timeout(240)
 
     logger.debug("start solving (num vars %d, num constr. %d, num costs %d)",
-                num_variables, len(constraints), len(costs))
+                 num_variables, len(constraints), len(costs))
     start = time.time()
     solution, message = solver.solve()
     end = time.time()

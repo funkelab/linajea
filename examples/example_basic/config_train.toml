@@ -1,0 +1,37 @@
+model = "config_model.toml"
+
+[general]
+logging = 20
+db_host = "localhost"
+seed = 42
+setup_dir = "example_basic"
+sparse = false
+
+[train_data]
+[[train_data.data_sources]]
+tracksfile = "mskcc_emb1_15fr_tracks.csv"
+[train_data.data_sources.datafile]
+filename = "mskcc_emb1_15fr.zip"
+array = "raw"
+[train_data.data_sources.roi]
+offset = [ 0, 0, 0, 0,]
+shape = [ 15, 205, 512, 512,]
+
+[train]
+# radius for binary map -> *2 (in world units)
+# in which to draw movement vectors (not used if use_radius)
+object_radius = [ 0.1, 8.0, 8.0, 8.0,]
+# upper bound for dist cell moved between two frames (needed for context)
+move_radius = 25
+# size of cell indicator blobs
+# sigma for Gauss -> ~*4 (5 in z -> in 3 slices) (not used if use_radius)
+rasterize_radius = [ 0.1, 5.0, 3.0, 3.0,]
+max_iterations = 10
+checkpoint_stride = 10
+use_auto_mixed_precision = true
+
+[train.normalization]
+type = "minmax"
+perc_min = "perc0_01"
+perc_max = "perc99_99"
+norm_bounds = [ 2000, 7500,]

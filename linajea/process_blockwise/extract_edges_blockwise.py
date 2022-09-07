@@ -1,108 +1,116 @@
-from __future__ import absolute_import
-from scipy.spatial import cKDTree
-import daisy
-import linajea
-from .daisy_check_functions import write_done, check_function
-from ..datasets import get_source_roi
+"""Provides function to extract edges from object candidates block-wise
+"""
 import logging
-import numpy as np
 import time
+
+import numpy as np
+from scipy.spatial import KDTree
+
+import daisy
+from .daisy_check_functions import write_done, check_function
+import linajea
 
 logger = logging.getLogger(__name__)
 
 
-def extract_edges_blockwise(
-        db_host,
-        db_name,
-        sample,
-        edge_move_threshold,
-        block_size,
-        num_workers,
-        frames=None,
-        frame_context=1,
-        data_dir='../01_data',
-        use_pv_distance=False,
-        **kwargs):
+def extract_edges_blockwise(linajea_config):
+    """Function to extract edges (compute edge candidates between
+    neighboring object candidates in adjacent frames)
 
-    voxel_size, source_roi = get_source_roi(data_dir, sample)
+    Starts a number of worker processes to process the blocks.
 
-    # limit to specific frames, if given
-    if frames:
-        begin, end = frames
-        begin -= frame_context
-        end += frame_context
-        crop_roi = daisy.Roi(
-            (begin, None, None, None),
-            (end - begin, None, None, None))
-        source_roi = source_roi.intersect(crop_roi)
+    Args
+    ----
+    linajea_config: TrackingConfig
+        Configuration object
+    """
+    data = linajea_config.inference_data.data_source
+    extract_roi = daisy.Roi(offset=data.roi.offset,
+                            shape=data.roi.shape)
+    # allow for solve context
+    assert linajea_config.solve.context, (
+        "config.solve.context is not set, cannot determine how much spatial"
+        " context is necessary for tracking (cells moving in and out of a"
+        " block at the boundary). Please set it!")
+    extract_roi = extract_roi.grow(
+            daisy.Coordinate(linajea_config.solve.context),
+            daisy.Coordinate(linajea_config.solve.context))
+    # but limit to actual file roi
+    if data.datafile is not None:
+        extract_roi = extract_roi.intersect(
+            daisy.Roi(offset=data.datafile.file_roi.offset,
+                      shape=data.datafile.file_roi.shape))
 
     # block size in world units
     block_write_roi = daisy.Roi(
         (0,)*4,
-        daisy.Coordinate(block_size))
+        daisy.Coordinate(linajea_config.extract.block_size))
 
-    pos_context = daisy.Coordinate((0,) + (edge_move_threshold,)*3)
-    neg_context = daisy.Coordinate((1,) + (edge_move_threshold,)*3)
+    max_edge_move_th = max(linajea_config.extract.edge_move_threshold.values())
+    pos_context = daisy.Coordinate((0,) + (max_edge_move_th,)*3)
+    neg_context = daisy.Coordinate((1,) + (max_edge_move_th,)*3)
     logger.debug("Set neg context to %s", neg_context)
 
-    input_roi = source_roi.grow(neg_context, pos_context)
+    input_roi = extract_roi.grow(neg_context, pos_context)
     block_read_roi = block_write_roi.grow(neg_context, pos_context)
 
-    print("Following ROIs in world units:")
-    print("Input ROI       = %s" % input_roi)
-    print("Block read  ROI = %s" % block_read_roi)
-    print("Block write ROI = %s" % block_write_roi)
-    print("Output ROI      = %s" % source_roi)
+    logger.info("Following ROIs in world units:")
+    logger.info("Input ROI       = %s", input_roi)
+    logger.info("Block read  ROI = %s", block_read_roi)
+    logger.info("Block write ROI = %s", block_write_roi)
+    logger.info("Output ROI      = %s", extract_roi)
 
-    print("Starting block-wise processing...")
+    logger.info("Starting block-wise processing...")
+    if data.datafile is not None:
+        logger.info("Sample: %s", data.datafile.filename)
+    logger.info("DB: %s", data.db_name)
 
     # process block-wise
-    daisy.run_blockwise(
+    task = daisy.Task(
+        "linajea_extract_edges",
         input_roi,
         block_read_roi,
         block_write_roi,
         process_function=lambda b: extract_edges_in_block(
-            db_name,
-            db_host,
-            edge_move_threshold,
-            b,
-            use_pv_distance=use_pv_distance),
+            linajea_config,
+            b),
         check_function=lambda b: check_function(
             b,
             'extract_edges',
-            db_name,
-            db_host),
-        num_workers=num_workers,
-        processes=True,
+            data.db_name,
+            linajea_config.general.db_host),
+        num_workers=linajea_config.extract.job.num_workers,
         read_write_conflict=False,
-        fit='shrink')
+        fit='overhang')
+
+    daisy.run_blockwise([task])
 
 
 def extract_edges_in_block(
-        db_name,
-        db_host,
-        edge_move_threshold,
-        block,
-        use_pv_distance=False):
+        linajea_config,
+        block):
 
-    logger.info(
+    logger.debug(
         "Finding edges in %s, reading from %s",
         block.write_roi, block.read_roi)
 
+    data = linajea_config.inference_data.data_source
+
     start = time.time()
 
-    graph_provider = linajea.CandidateDatabase(
-        db_name,
-        db_host,
+    graph_provider = linajea.utils.CandidateDatabase(
+        data.db_name,
+        linajea_config.general.db_host,
         mode='r+')
     graph = graph_provider[block.read_roi]
 
     if graph.number_of_nodes() == 0:
-        logger.info("No cells in roi %s. Skipping", block.read_roi)
-        write_done(block, 'extract_edges', db_name, db_host)
+        logger.debug("No cells in roi %s. Skipping", block.read_roi)
+        write_done(block, 'extract_edges', data.db_name,
+                   linajea_config.general.db_host)
         return 0
 
-    logger.info(
+    logger.debug(
         "Read %d cells in %.3fs",
         graph.number_of_nodes(),
         time.time() - start)
@@ -116,13 +124,14 @@ def extract_edges_in_block(
         t: [
             (
                 cell,
-                np.array([data[d] for d in ['z', 'y', 'x']]),
-                np.array(data['parent_vector'])
+                np.array([attrs[d] for d in ['z', 'y', 'x']]),
+                np.array(attrs['movement_vector'])
             )
-            for cell, data in graph.nodes(data=True)
-            if 't' in data and data['t'] == t
+            for cell, attrs in graph.nodes(data=True)
+            if 't' in attrs and attrs['t'] == t
         ]
-        for t in range(t_begin - 1, t_end)
+        for t in range(t_begin - 1,
+                       t_end)
     }
 
     for t in range(t_begin, t_end):
@@ -144,7 +153,12 @@ def extract_edges_in_block(
         logger.debug("Preparing KD tree...")
         all_pre_cells = cells_by_t[pre]
         kd_data = [cell[1] for cell in all_pre_cells]
-        pre_kd_tree = cKDTree(kd_data)
+        pre_kd_tree = KDTree(kd_data)
+
+        for th, val in linajea_config.extract.edge_move_threshold.items():
+            if th == -1 or t < int(th):
+                edge_move_threshold = val
+                break
 
         for i, nex_cell in enumerate(cells_by_t[nex]):
 
@@ -152,11 +166,10 @@ def extract_edges_in_block(
             nex_cell_center = nex_cell[1]
             nex_parent_center = nex_cell_center + nex_cell[2]
 
-            if use_pv_distance:
+            if linajea_config.extract.use_mv_distance:
                 pre_cells_indices = pre_kd_tree.query_ball_point(
                     nex_parent_center,
                     edge_move_threshold)
-
             else:
                 pre_cells_indices = pre_kd_tree.query_ball_point(
                     nex_cell_center,
@@ -186,9 +199,9 @@ def extract_edges_in_block(
                     distance=distance,
                     prediction_distance=prediction_distance)
 
-    logger.info("Found %d edges", graph.number_of_edges())
+    logger.debug("Found %d edges", graph.number_of_edges())
 
-    logger.info(
+    logger.debug(
         "Extracted edges in %.3fs",
         time.time() - start)
 
@@ -196,8 +209,9 @@ def extract_edges_in_block(
 
     graph.write_edges(block.write_roi)
 
-    logger.info(
+    logger.debug(
         "Wrote edges in %.3fs",
         time.time() - start)
-    write_done(block, 'extract_edges', db_name, db_host)
+    write_done(block, 'extract_edges', data.db_name,
+               linajea_config.general.db_host)
     return 0

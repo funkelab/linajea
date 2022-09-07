@@ -1,31 +1,40 @@
+"""Provides an additional track quality metric
+
+Topological errors incur a higher penalty
+"""
+import logging
 import math
+import time
+
 import numpy as np
 import networkx as nx
-import logging
-import time
 
 logger = logging.getLogger(__name__)
 
 
 def validation_score(gt_lineages, rec_lineages):
-    ''' Args:
+    """Computes a value that reflects the quality of a set of reconstructed
+    lineages. A lower score indicates higher quality. The score suffers a
+    high penalty for topological errors (FN edges, FN divisions, FP
+    divisions) and a lower penalty for having a large matching distance
+    between nodes in the GT and rec tracks.
 
-        gt_lineages (networkx.DiGraph)
-            Ground truth cell lineages. Assumed to be sparse
+    Args
+    ----
+    gt_lineages (networkx.DiGraph)
+        Ground truth cell lineages. Assumed to be sparse
 
-        rec_lineages (networkx.DiGraph)
-            Reconstructed cell lineages
+    rec_lineages (networkx.DiGraph)
+        Reconstructed cell lineages
 
-    Returns:
-        A float value that reflects the quality of a set of reconstructed
-        lineages. A lower score indicates higher quality. The score suffers a
-        high penalty for topological errors (FN edges, FN divisions, FP
-        divisions) and a lower penalty for having a large matching distance
-        between nodes in the GT and rec tracks.
-    '''
-    gt_tracks = split_into_tracks(gt_lineages)
-    rec_tracks = split_into_tracks(rec_lineages)
-    rec_tracks_sorted_nodes = [sort_nodes(track)
+    Returns
+    -------
+    float
+        quality metric, lower is better
+    """
+    gt_tracks = _split_into_tracks(gt_lineages)
+    rec_tracks = _split_into_tracks(rec_lineages)
+    rec_tracks_sorted_nodes = [_sort_nodes(track)
                                for track in rec_tracks]
 
     # This is a naive approach where we compare all pairs of tracks.
@@ -35,11 +44,11 @@ def validation_score(gt_lineages, rec_lineages):
     processed = 0
     start_time = time.time()
     for gt_track in gt_tracks:
-        gt_nodes = sort_nodes(gt_track)
+        gt_nodes = _sort_nodes(gt_track)
         track_score = None
         for rec_nodes in rec_tracks_sorted_nodes:
-            s = track_distance(gt_nodes, rec_nodes,
-                               current_min=track_score)
+            s = _track_distance(gt_nodes, rec_nodes,
+                                current_min=track_score)
             if not s:  # returned None because greater than current min
                 continue
             if track_score is None or s < track_score:
@@ -54,20 +63,20 @@ def validation_score(gt_lineages, rec_lineages):
     return total_score
 
 
-def sort_nodes(track):
+def _sort_nodes(track):
     # Sort nodes by frame (assumed 1 per frame)
     nodes = [d for n, d in track.nodes(data=True)]
     nodes = sorted(nodes, key=lambda n: n['t'])
     return nodes
 
 
-def track_distance(track1, track2, current_min=None):
+def _track_distance(track1, track2, current_min=None):
     if isinstance(track1, nx.DiGraph):
-        nodes1 = sort_nodes(track1)
+        nodes1 = _sort_nodes(track1)
     else:
         nodes1 = track1
     if isinstance(track2, nx.DiGraph):
-        nodes2 = sort_nodes(track2)
+        nodes2 = _sort_nodes(track2)
     else:
         nodes2 = track2
 
@@ -96,12 +105,12 @@ def track_distance(track1, track2, current_min=None):
         t2 = nodes2[i2]['t']
         if t1 == t2:
             logger.debug("Match in frame %d", t1)
-            node_dist = np.linalg.norm(node_loc(nodes1[i1]) -
-                                       node_loc(nodes2[i2]))
+            node_dist = np.linalg.norm(_node_loc(nodes1[i1]) -
+                                       _node_loc(nodes2[i2]))
             logger.debug("Euclidean distance: %f", node_dist)
             logger.debug("normalized distance: %f",
-                         norm_distance(node_dist))
-            dist += norm_distance(node_dist)
+                         _norm_distance(node_dist))
+            dist += _norm_distance(node_dist)
             i1 += 1
             i2 += 1
         else:
@@ -122,11 +131,11 @@ def track_distance(track1, track2, current_min=None):
     return dist
 
 
-def node_loc(data):
+def _node_loc(data):
     return np.array([data['z'], data['y'], data['x']])
 
 
-def get_node_attr_range(graph, attr):
+def _get_node_attr_range(graph, attr):
     ''' Returns the lowest value and one greater than the highest value'''
     low = None
     high = None
@@ -141,7 +150,7 @@ def get_node_attr_range(graph, attr):
     return [low, high + 1]
 
 
-def norm_distance(dist, inflect_point=50):
+def _norm_distance(dist, inflect_point=50):
     ''' Normalize the distance to between 0 and 1 using the logistic
     function. The function will be adjusted so that the value at distance zero
     is 10^-4. Due to symmetry, the value at 2*inflect_point will be 1-10^-4.
@@ -161,7 +170,7 @@ def norm_distance(dist, inflect_point=50):
     return 1. / (1 + math.pow(math.e, -1*slope*(dist - inflect_point)))
 
 
-def split_into_tracks(lineages):
+def _split_into_tracks(lineages):
     ''' Splits a lineage forest into a list of tracks, splitting at divisions
     Args:
         lineages (nx.DiGraph)
@@ -175,15 +184,15 @@ def split_into_tracks(lineages):
         in_edges = list(lineages.in_edges(node))
         min_id = 0
         for edge in in_edges:
-            min_id = replace_target(edge, lineages, i=min_id)
+            min_id = _replace_target(edge, lineages, i=min_id)
         if len(lineages.out_edges(edge[1])) == 0:
             lineages.remove_node(edge[1])
-    conn_components = get_connected_components(lineages)
+    conn_components = _get_connected_components(lineages)
     logger.info("Number of connected components: %d", len(conn_components))
     return conn_components
 
 
-def get_connected_components(graph):
+def _get_connected_components(graph):
     subgraphs = []
     node_set_generator = nx.weakly_connected_components(graph)
     for node_set in node_set_generator:
@@ -195,11 +204,11 @@ def get_connected_components(graph):
     return subgraphs
 
 
-def replace_target(edge, graph, i=0):
+def _replace_target(edge, graph, i=0):
     old_id = edge[1]
     node_data = graph.nodes[old_id]
     edge_data = graph.edges[edge]
-    new_id = get_unused_node_id(graph, i)
+    new_id = _get_unused_node_id(graph, i)
     graph.add_node(new_id, **node_data)
     logger.debug("New node has data %s", graph.nodes[new_id])
     graph.remove_edge(*edge)
@@ -207,7 +216,7 @@ def replace_target(edge, graph, i=0):
     return new_id
 
 
-def get_unused_node_id(graph, i=0):
+def _get_unused_node_id(graph, i=0):
     while i in graph.nodes:
         i += 1
     return i

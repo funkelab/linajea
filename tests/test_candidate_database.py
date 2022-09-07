@@ -1,11 +1,13 @@
-from linajea import CandidateDatabase
-import linajea.tracking
-from linajea.evaluation import Report
-from daisy import Roi
-from unittest import TestCase
 import logging
 import multiprocessing as mp
 import pymongo
+from unittest import TestCase
+
+from daisy import Roi
+
+from linajea.utils import CandidateDatabase
+import linajea.tracking
+from linajea.evaluation import Report
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -13,18 +15,26 @@ logging.basicConfig(level=logging.INFO)
 
 class DatabaseTestCase(TestCase):
 
-    def delete_db(self, db_name, db_host):
-        client = pymongo.MongoClient(db_host)
-        client.drop_database(db_name)
+    def setUp(self):
+        self.db_host = 'localhost'
+        try:
+            client = pymongo.MongoClient(
+                self.db_host, serverSelectionTimeoutMS=0)
+            client.list_databases()
+        except pymongo.errors.ServerSelectionTimeoutError:
+            self.skipTest("No MongoDB server found")
+
+    def tearDown(self):
+        client = pymongo.MongoClient(self.db_host)
+        client.drop_database(self.db_name)
 
     def test_database_creation(self):
-        db_name = 'test_linajea_database'
-        db_host = 'localhost'
+        self.db_name = 'test_linajea_database'
         total_roi = Roi((0, 0, 0, 0), (10, 100, 100, 100))
 
         candidate_db = CandidateDatabase(
-                db_name,
-                db_host,
+                self.db_name,
+                self.db_host,
                 mode='w',
                 total_roi=total_roi)
 
@@ -48,8 +58,8 @@ class DatabaseTestCase(TestCase):
 
         logger.debug("Creating new database to read data")
         compare_db = CandidateDatabase(
-                db_name,
-                db_host,
+                self.db_name,
+                self.db_host,
                 mode='r',
                 total_roi=total_roi)
 
@@ -58,16 +68,14 @@ class DatabaseTestCase(TestCase):
         point_ids = [p[0] for p in points]
         self.assertCountEqual(compare_sub_graph.nodes, point_ids)
         self.assertCountEqual(compare_sub_graph.edges, edges)
-        self.delete_db(db_name, db_host)
 
     def test_get_selected_graph_and_reset_selection(self):
-        db_name = 'test_linajea_database'
-        db_host = 'localhost'
+        self.db_name = 'test_linajea_database'
         total_roi = Roi((0, 0, 0, 0), (5, 10, 10, 10))
 
         write_db = CandidateDatabase(
-                db_name,
-                db_host,
+                self.db_name,
+                self.db_host,
                 mode='w',
                 total_roi=total_roi)
 
@@ -94,8 +102,8 @@ class DatabaseTestCase(TestCase):
 
         logger.debug("Creating new database to read data")
         read_db = CandidateDatabase(
-                db_name,
-                db_host,
+                self.db_name,
+                self.db_host,
                 mode='r',
                 parameters_id=1)
         selected_graph = read_db.get_selected_graph(total_roi)
@@ -108,12 +116,11 @@ class DatabaseTestCase(TestCase):
         self.assertEqual(unselected_graph.number_of_edges(), 0)
 
     def test_get_node_roi(self):
-        db_name = 'test_linajea_db_node_roi'
-        db_host = 'localhost'
+        self.db_name = 'test_linajea_db_node_roi'
         roi = Roi((0, 0, 0, 0), (5, 10, 10, 10))
-        db = linajea.CandidateDatabase(
-                db_name,
-                db_host,
+        db = CandidateDatabase(
+                self.db_name,
+                self.db_host,
                 mode='w')
         sub_graph = db[roi]
         points = [
@@ -131,8 +138,7 @@ class DatabaseTestCase(TestCase):
         self.assertEqual(nodes_roi, expected_roi)
 
     def test_write_and_get_score(self):
-        db_name = 'test_linajea_database'
-        db_host = 'localhost'
+        self.db_name = 'test_linajea_database'
         ps = {
                 "track_cost": 2.0,
                 "weight_edge_score": 0.1,
@@ -140,13 +146,12 @@ class DatabaseTestCase(TestCase):
                 "selection_constant": 0.0,
                 "max_cell_move": 1.0,
                 "block_size": [5, 100, 100, 100],
-                "context": [2, 100, 100, 100],
             }
-        parameters = linajea.tracking.TrackingParameters(**ps)
+        parameters = linajea.config.SolveParametersConfig(**ps)
 
         db = CandidateDatabase(
-                db_name,
-                db_host)
+                self.db_name,
+                self.db_host)
         params_id = db.get_parameters_id(parameters)
 
         score = Report()
@@ -159,14 +164,23 @@ class DatabaseTestCase(TestCase):
 
         compare_dict = score.__dict__
         compare_dict.update(db.get_parameters(params_id))
-        self.assertDictEqual(compare_dict, score_dict)
+        compare_dict.update({'param_id': params_id})
+        self.assertEqual(compare_dict, score_dict)
 
 
 class TestParameterIds(TestCase):
 
-    def delete_db(self, db_name, db_host):
-        client = pymongo.MongoClient(db_host)
-        client.drop_database(db_name)
+    def setUp(self):
+        self.db_host = 'localhost'
+        try:
+            client = pymongo.MongoClient(self.db_host, serverSelectionTimeoutMS=0)
+            client.list_databases()
+        except pymongo.errors.ServerSelectionTimeoutError:
+            self.skipTest("No MongoDB server found")
+
+    def tearDown(self):
+        client = pymongo.MongoClient(self.db_host)
+        client.drop_database(self.db_name)
 
     def get_tracking_params(self):
         return {
@@ -176,34 +190,30 @@ class TestParameterIds(TestCase):
                 "selection_constant": 0.0,
                 "max_cell_move": 1.0,
                 "block_size": [5, 100, 100, 100],
-                "context": [2, 100, 100, 100],
             }
 
     def test_unique_id_one_worker(self):
-        db_name = 'test_linajea_db'
-        db_host = 'localhost'
+        self.db_name = 'test_linajea_db'
         db = CandidateDatabase(
-                db_name,
-                db_host,
+                self.db_name,
+                self.db_host,
                 mode='w')
         for i in range(10):
-            tp = linajea.tracking.TrackingParameters(
+            tp = linajea.config.SolveParametersConfig(
                     **self.get_tracking_params())
-            tp.cost_appear = i
+            tp.track_cost = i
             _id = db.get_parameters_id(tp)
             self.assertEqual(_id, i + 1)
-        self.delete_db(db_name, db_host)
 
     def test_unique_id_multi_worker(self):
-        db_name = 'test_linajea_db_multi_worker'
-        db_host = 'localhost'
-        db = linajea.CandidateDatabase(
-                db_name,
-                db_host,
+        self.db_name = 'test_linajea_db_multi_worker'
+        db = CandidateDatabase(
+                self.db_name,
+                self.db_host,
                 mode='w')
         tps = []
         for i in range(10):
-            tp = linajea.tracking.TrackingParameters(
+            tp = linajea.config.SolveParametersConfig(
                     **self.get_tracking_params())
             tp.cost_appear = i
             tps.append(tp)
@@ -222,4 +232,3 @@ class TestParameterIds(TestCase):
             process.start()
         for process in processes:
             process.join()
-        self.delete_db(db_name, db_host)

@@ -1,5 +1,10 @@
-import networkx as nx
+"""Provides a specialized nx.DiGraph class to provide additional
+functionality for a graph that represent tracks, e.g., to get all tracks,
+all nodes in one frame.
+"""
 import logging
+
+import networkx as nx
 
 logger = logging.getLogger(__name__)
 
@@ -7,7 +12,30 @@ logger = logging.getLogger(__name__)
 class TrackGraph(nx.DiGraph):
     '''A track graph of cells and inter-frame edges between them.
 
-    Args:
+    Constructor can take an existing networkx graph and set additional
+    attributes
+
+    Attributes
+    ----------
+    begin: int
+    end: int
+        Range of time frames contained in data
+    _cells_by_frame: dict of int: nodes
+        Maps from frames to all nodes in that frame
+    frame_key: str
+        The name of the node attribute that corresponds to the frame of
+        the node. Defaults to "t".
+    roi: daisy.Roi
+        The region of interest that the graph covers. Used for solving.
+    '''
+
+    def __init__(
+            self,
+            graph_data=None,
+            frame_key='t',
+            roi=None):
+        """
+        Args:
 
         graph_data (optional):
 
@@ -24,14 +52,7 @@ class TrackGraph(nx.DiGraph):
 
             The region of interest that the graph covers. Used for solving.
 
-    '''
-
-    def __init__(
-            self,
-            graph_data=None,
-            frame_key='t',
-            roi=None):
-
+        """
         super(TrackGraph, self).__init__(incoming_graph_data=graph_data)
 
         self.begin = None

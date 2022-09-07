@@ -8,6 +8,11 @@ class TestCheckFunction(unittest.TestCase):
     def setUp(self):
         self.db_name = 'test_check_function'
         self.db_host = 'localhost'
+        try:
+            client = pymongo.MongoClient(self.db_host, serverSelectionTimeoutMS=0)
+            client.list_databases()
+        except pymongo.errors.ServerSelectionTimeoutError:
+            self.skipTest("No MongoDB server found")
 
     def tearDown(self):
         client = pymongo.MongoClient(self.db_host)
