@@ -72,9 +72,7 @@ def extract_edges_blockwise(linajea_config):
         block_read_roi,
         block_write_roi,
         process_function=lambda b: extract_edges_in_block(
-            db_name,
-            db_host,
-            edge_move_threshold,
+            linajea_config,
             b),
         check_function=lambda b: check_function(
             b,
@@ -89,9 +87,7 @@ def extract_edges_blockwise(linajea_config):
 
 
 def extract_edges_in_block(
-        db_name,
-        db_host,
-        edge_move_threshold,
+        linajea_config,
         block):
 
     logger.debug(
