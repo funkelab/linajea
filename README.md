@@ -3,8 +3,8 @@ Linajea
 
 Publications
 --------------
- - TODO link to nbt paper
- - [Arxiv/MICCAI2022](https://arxiv.org/abs/2208.11467)
+ - [Automated reconstruction of whole-embryo cell lineages by learning from sparse annotations (nature biotechnology)](https://www.nature.com/articles/s41587-022-01427-7)
+ - [Tracking by weakly-supervised learning and graph optimization for whole-embryo C. elegans lineages (arxiv/MICCAI2022)](https://arxiv.org/abs/2208.11467)
 
 ![Linajea](./README.assets/pipeline.png "Linajea Pipeline")
 
