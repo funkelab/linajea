@@ -56,7 +56,7 @@ cd pylp/impl
 git clone https://github.com/funkey/solvers.git
 cd solvers
 git rebase -Xtheirs origin/min_deps
-curl https://github.com/funkelab/linajea/blob/master/pylp.patch | git apply
+curl https://raw.githubusercontent.com/funkelab/linajea/master/pylp.patch | git apply
 cd ../../../
 pip install -e .
 ```
