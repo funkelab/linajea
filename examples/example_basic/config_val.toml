@@ -41,5 +41,4 @@ perc_max = "perc99_99"
 norm_bounds = [ 2000, 7500,]
 [predict.job]
 num_workers = 1
-run_on = "lsf"
-queue = "gpu_tesla"
+run_on = "local"
