@@ -1,6 +1,7 @@
 attrs
 cython
 h5py
+jupyter
 numpy
 networkx
 pandas
@@ -9,11 +10,8 @@ scipy
 scikit-image
 scikit-learn
 toml
-torch
 tqdm
 zarr>=2.10.2
--e git+https://github.com/funkelab/funlib.geometry#egg=funlib.geometry
--e git+https://github.com/funkelab/funlib.math#egg=funlib.math
 -e git+https://github.com/funkelab/funlib.run#egg=funlib.run
 -e git+https://github.com/Kainmueller-Lab/funlib.learn.torch@36ef666d16bddda0bf3146d4c0efbe9b95c8463d#egg=funlib.learn.torch
 -e git+https://github.com/funkey/gunpowder@e6c914f764521cb6af93b86b984fb34776a80f30#egg=gunpowder
