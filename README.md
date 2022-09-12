@@ -23,44 +23,10 @@ conda install python
 pip install numpy cython
 conda install pytorch -c pytorch
 pip install -r requirements.txt
+conda install pylp -c funkey
 pip install -e .
 conda install ipykernel # for the example jupyter notebooks
 ```
-
-The next part is unfortunately currently not as straightforward.
-Part of the tracking pipeline is an optimization problem that is formulated as an integer linear program (ILP).
-We use `pylp` (https://github.com/funkey/pylp/) as a python wrapper for the `gurobi` and `scip` solvers.
-Please check out their respective websites (https://www.gurobi.com/ and https://scipopt.org/) for information on how to install them.
-You need to have at least one of them installed (if both are installed `gurobi` is preferred).\
-Then, to install `pylp`:
-
-```
-git clone git@github.com:funkey/pylp.git
-cd pylp
-```
-If you only have `scip`:
- - please remove the line `#define HAVE_GUROBI` in `pylp/impl/config.h`
- - change the line `libraries=['gurobi80', 'scipopt']` to `libraries=['scipopt']` in `setup.py`
-
-If you only have `gurobi`:
- - please remove the line `#define HAVE_SCIP` in `pylp/impl/config.h`
- - change the line `libraries=['gurobi80', 'scipopt']` to `libraries=['gurobiXX]` (set `XX` depending on your `gurobi` version, for instance `gurobi91` for `gurobi 9.1.2` in `setup.py`
-
-If your `gurobi` or `scip` installation is not in the global search path:
- - add a line `library_dirs=['/path/to/folder/containing/lib']` below `libraries=...`, e.g. `library_dirs=['gurobi-9.1.2/lib']` (`gurobi` library: `libgurobiXX.so`, `scip` library: `libscipopt.so`)
- - add the path to the header files to `include_dirs`, e.g. `include_dirs=['pylp/impl', 'gurobi-9.1.2/include']`
-
-Next:
-```
-cd pylp/impl
-git clone https://github.com/funkey/solvers.git
-cd solvers
-git rebase -Xtheirs origin/min_deps
-curl https://raw.githubusercontent.com/funkelab/linajea/master/pylp.patch | git apply
-cd ../../../
-pip install -e .
-```
-
 
 Versioning
 ------------
