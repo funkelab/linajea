@@ -17,15 +17,11 @@ Installation
 ```
 git clone https://github.com/funkelab/linajea.git
 cd linajea
-conda create --name linajea
+conda create --name linajea python pytorch pylp -c pytorch -c funkey
 conda activate linajea
-conda install python
-pip install numpy cython
-conda install pytorch -c pytorch
+pip install numpy cython jupyter
 pip install -r requirements.txt
-conda install pylp -c funkey
 pip install -e .
-conda install ipykernel # for the example jupyter notebooks
 ```
 
 Versioning
