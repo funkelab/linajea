@@ -321,7 +321,7 @@ def match(costs, no_match_cost):
     solver = pylp.LinearSolver(
             num_variables,
             pylp.VariableType.Binary,
-            preference=pylp.Preference.Gurobi)
+            preference=pylp.Preference.Any)
     solver.set_objective(objective)
     solver.set_constraints(constraints)
     solver.set_num_threads(1)
