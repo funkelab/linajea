@@ -22,7 +22,6 @@ conda activate linajea
 pip install numpy cython jupyter
 pip install -r requirements.txt
 pip install -e .
-conda install ipykernel # for the example jupyter notebooks
 ```
 
 Versioning
