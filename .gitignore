@@ -1,5 +1,6 @@
 *.sw[pmno]
 *.pyc
+__pycache__
 *.c
 *.so
 *.egg-info*
