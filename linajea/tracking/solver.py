@@ -218,7 +218,8 @@ class Solver(object):
                 pylp.VariableType.Binary,
                 preference=pylp.Preference.Any)
         self.solver.set_num_threads(self.num_threads)
-        self.solver.set_timeout(self.timeout)
+        if self.timeout > 0:
+            self.solver.set_timeout(self.timeout)
 
     def solve(self):
         """Solves the ILP
