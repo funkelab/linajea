@@ -19,5 +19,8 @@ setup(
             'linajea.training',
             'linajea.utils',
         ],
+        scripts=[
+            'run_scripts/linajea'
+        ],
         python_requires=">=3.8"
 )
