@@ -16,20 +16,20 @@ Aside from the *jupyter* notebooks showcased as [examples](../examples) we provi
  - `06_run_best_config.py`
    Run *solve* and *evaluate* on the test data using the best parameters/weights as determined on the validation data.
 
-For further convenience we provide a final script that, depending on the given flags, calls the appropriate script with the correct arguments: `run.py` (should be called from within an experiment directory)
+For further convenience we provide a final script that, depending on the given flags, calls the appropriate script with the correct arguments: `linajea` (should be called from within an experiment directory)
 
 ```
 mkdir $setup_dir
 cd $setup_dir
-python ../run.py --config config.toml --train
+linajea --config config.toml --train
 ```
 
-For information on the available flags use `python run.py --help`:
+For information on the available flags use `python linajea --help`:
 ```
-usage: run.py [-h] [--config CONFIG] [--checkpoint CHECKPOINT]
-              [--train] [--predict] [--extract_edges] [--solve] [--evaluate] [--best]
-              [--validation] [--validate_on_train]
-              [--param_id PARAM_ID] [--val_param_id VAL_PARAM_ID] [--param_ids PARAM_IDS [PARAM_IDS ...]]
-              [--local] [--slurm] [--gridengine] [--interactive]
-              [--array_job] [--eval_array_job] [--wait_job_id WAIT_JOB_ID] [--no_block_after_eval]
+usage: linajea [-h] [--config CONFIG] [--checkpoint CHECKPOINT]
+               [--train] [--predict] [--extract_edges] [--solve] [--evaluate] [--best]
+               [--validation] [--validate_on_train]
+               [--param_id PARAM_ID] [--val_param_id VAL_PARAM_ID] [--param_ids PARAM_IDS [PARAM_IDS ...]]
+               [--local] [--slurm] [--gridengine] [--interactive]
+               [--array_job] [--eval_array_job] [--wait_job_id WAIT_JOB_ID] [--no_block_after_eval]
 ```
